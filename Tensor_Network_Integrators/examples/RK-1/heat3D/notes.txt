@@ -1,0 +1,14 @@
+All drivers that also do FG should work 
+driver_23
+driver_34
+driver_45
+
+The TT drivers need to be tested on Darwin 
+driver_tt23
+driver_tt34
+driver_tt45
+
+.mat files can be provided in repository for data processing 
+
+
+Rename the postprocessing files 

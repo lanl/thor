@@ -1,0 +1,3 @@
+function Tmat = get_mat_14D_fn(T,nx,ny,nz,nmu,neta,nxi,nE)
+Tmat = double(reshape(permute(T,[1:2:13,2:2:14]),...
+  [nx*ny*nz*nmu*neta*nxi*nE, nx*ny*nz*nmu*neta*nxi*nE]));
