@@ -17,7 +17,7 @@ You will need:
 
 ### Cu with SMATB Energy and Pressure
 
-    python Fig3_Cu.p
+    python Fig3_Cu.py
 
 ### Ar (HIPNN model) Energy and Pressure
 
