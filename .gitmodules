@@ -1,0 +1,8 @@
+[submodule "src/communicators"]
+	path = src/communicators
+	url = git@github.com:lanl/thor-thunder.git
+	branch = main
+[submodule "src/struct"]
+	path = src/struct
+	url = git@github.com:lanl/thor-dray.git
+	branch = main
