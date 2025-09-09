@@ -1,0 +1,61 @@
+Case: One energy group, with fission and uniform source
+
+ ******************************
+ *key start angular flux print*     
+ ******************************
+
+
+ angular flux for group =   1 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  1.996007E+00
+ *     2  1.194160E+00
+ *     3  0.000000E+00
+
+
+ angular flux for group =   1 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  1.194160E+00
+ *     3  1.996007E+00
+ *
+ ********************************************************************************************************************************
+
+Case: One energy group, k-effective eigenvalue problem
+
+ eigenvalue summary integral-k-eff     2.1293330E-01
+
+ ******************************
+ *key start angular flux print*     
+ ******************************
+
+
+ angular flux for group =   1 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  3.877598E-01
+ *     2  2.319867E-01
+ *     3  0.000000E+00
+
+
+ angular flux for group =   1 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  2.319867E-01
+ *     3  3.877598E-01
+ *
+ ********************************************************************************************************************************

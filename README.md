@@ -1,1 +1,123 @@
-O4849 The THOR Package: Tensors for High-dimensional Object Representation was approved for Open-Source Assertion on 02/10/2025. 
+# THOR Applications / [Wiki](https://TODO)
+
+The THOR Project (Tensors for High-dimensional Object Representation) aims to advance the 
+state-of-the-art in tensor calculations, manipulation, and research. 
+We strive to provide a high-performance tensor library for various scientific applications, 
+containing ready-to-use utilities and applicaions in Fortran, Matlab, and Python. 
+
+THOR is based on and extends the following third-party libraries and packages:
+ - TT-Toolbox : https://github.com/oseledets/TT-Toolbox
+ - tt-fort    : https://github.com/oseledets/tt-fort
+ - ttcross    : https://github.com/savostyanov/ttcross
+
+Check our [wiki page](https://TODO) for introduction, getting started, etc.
+
+
+## Installation
+
+TODO
+
+## Capabilities
+
+List capabilities here
+
+## Examples
+
+Examples go here
+
+## How to Cite THOR
+If you use THOR, please cite:
+
+**APA:**
+```latex
+Boureima, I., et al. (2025). Tensors for High-dimensional Object Representation (THOR) [Computer software]. https://doi.org/10.YYYY/zenodo.XXXXXXX
+```
+
+**BibTeX:**
+```latex
+@software{THOR,
+  author = {Boureima, Ismael and others},
+  month = sep,
+  title = {{Tensors for High-dimensional Object Representation (THOR)}},
+  url = {https://github.com/lanl/thor},
+  doi = {10.YYYY/zenodo.XXXXXXX},
+  year = {2025}
+}
+```
+
+## Authors
+- [Boian S. Alexandrov](mailto:boian@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Ismael Boureima](mailto:iboureima@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Rujeko Chinomona](mailto:crujeko@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [William Dai](mailto:dai@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Engin Danis](mailto:danis@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Maksim Ekin Eren](mailto:maksim@lanl.gov): Information Systems and Modeling Group, Los Alamos National Laboratory ([Website](https://www.maksimeren.com/))
+- [Oleg Korobkin](mailto:korobkin@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Rahul Somasundaram](mailto:rahul@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Kim Rasmussen](mailto:kor@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Duc Truong](mailto:dptruong@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+
+
+## Copyright Notice
+>© 2022. Triad National Security, LLC. All rights reserved.
+This program was produced under U.S. Government contract 89233218CNA000001 for Los Alamos
+National Laboratory (LANL), which is operated by Triad National Security, LLC for the U.S.
+Department of Energy/National Nuclear Security Administration. All rights in the program are
+reserved by Triad National Security, LLC, and the U.S. Department of Energy/National Nuclear
+Security Administration. The Government is granted for itself and others acting on its behalf a
+nonexclusive, paid-up, irrevocable worldwide license in this material to reproduce, prepare
+derivative works, distribute copies to the public, perform publicly and display publicly, and to permit
+others to do so.
+
+**LANL Copyright Assertion #O4849 **
+
+## License
+This program is open source under the BSD-3 License.
+Redistribution and use in source and binary forms, with or without modification, are permitted
+provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and
+the following disclaimer.
+ 
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+and the following disclaimer in the documentation and/or other materials provided with the
+distribution.
+ 
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse
+or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## Developer Test Suite
+Developer test suites are located under [```tests/```](tests/) directory.
+
+## LANL HPC Installation Notes
+
+### Darwin (TODO)
+```shell
+salloc -p general
+cd fortran
+. load_env.sh intel
+make -j
+make test # optional
+```
+
+### Chicoma
+```shell
+salloc --qos=debug --reservation=debug --partition=debug
+cd fortran
+. load_env.sh chicoma
+make -j
+make test # optional
+```

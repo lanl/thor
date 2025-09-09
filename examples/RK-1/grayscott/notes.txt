@@ -1,0 +1,15 @@
+Solvers need to be checked and moved to the src folder 
+Solvers must be converted to struct format. Both FG and TT
+
+Still not sure which is the most reliable driver to work with between
+tt_grayscott_imex
+tt_grayscott_irk
+efficiency_fggs_imex
+efficiency_ttgs_imex
+efficiency_ttgs_imex_optimized
+efficiency_ttgs_irk
+
+
+Rename post processing and maybe add .mlx files
+
+
