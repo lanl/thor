@@ -1,14 +1,9 @@
-# THOR Applications / [Wiki](https://TODO)
+# Tensors for High-dimensional Object Representation(THOR) / [Wiki](https://TODO)
 
-The THOR Project (Tensors for High-dimensional Object Representation) aims to advance the 
-state-of-the-art in tensor calculations, manipulation, and research. 
-We strive to provide a high-performance tensor library for various scientific applications, 
-containing ready-to-use utilities and applicaions in Fortran, Matlab, and Python. 
+This repository contains a novel, multi-GPU implementation of tensors in tensor train format.  It is based on the modern Fortran MPI/GPU communication library (Thunder), and a CUDA-enabled algebra of distributed arrays (DRay).
 
-THOR is based on and extends the following third-party libraries and packages:
- - TT-Toolbox : https://github.com/oseledets/TT-Toolbox
- - tt-fort    : https://github.com/oseledets/tt-fort
- - ttcross    : https://github.com/savostyanov/ttcross
+The THOR Project (Tensors for High-dimensional Object Representation) aims to advance the state-of-the-art in tensor calculations, manipulation, and research. 
+We strive to provide a high-performance tensor library for various scientific applications, containing ready-to-use utilities and applicaions in Fortran, Matlab, and Python. 
 
 Check our [wiki page](https://TODO) for introduction, getting started, etc.
 
