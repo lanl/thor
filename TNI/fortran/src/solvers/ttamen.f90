@@ -261,30 +261,38 @@ contains
 
 
 
- !> Approximate the matrix-by-vector via the AMEn iteration
+ !> Approximate matrix-by-vector via the AMEn iteration
  !!
- !!   [y,z]=amen_mv(A, x, tol, varargin)
- !!   Attempts to approximate the y = A*x
- !!   with accuracy TOL using the AMEn+ALS iteration.
- !!   Matrix A has to be given in the TT-format, right-hand side x should be
- !!   given in the TT-format also.
+ !! ** TRANSLATED FROM MATLAB FUNCTION amen_mv in TT-Toolbox **
  !!
- !!   Options are provided in form
- !!   'PropertyName1',PropertyValue1,'PropertyName2',PropertyValue2 and so
- !!   on. The parameters are set to default (in brackets in the following)
- !!   The list of option names and default values are:
- !!       o y0 - initial approximation to Ax [rand rank-2]
- !!       o nswp - maximal number of sweeps [20]
- !!       o verb - verbosity level, 0-silent, 1-sweep info, 2-block info [1]
- !!       o kickrank - compression rank of the error,
- !!         i.e. enrichment size [3]
- !!       o init_qr - perform QR of the input (save some time in ts, etc) [true]
- !!       o renorm - Orthog. and truncation methods: direct (svd,qr) or gram
- !!         (apply svd to the gram matrix, faster for m>>n) [direct]
- !!       o fkick - Perform solution enrichment during forward sweeps [false]
- !!         (rather questionable yet; false makes error higher, but "better
- !!         structured": it does not explode in e.g. subsequent matvecs)
- !!       o z0 - initial approximation to the error Ax-y [rand rank-kickrank]
+ !! Usage:
+ !!   call amen_mv(y, A, x, tol, &
+ !!                y0_, nswp_, verb_, kickrank_, init_qr_, renorm_, fkick_)
+ !!
+ !! Attempts to approximate the y = A*x with accuracy TOL using the AMEn+ALS
+ !! iteration.  Matrix A is of the class dtt_matrix, and the RHS vector x
+ !! is of the dtt_tensor class.
+ !!
+ !! Input:
+ !!  o A   : dtt_matrix, the matrix A in A*x = y
+ !!  o x   : dtt_tensor, "vector" x in A*x = y
+ !!  o tol : (double precision) approximation tolerance
+ !! 
+ !! Output:
+ !!  o y : dtt_tensor y in y = A*x
+ !!
+ !! Optional parameters:
+ !!  o y0_ - initial approximation to Ax [rand rank-2]
+ !!  o nswp_ - maximal number of sweeps [20]
+ !!  o verb_ - verbosity level, 0-silent, 1-sweep info, 2-block info [1]
+ !!  o kickrank_ - compression rank of the error, i.e. enrichment size [3]
+ !!  o init_qr_ - perform QR of the input (save some time in ts, etc) [true]
+ !!  o renorm_ - Orthog. and truncation methods: direct (svd,qr) or gram
+ !!    (apply svd to the gram matrix, faster for m>>n) [direct]
+ !!  o fkick_ - Perform solution enrichment during forward sweeps [false]
+ !!    (rather questionable yet; false makes error higher, but "better
+ !!    structured": it does not explode in e.g. subsequent matvecs)
+ !!  o z0_ - initial approximation to the error Ax-y [rand rank-kickrank]
  !!
  !!
  !!********
@@ -294,15 +302,11 @@ contains
  !!   Part I: SPD systems, http://arxiv.org/abs/1301.6068,
  !!   Part II: Faster algorithm and application to nonsymmetric systems, http://arxiv.org/abs/1304.1222
  !!
- !!   Use {sergey.v.dolgov, dmitry.savostyanov}@gmail.com for feedback
  !!********
  !!
- !!  Adopted from: core/amen_mv.m in TT-Toolbox 2.2, 2009-2012
+ !!  Adopted for THOR from: core/amen_mv.m in TT-Toolbox 2.2, 2009-2012
+ !!          by Oleg Korobkin (korobkin@lanl.gov)
  !!
- !!---------------------------
- !! TODO:
- !!  - estimate size of the matrices and allocate things in advance;
- !!  - add arguments to thor_matmul to allow multiplication without reshaping (saves on copy)
  subroutine amen_mv(y, A, x, tol, &
     y0_, nswp_, verb_, kickrank_, init_qr_, renorm_, fkick_)
  use matlab_struct_module, only: array2d, array3d, array4d, rand_cell3d
@@ -728,12 +732,20 @@ contains
 
 
  !> Performs the recurrent Phi (or Psi) matrix computation
+ !!
  !! Phi = Phi_prev * (x'Ay).
  !! If direction is 'lr', computes Psi
  !! if direction is 'rl', computes Phi
  !! A can be empty, then only x'y is computed.
  !!  Phi1: rx1, ry1, ra1, or {rx1, ry1}_ra, or rx1, ry1
  !!  Phi2: ry2, ra2, rx2, or {ry2, rx2}_ra, or ry2, rx2
+ !!
+ !!********
+ !!
+ !!  Adopted for THOR from: function compute_next_Phi in core/amen_mv.m
+ !!          in TT-Toolbox 2.2, 2009-2012
+ !!          by Oleg Korobkin (korobkin@lanl.gov)
+ !!
  subroutine compute_next_Phi(Phi, nrm, Phi_prev, x, A, y, direction, extnrm)
  use mat_lib, only: normfro, thor_matmul
  use time_lib
@@ -753,14 +765,6 @@ contains
  integer :: rx1,ry1,ra1,rx2,ry2,ra2,m,n
  logical :: isempty_A
 
-    !
-    !!! TODO: WIP
-    !
-    !! if (nargin<6)
-    !!     extnrm = [];
-    !! end
-    !!
-    !!
     rx1 = size(x,1); n = size(x,2); rx2 = size(x,3);
     ry1 = size(y,1); m = size(y,2); ry2 = size(y,3);
     ra1 = size(A,1)/n; ra2 = size(A,2)/m;
@@ -769,68 +773,65 @@ contains
        ra1 = 1; ra2 = 1
     endif
 
-    !!                                                if (isa(Phi_prev, 'cell'))
-    !!                                                 . . . < skipped >
-    !!                                                else (Phi_prev is not a cell)
     if (direction.eq.'lr') then
        !%lr: Phi1
-       x2 = reshape(x, [rx1, n*rx2])              !! x = reshape(x, rx1, n*rx2);
-       Phi2 = reshape(Phi_prev, [rx1,ry1*ra1])    !! Phi = reshape(Phi_prev, rx1, ry1*ra1);
-       Phi2 = thor_matmul(x2, Phi2, tsp_='tn')    !! Phi = x'*Phi;
-       if (.not.isempty_A) then                   !! if (~isempty(A))
-          Phi2 = reshape(Phi2, [n*rx2*ry1, ra1])  !!     Phi = reshape(Phi, n*rx2*ry1, ra1);
-          Phi2 = transpose(Phi2)                  !!     Phi = Phi.';
-          Phi2 = reshape(Phi2, [ra1*n, rx2*ry1])  !!     Phi = reshape(Phi, ra1*n, rx2*ry1);
-          Phi2 = thor_matmul(A, Phi2, tsp_='tn')  !!     Phi = A.'*Phi;
-          Phi2 = reshape(Phi2, [m, ra2*rx2*ry1])  !!     Phi = reshape(Phi, m, ra2*rx2*ry1);
-       else                                       !! else
-          Phi2 = reshape(Phi2, [n, rx2*ry1])      !!     Phi = reshape(Phi, n, rx2*ry1);
-       endif                                      !! end;
-       Phi2 = transpose(Phi2)                     !! Phi = Phi.';
-       Phi2 = reshape(Phi2, [ra2*rx2, ry1*m])     !! Phi = reshape(Phi, ra2*rx2, ry1*m);
-       y2 = reshape(y, [ry1*m, ry2])              !! y = reshape(y, ry1*m, ry2);
-       Phi2 = thor_matmul(Phi2, y2)               !! Phi = Phi*y;
-       if (.not.isempty_A) then                   !! if (~isempty(A))
-          Phi2 = reshape(Phi2, [ra2, rx2*ry2])    !!     Phi = reshape(Phi, ra2, rx2*ry2
-          Phi2 = transpose(Phi2)                  !!     Phi = Phi.';
-       endif                                      !! end;
-       Phi = reshape(Phi2, [rx2, ry2, ra2])       !! Phi = reshape(Phi, rx2, ry2, ra2);
+       x2 = reshape(x, [rx1, n*rx2])
+       Phi2 = reshape(Phi_prev, [rx1,ry1*ra1])
+       Phi2 = thor_matmul(x2, Phi2, tsp_='tn')
+       if (.not.isempty_A) then
+          Phi2 = reshape(Phi2, [n*rx2*ry1, ra1])
+          Phi2 = transpose(Phi2)
+          Phi2 = reshape(Phi2, [ra1*n, rx2*ry1])
+          Phi2 = thor_matmul(A, Phi2, tsp_='tn')
+          Phi2 = reshape(Phi2, [m, ra2*rx2*ry1])
+       else
+          Phi2 = reshape(Phi2, [n, rx2*ry1])
+       endif
+       Phi2 = transpose(Phi2)
+       Phi2 = reshape(Phi2, [ra2*rx2, ry1*m])
+       y2 = reshape(y, [ry1*m, ry2])
+       Phi2 = thor_matmul(Phi2, y2)
+       if (.not.isempty_A) then
+          Phi2 = reshape(Phi2, [ra2, rx2*ry2])
+          Phi2 = transpose(Phi2)
+       endif
+       Phi = reshape(Phi2, [rx2, ry2, ra2])
     else
        !! %rl: Phi2
-       y2 = reshape(y, [ry1*m, ry2])              !! y = reshape(y, ry1*m, ry2);
-       Phi2 = reshape(Phi_prev, [ry2,ra2*rx2])    !! Phi = reshape(Phi_prev, ry2, ra2*rx2);
-       Phi2 = thor_matmul(y2, Phi2)               !! Phi = y*Phi;
-       if(.not.isempty_A) then                    !! if (~isempty(A))
-          Phi2 = reshape(Phi2, [ry1, m*ra2*rx2])  !!     Phi = reshape(Phi, ry1, m*ra2*rx2);
-          Phi2 = transpose(Phi2)                  !!     Phi = Phi.';
-          Phi2 = reshape(Phi2, [m*ra2, rx2*ry1])  !!     Phi = reshape(Phi, m*ra2, rx2*ry1);
-          Phi2 = thor_matmul(A, Phi2)             !!     Phi = A*Phi;
-          Phi2 = reshape(Phi2, [ra1*n*rx2, ry1])  !!     Phi = reshape(Phi, ra1*n*rx2, ry1);
-          Phi2 = transpose(Phi2)                  !!     Phi = Phi.';
-       endif                                      !! end
-       Phi2 = reshape(Phi2, [ry1*ra1, n*rx2])     !! Phi = reshape(Phi, ry1*ra1, n*rx2);
-       x2 = reshape(x, [rx1, n*rx2])              !! x = reshape(x, rx1, n*rx2);
-       Phi2 = thor_matmul(Phi2, x2, tsp_='nt')    !! Phi = Phi*x';
-       if (.not.isempty_A) then                   !! if (~isempty(A))
-          Phi = reshape(Phi2, [ry1, ra1, rx1])    !!     Phi = reshape(Phi, ry1, ra1, rx1);
-       else                                       !! else
-          Phi = reshape(Phi2, [ry1, rx1, 1])      !!     Phi = reshape(Phi, ry1, rx1);
-       endif                                      !! end
+       y2 = reshape(y, [ry1*m, ry2])
+       Phi2 = reshape(Phi_prev, [ry2,ra2*rx2])
+       Phi2 = thor_matmul(y2, Phi2)
+       if(.not.isempty_A) then
+          Phi2 = reshape(Phi2, [ry1, m*ra2*rx2])
+          Phi2 = transpose(Phi2)
+          Phi2 = reshape(Phi2, [m*ra2, rx2*ry1])
+          Phi2 = thor_matmul(A, Phi2)
+          Phi2 = reshape(Phi2, [ra1*n*rx2, ry1])
+          Phi2 = transpose(Phi2)
+       endif
+       Phi2 = reshape(Phi2, [ry1*ra1, n*rx2])
+       x2 = reshape(x, [rx1, n*rx2])
+       Phi2 = thor_matmul(Phi2, x2, tsp_='nt')
+       if (.not.isempty_A) then
+          Phi = reshape(Phi2, [ry1, ra1, rx1])
+       else
+          Phi = reshape(Phi2, [ry1, rx1, 1])
+       endif
     endif
 
-    if (present(extnrm)) then                  !! if (~isempty(extnrm))
+    if (present(extnrm)) then
        !% Override the normalization by the external one
-       Phi = Phi/extnrm                        !!     Phi = Phi/extnrm;
-    else                                       !! elseif (nargout>1)
+       Phi = Phi/extnrm
+    else
        ! Extract the scale to prevent overload
-       nrm = normfro(Phi)                      !!     nrm = norm(Phi(:), 'fro');
-       if (nrm.gt.0) then                      !!     if (nrm>0)
-           Phi = Phi/nrm                       !!         Phi = Phi/nrm;
-       else                                    !!     else
-           nrm = 1d0                           !!         nrm=1;
-       endif                                   !!     end
-    endif                                      !! end
-    !!                                            end %  if (isa(Phi_prev, 'cell'))
+       nrm = normfro(Phi)
+       if (nrm.gt.0) then
+           Phi = Phi/nrm
+       else
+           nrm = 1d0
+       endif
+    endif
+
     ! cleanup
     if (allocated(x2)) deallocate(x2)
     if (allocated(y2)) deallocate(y2)
@@ -838,28 +839,36 @@ contains
  end subroutine compute_next_Phi
 
 
- !> function [X]=amen_mm(A, Y, tol, varargin)
- !! Approximate the matrix-by-matrix via the AMEn iteration
- !!    [X]=amen_mv(A, Y, tol, varargin)
- !!    Attempts to approximate the X = A*Y with accuracy TOL using the
- !!    AMEn+ALS iteration. A is a n x m matrix, Y is a m x k matrix.
- !!    Matrices A,Y can be given in tt_matrix format, the output is tt_matrix.
- !!    Y can be tt_tensor, it's considered as column, the output is tt_tensor.
- !!    A and Y can be a {d,R} cell array. However, X is always a "single" TT
- !!    (no tensor chain), since that's how ALS works. Generally, X has the
- !!    same form as Y, except that it's always {d,1} in essense. X and Y can't
- !!    be sparse (SVD will destroy it anyways), but A can be.
+ !> Approximate matrix-by-matrix via the AMEn iteration
  !!
- !!    Options are provided in form
- !!    'PropertyName1',PropertyValue1,'PropertyName2',PropertyValue2 and so
- !!    on. The parameters are set to default (in brackets in the following)
- !!    The list of option names and default values are:
- !!        o x0 - initial approximation to AY [rand with ranks of Y(:,1)]
- !!        o nswp - maximal number of sweeps [20]
- !!        o verb - verbosity level, 0-silent, 1-sweep info, 2-block info [1]
- !!        o kickrank - compression rank of the error,
- !!                     i.e. enrichment size [4]
+ !! ** TRANSLATED FROM MATLAB FUNCTION amen_mm in TT-Toolbox **
  !!
+ !! Usage:
+ !!   call amen_mm(X, A, Y, tol, &
+ !!                x0_, nswp_, verb_, kickrank_, init_qr_)
+ !!
+ !! Attempts to approximate the X = A*Y with accuracy TOL using the
+ !! AMEn+ALS iteration. A is a n x m matrix, Y is a m x k matrix.
+ !! Matrices A,Y can be given in tt_matrix format, the output is tt_matrix.
+ !! Y can be tt_tensor, it's considered as column, the output is tt_tensor.
+ !! A and Y can be a {d,R} cell array. However, X is always a "single" TT
+ !! (no tensor chain), since that's how ALS works. Generally, X has the
+ !! same form as Y, except that it's always {d,1} in essense. X and Y can't
+ !! be sparse (SVD will destroy it anyways), but A can be.
+ !!
+ !! Input:
+ !!  o A : dtt_matrix, matrix A in A*Y = X
+ !!  o Y : dtt_matrix, matrix Y in A*Y = X
+ !!  o tol : (double precision) approximation tolerance
+ !! 
+ !! Output:
+ !!  o X : dtt_matrix X = A*Y
+ !!
+ !! Optional parameters:
+ !!  o x0_ - initial approximation to AY [rand with ranks of Y(:,1)]
+ !!  o nswp_ - maximal number of sweeps [20]
+ !!  o verb_ - verbosity level, 0-silent, 1-sweep info, 2-block info [1]
+ !!  o kickrank_ - compression rank of the error, i.e. enrichment size [4]
  !!
  !! ********
  !!    For description of adaptive ALS please see
@@ -867,6 +876,11 @@ contains
  !!    Alternating minimal energy methods for linear systems in higher dimensions.
  !!    Part I: SPD systems, http://arxiv.org/abs/1301.6068,
  !!    Part II: Faster algorithm and application to nonsymmetric systems, http://arxiv.org/abs/1304.1222
+ !!
+ !!********
+ !!
+ !!  Adopted for THOR from: core/amen_mm.m in TT-Toolbox 2.2, 2009-2012
+ !!          by Oleg Korobkin (korobkin@lanl.gov)
  !!
  !! Call tree:
  !! +- amen_mm
@@ -1202,6 +1216,13 @@ contains
 
 
  !% Accumulates the left reduction W{1:k}'*A{1:k}*X{1:k}
+ !!
+ !!********
+ !!
+ !!  Adopted for THOR from: function leftreduce_matrix 
+ !!          in core/amen_mm.m in TT-Toolbox 2.2, 2009-2012
+ !!          by Oleg Korobkin (korobkin@lanl.gov)
+ !!
  function leftreduce_matrix(nrm, WAX1, w, A2, x, rw1, n, k, rw2, &
                             ra1, ra2, rx1, m, rx2, extnrm_) result(WAX2)
  use matrix_util, only: perm3d
@@ -1246,6 +1267,13 @@ contains
 
 
  !% Accumulates the right reduction W{k:d}'*A{k:d}*X{k:d}
+ !!
+ !!********
+ !!
+ !!  Adopted for THOR from: function rightreduce_matrix 
+ !!          in core/amen_mm.m in TT-Toolbox 2.2, 2009-2012
+ !!          by Oleg Korobkin (korobkin@lanl.gov)
+ !!
  function rightreduce_matrix(nrm, WAX2, w, A2, x, rw1, n, k, rw2, &
                              ra1, ra2, rx1, m, rx2, extnrm_) result(WAX1)
  use matrix_util, only: perm3d
@@ -1288,6 +1316,13 @@ contains
 
 
  !% Accumulates the left reduction W{1:k}'*X{1:k}
+ !!
+ !!********
+ !!
+ !!  Adopted for THOR from: function leftreduce_vector
+ !!          in core/amen_mm.m in TT-Toolbox 2.2, 2009-2012
+ !!          by Oleg Korobkin (korobkin@lanl.gov)
+ !!
  function leftreduce_vector(WX1,w,x,rw1,n,k,rw2,rx1,rx2,extnrm_) result(WX2)
  use mat_lib, only: thor_matmul, thor_matmul_mnk
  implicit none
@@ -1307,6 +1342,13 @@ contains
 
 
  !% Accumulates the right reduction W{k:d}'*X{k:d}
+ !!
+ !!********
+ !!
+ !!  Adopted for THOR from: function rightreduce_vector
+ !!          in core/amen_mm.m in TT-Toolbox 2.2, 2009-2012
+ !!          by Oleg Korobkin (korobkin@lanl.gov)
+ !!
  function rightreduce_vector(WX2,w,x,rw1,n,k,rw2,rx1,rx2,extnrm_) result(WX1)
  use mat_lib, only: thor_matmul_mnk
  implicit none
@@ -1322,6 +1364,13 @@ contains
 
  !% A matrix-matrix product for the matrix in the 3D TT (WAX1-A-WAX2), and
  !% full matrix of size (rx1*m*k*rx2). Returns (rw1*n*k*rw2)
+ !!
+ !!********
+ !!
+ !!  Adopted for THOR from: function local_matvec
+ !!          in core/amen_mm.m in TT-Toolbox 2.2, 2009-2012
+ !!          by Oleg Korobkin (korobkin@lanl.gov)
+ !!
  function local_matvec(x, rx1,m,k,rx2, rw1,n,rw2, WAX1, A, WAX2, ra1,ra2) result(w)
  use mat_lib, only: thor_matmul, thor_matmul_mnk
  use matrix_util, only: perm3d
