@@ -5,6 +5,8 @@ This repository contains a novel, multi-GPU implementation of tensors in tensor 
 The THOR Project (Tensors for High-dimensional Object Representation) aims to advance the state-of-the-art in tensor calculations, manipulation, and research. 
 We strive to provide a high-performance tensor library for various scientific applications, containing ready-to-use utilities and applicaions in Fortran, Matlab, and Python. 
 
+For the collection of published examples, navigate to [```TNI```](TNI) subfolder.
+
 ## How to Cite THOR
 
 Publications:
