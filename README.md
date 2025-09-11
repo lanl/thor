@@ -14,7 +14,7 @@ Check our [wiki page](https://TODO) for introduction, getting started, etc.
 
 Please download [TT-toolbox](https://github.com/oseledets/TT-Toolbox) package at the same directory level as THOR. Refer to individual application in for additional tools.
 
-### FORTRAN (serial version in TNI/fortran)
+### FORTRAN (serial version in [```TNI/fortran```](TNI/fortran))
 
 * Clone the repo and change to `TNI/fortran` directory.
 * In the subdirectory `config`, find a configuration that most closely matches your system.
@@ -107,7 +107,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ## Developer Test Suite
-Developer test suites are located under [```tests/```](tests/) directory.
+Developer test suites are located under [```TNI/fortran/tests/```](TNI/fortran/tests/) directory.
 
 ## LANL HPC Installation Notes
 
