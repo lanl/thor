@@ -10,7 +10,28 @@ Check our [wiki page](https://TODO) for introduction, getting started, etc.
 
 ## Installation
 
-TODO
+### MATLAB
+
+Please download [TT-toolbox](https://github.com/oseledets/TT-Toolbox) package at the same directory level as THOR. Refer to individual application in for additional tools.
+
+### FORTRAN (serial version in TNI/fortran)
+
+* Clone the repo and change to `TNI/fortran` directory.
+* In the subdirectory `config`, find a configuration that most closely matches your system.
+* Copy it to `TNI/fortran` under the name `make.inc`. This is a system-dependent part of the Makefile.
+* Modify it to match your compiler and the location of BLAS/LAPACK libraries.
+* Build the code using `make`. Test using `make test`.
+
+```shell
+git clone git@github.com:lanl/thor.git
+cd thor/TNI/fortran
+cp config/gfortran.inc make.inc
+# <edit make.inc>
+make -j
+make test # optional
+```
+
+You can also follow the (# LANL HPC Installation Notes) for some of the existing LANL systems (current as of September 2025).
 
 ## Capabilities
 
@@ -21,24 +42,8 @@ List capabilities here
 Examples go here
 
 ## How to Cite THOR
-If you use THOR, please cite:
 
-**APA:**
-```latex
-Boureima, I., et al. (2025). Tensors for High-dimensional Object Representation (THOR) [Computer software]. https://doi.org/10.YYYY/zenodo.XXXXXXX
-```
-
-**BibTeX:**
-```latex
-@software{THOR,
-  author = {Boureima, Ismael and others},
-  month = sep,
-  title = {{Tensors for High-dimensional Object Representation (THOR)}},
-  url = {https://github.com/lanl/thor},
-  doi = {10.YYYY/zenodo.XXXXXXX},
-  year = {2025}
-}
-```
+(Publication in being prepared)
 
 ## Authors
 - [Boian S. Alexandrov](mailto:boian@lanl.gov): Theoretical Division, Los Alamos National Laboratory
@@ -52,9 +57,14 @@ Boureima, I., et al. (2025). Tensors for High-dimensional Object Representation 
 - [Kim Rasmussen](mailto:kor@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Duc Truong](mailto:dptruong@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 
+## Maintainers
+- [Ismael Boureima](mailto:iboureima@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Oleg Korobkin](mailto:korobkin@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Rahul Somasundaram](mailto:rahul@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Duc Truong](mailto:dptruong@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 
 ## Copyright Notice
->© 2022. Triad National Security, LLC. All rights reserved.
+>© 2025. Triad National Security, LLC. All rights reserved.
 This program was produced under U.S. Government contract 89233218CNA000001 for Los Alamos
 National Laboratory (LANL), which is operated by Triad National Security, LLC for the U.S.
 Department of Energy/National Nuclear Security Administration. All rights in the program are
@@ -99,7 +109,7 @@ Developer test suites are located under [```tests/```](tests/) directory.
 
 ## LANL HPC Installation Notes
 
-### Darwin (TODO)
+### Darwin
 ```shell
 salloc -p general
 cd fortran
