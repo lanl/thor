@@ -1,12 +1,9 @@
-# Tensors for High-dimensional Object Representation (THOR) / [Wiki](https://TODO)
+# Tensors for High-dimensional Object Representation (THOR)
 
 This repository contains a novel, multi-GPU implementation of tensors in tensor train format.  It is based on the modern Fortran MPI/GPU communication library (Thunder), and a CUDA-enabled algebra of distributed arrays (DRay).
 
 The THOR Project (Tensors for High-dimensional Object Representation) aims to advance the state-of-the-art in tensor calculations, manipulation, and research. 
 We strive to provide a high-performance tensor library for various scientific applications, containing ready-to-use utilities and applicaions in Fortran, Matlab, and Python. 
-
-Check our [wiki page](https://TODO) for introduction, getting started, etc.
-
 
 ## Installation
 
@@ -32,6 +29,8 @@ make test # optional
 ```
 
 You can also follow the (# LANL HPC Installation Notes) for some of the existing LANL systems (current as of September 2025).
+
+### MultiGPU version: W.I.P.
 
 ## Capabilities
 
