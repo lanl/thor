@@ -43,7 +43,9 @@ Examples go here
 
 ## How to Cite THOR
 
-(Publication in being prepared)
+Publications:
+ * Boureima et al. (in prep)
+ * Truong et al. (in prep)
 
 ## Authors
 - [Boian S. Alexandrov](mailto:boian@lanl.gov): Theoretical Division, Los Alamos National Laboratory
