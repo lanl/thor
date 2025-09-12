@@ -7,7 +7,7 @@ fi
 
 option=$1
 case $option in
-gnu)
+gnu) # Oleg's laptop
    echo "Loading GNU environment:"
    module purge
    module load openmpi 
@@ -23,8 +23,8 @@ mac)
 intel)
    echo "Loading Intel environment (on Darwin):"
    module purge
-   module load intel-mpi/2021.9.0  intel-mkl/2021.3.0
-   ln -sf config/darwin_ifort.inc make.inc
+   module load openmpi/5.0.2-intel_2024.0.0 intel-mkl/2024.0.0
+   ln -sf config/darwin_intel.inc make.inc
    module list
    ;;
 ch-intel)
@@ -34,32 +34,11 @@ ch-intel)
    ln -sf config/chicoma_intel.inc make.inc
    module list
    ;;
-intel2024)
-   echo "Loading intel-2024 environment (on Darwin):"
-   module purge
-   module load openmpi/5.0.2-intel_2024.0.0
-   ln -sf config/darwin_intel2024.inc make.inc
-   module list
-   ;;
 gnu132)
    echo "Loading GNU+OpenMPI environment (on Darwin):"
    module purge
    module load openmpi/5.0.2-gcc_13.2.0
    ln -sf config/darwin_gcc13_2.inc make.inc
-   module list
-   ;;
-aocc)
-   echo "Loading Clang env (on Darwin)"
-   module purge
-   module load openmpi/4.1.0-aocc_3.0.0
-   ln -sf config/darwin_aocc3.inc make.inc
-   module list
-   ;;
-cuda)
-   echo "Loading CUDA environment:"
-   module purge
-   module load nvhpc/23.3 openmpi
-   ln -sf config/darwin_nvhpc.inc make.inc
    module list
    ;;
 *)

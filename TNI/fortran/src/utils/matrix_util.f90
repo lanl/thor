@@ -501,6 +501,10 @@ contains
   !!   2 -> {0, 1, 0, 0, 0, 0, 0, 0}
   !!  15 -> {1, 1, 1, 1, 0, 0, 0, 0}
   function binary_repr(n) result(ind)
+#ifdef __NVCOMPILER
+  ! NVIDIA compiler does not define shiftl and shiftr intrinsics (yet - O.K. 09/2025)
+  use mat_lib, only: shiftr
+#endif
   implicit none
   integer, intent(in) :: n
   integer, allocatable :: ind(:)
