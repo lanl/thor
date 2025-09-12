@@ -136,6 +136,12 @@ contains
 
 
  !> generate an array of normally distributed (mean=0, stddev=1) rn
+ !!
+ !! Uses Box-Muller transform
+ !! Parameters:
+ !!  * a(*): array to fill with random normally distributed numbers
+ !!  * m   : array length
+ !!
  subroutine d1randn(a, m)
  double precision, intent(INOUT) :: a(*)
  integer, intent(IN) :: m
@@ -329,6 +335,19 @@ contains
     deallocate(seed)
 
  end subroutine init_random_seed
+
+
+ subroutine init_random_seed_mpi(rseed)
+ use mpi_f08, only: MPI_Comm_rank, MPI_COMM_WORLD
+ integer, intent(in):: rseed
+ !
+ integer :: rank, info
+ integer, dimension(:), allocatable :: seed
+
+    call MPI_Comm_rank(MPI_COMM_WORLD, rank, info)
+    call init_random_seed(rseed + rank)
+
+ end subroutine init_random_seed_mpi
 
 
 end module

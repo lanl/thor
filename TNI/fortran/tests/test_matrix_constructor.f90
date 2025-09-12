@@ -260,7 +260,7 @@ contains
      A = dtt_matrix(A2, qq, ss)
      B2 = A% full2d() 
      nrm = normfro(B2 - A2)
-     write (*, '("[+][TEST07-9]: difference after tensorization = "ES9.3": ")' &
+     write (*, '("[+][TEST07-9]: difference after tensorization = "ES9.2": ")' &
              , advance='no') nrm
      if (dabs(nrm).lt.tol) then
         write(*,'("PASS"/)')
