@@ -1,49 +1,17 @@
-# Tensors for High-dimensional Object Representation(THOR) / [Wiki](https://TODO)
+# Tensors for High-dimensional Object Representation (THOR)
 
 This repository contains a novel, multi-GPU implementation of tensors in tensor train format.  It is based on the modern Fortran MPI/GPU communication library (Thunder), and a CUDA-enabled algebra of distributed arrays (DRay).
 
 The THOR Project (Tensors for High-dimensional Object Representation) aims to advance the state-of-the-art in tensor calculations, manipulation, and research. 
 We strive to provide a high-performance tensor library for various scientific applications, containing ready-to-use utilities and applicaions in Fortran, Matlab, and Python. 
 
-Check our [wiki page](https://TODO) for introduction, getting started, etc.
-
-
-## Installation
-
-### MATLAB
-
-Please download [TT-toolbox](https://github.com/oseledets/TT-Toolbox) package at the same directory level as THOR. Refer to individual application in for additional tools.
-
-### FORTRAN (serial version in TNI/fortran)
-
-* Clone the repo and change to `TNI/fortran` directory.
-* In the subdirectory `config`, find a configuration that most closely matches your system.
-* Copy it to `TNI/fortran` under the name `make.inc`. This is a system-dependent part of the Makefile.
-* Modify it to match your compiler and the location of BLAS/LAPACK libraries.
-* Build the code using `make`. Test using `make test`.
-
-```shell
-git clone git@github.com:lanl/thor.git
-cd thor/TNI/fortran
-cp config/gfortran.inc make.inc
-# <edit make.inc>
-make -j
-make test # optional
-```
-
-You can also follow the (# LANL HPC Installation Notes) for some of the existing LANL systems (current as of September 2025).
-
-## Capabilities
-
-List capabilities here
-
-## Examples
-
-Examples go here
+For the collection of published examples, navigate to [```TNI```](TNI) subfolder.
 
 ## How to Cite THOR
 
-(Publication in being prepared)
+Publications:
+ * Boureima et al. (in prep)
+ * Truong et al. (in prep)
 
 ## Authors
 - [Boian S. Alexandrov](mailto:boian@lanl.gov): Theoretical Division, Los Alamos National Laboratory
@@ -105,7 +73,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ## Developer Test Suite
-Developer test suites are located under [```tests/```](tests/) directory.
+Developer test suites are located under [```TNI/fortran/tests/```](TNI/fortran/tests/) directory.
 
 ## LANL HPC Installation Notes
 
