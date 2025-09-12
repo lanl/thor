@@ -13,6 +13,3 @@ core.[0-9]*
 *.dat
 .*.swp
 make.inc
-fortran/bench/plots/*.eps
-fortran/bench/plots/*.pdf
-fortran/bench/plots/*.png
