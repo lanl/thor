@@ -77,24 +77,4 @@ contains
   end if 
  end subroutine
  
- subroutine share(first,last,own)
-  implicit none
-  include 'mpif.h'
-  integer,intent(in) :: first,last
-  integer,intent(out) :: own(0:)
-  integer*4 :: p,me,nproc,info
-  ! check mpi variables
-  info = 0
-  call mpi_comm_size(MPI_COMM_WORLD,nproc,info)
-  if(info.ne.0)then;write(*,*)'[share] mpi_comm_size fail: ',info;stop;endif
-  call mpi_comm_rank(MPI_COMM_WORLD,me,info)
-  if(info.ne.0)then;write(*,*)'[share] mpi_comm_rank fail: ',info;stop;endif
-  
-  ! share load: proc p owns tasks own(p)...own(p+1)-1
-  own(0)=first
-  do p=1,nproc-1
-     own(p) = first + int(dble(last-first+1)*dble(p)/nproc)
-  enddo
-  own(nproc) = last+1
- end subroutine
 end module

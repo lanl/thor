@@ -9,16 +9,14 @@ module dmrgg_lib
 
 contains
 
- subroutine dtt_dmrgg(arg,fun,par,accuracy,maxrank,mybonds,pivoting,neval,quad,tru)
+ subroutine dtt_dmrgg(arg,fun,par,accuracy,maxrank,pivoting,neval,quad,tru)
  ! approximate [fun] in TT format using dmrg greedy cross interpolation
  implicit none
- include 'mpif.h'
  type(dtt_tensor),intent(inout),target :: arg
  double precision,external :: fun
  double precision,intent(in),optional :: par(*)
  double precision,intent(in),optional :: accuracy
  integer,intent(in),optional :: maxrank
- integer,intent(in),optional :: mybonds(0:)
  integer,intent(in),optional :: pivoting
  integer(kind=8),intent(out),optional :: neval
  type(dtt_tensor),intent(in),optional :: quad
@@ -28,12 +26,13 @@ contains
  integer,parameter :: lft=1,rgt=2,smin=8
  double precision :: small_element, small_pivot
  integer,pointer :: r(:),n(:)
- integer :: info,l,m,i,j,k,p,q,ii,jj,kk,pp,qq,nn,s,t,it,crs,dir,ijkq,ij,jk,kq,nlot,ilot,piv,snum
- integer :: me,nproc,they,stat(MPI_STATUS_SIZE), typed,ihave,ineed,strike, first,last
+ integer :: l,m,i,j,k,p,q,ii,jj,kk,pp,qq,nn,s,t,it,crs,dir,ijkq,ij,jk,kq,nlot,ilot,piv,snum
+ integer :: ihave,ineed,strike, first,last
+ integer :: nproc, info, me, they
  integer(kind=8) :: nevalloc,nevalall
  double precision :: t1,t2,t3,amax,pivot,pivotmax,pivotmin,val,err, pivotmax_prev,val_prev
  double precision,allocatable :: a(:,:,:,:),b(:),c(:),d(:),bcol(:,:,:),brow(:,:,:),bcol1(:,:),brow1(:,:),acol1(:,:),arow1(:,:)
- real*8 :: bb(4),cc(4)
+ double precision :: bb(4),cc(4)
  integer,allocatable :: lot(:,:),shifts(:),own(:)
  type(dtt_tensor) :: col,row,ttqq
  type(pointd) :: inv(0:tt_size)
@@ -49,12 +48,12 @@ contains
   piv=default(3,pivoting)
   ! check how our double precision type compares to hard-coded MPI types
   select case(storage_size(1.d0))
-   case(32);  typed=MPI_REAL4;   small_element= 5*epsilon(1.d0);  small_pivot=1.d-3; sfmt='e14.8'
-   case(64);  typed=MPI_REAL8;   small_element=10*epsilon(1.d0);  small_pivot=1.d-5; sfmt='e20.14'
-   case(128); typed=MPI_REAL16;  small_element=50*epsilon(1.d0);  small_pivot=1.d-7; sfmt='e39.33'
+   case(32);  small_element= 5*epsilon(1.d0);  small_pivot=1.d-3; sfmt='e14.8'
+   case(64);  small_element=10*epsilon(1.d0);  small_pivot=1.d-5; sfmt='e20.14'
+   case(128); small_element=50*epsilon(1.d0);  small_pivot=1.d-7; sfmt='e39.33'
    case default
-    if(me.eq.0)write(*,'(a,a,i5,a)')subnam,': unknown storage_size(1.d0): ',storage_size(1.d0),' guessing 64'
-    typed=MPI_REAL8; small_element=5*epsilon(1.d0);  small_pivot=1.d-5; sfmt='e20.14'
+    write(*,'(a,a,i5,a)')subnam,': unknown storage_size(1.d0): ',storage_size(1.d0),' guessing 64'
+    small_element=5*epsilon(1.d0);  small_pivot=1.d-5; sfmt='e20.14'
   end select
 
   ! initialise dimensions, mode sizes and bond ranks
@@ -62,23 +61,12 @@ contains
   l=arg%l; m=arg%m; r=>arg%r; n=>arg%n
   !if(any(r(l-1:m).gt.1))then;if(me.eq.0)write(*,*)'arg came in non-empty, wiping it clear';endif
   r(l-1:m)=1; call alloc(arg)
-
-  ! check mpi variables
-  call mpi_comm_size(MPI_COMM_WORLD,nproc,info)
-  if(info.ne.0)then;write(*,*)subnam//' mpi: comm_size fail: ',info;stop;endif
-  call mpi_comm_rank(MPI_COMM_WORLD,me,info)
-  if(info.ne.0)then;write(*,*)subnam//' mpi: comm_rank fail: ',info;stop;endif
-  if(nproc.ge.m)then;if(me.eq.0)write(*,*)'nproc exceeds or equal dimension, cannot proceed';stop;endif
+  nproc = 1; me = 0
 
   ! distribute bonds (ranks) between procs
   allocate(own(0:nproc), stat=info)
   if(info.ne.0)then;write(*,*)subnam,': cannot allocate own bonds';stop;endif
-  if(present(mybonds))then
-   own(0:nproc)=mybonds(0:nproc)
-  else
-   call share(l,m-1,own)
-  end if
-  !write(*,'(a,i3,a,32i4)')'[',me,']: own: ',own(0:nproc)
+  own(0) = l; own(1) = m
 
   ! allocating vip: i=vip(p)%p(1,r); j=vip(p)%p(2,r); k=vip(p)%p(3,r); q=vip(p)%p(4,r)
   allocate(shifts(0:nproc), stat=info)
@@ -115,13 +103,6 @@ contains
   deallocate(b)
 
   s=(ilot-1)/nn; k=mod(ilot-1,nn)+1; forall(p=l:m)ind(p)=mod(k-1+s*(p-1),n(p))+1
-  !write(*,'(a,i2,a,e10.3,a,512i4)')'[',me,'] local max  ',amax,' at ',ind(l:m)
-  if(nproc.gt.1)then
-   bb(1)=amax;bb(2)=ilot
-   call mpi_allreduce(bb,cc,1,MPI_2DOUBLE_PRECISION,MPI_MAXLOC,MPI_COMM_WORLD,info)
-   if(info.ne.0)then;write(*,*)'mpi maxloc error:',info;stop;endif
-   amax=cc(1);ilot=int(cc(2))
-  endif
   s=(ilot-1)/nn; k=mod(ilot-1,nn)+1; forall(p=l:m)ind(p)=mod(k-1+s*(p-1),n(p))+1
   !write(*,'(a,i2,a,e10.3,a,512i4)')'[',me,'] global max  ',amax,' at ',ind(l:m)
   !write(*,'(a,2(1x,i4),a,e20.13)')'PIVOT ',ind(l:m),' : ',amax
@@ -160,37 +141,17 @@ contains
    do p=own(me),own(me+1)-1
     val=val*ddot(n(p),arg%u(p)%p,1,quad%u(p)%p,1) / inv(p)%p(1)
    end do
-   if(me.eq.nproc-1)val=val*ddot(n(m),arg%u(m)%p,1,quad%u(m)%p,1)
-   if(nproc.gt.1)then
-    bb(1)=val
-    call mpi_allreduce(bb,cc,1,MPI_REAL8,MPI_PROD,MPI_COMM_WORLD,info)
-    if(info.ne.0)then;write(*,*)subnam,': mpi allreduce fail for val:',info;stop;endif
-    val=cc(1)
-   endif
+   val=val*ddot(n(m),arg%u(m)%p,1,quad%u(m)%p,1)
    val_prev=val
    !if(me.eq.0)write(*,'(a,e20.15)')'initial value:',val
   end if
 
-  call mpi_reduce(nevalloc,nevalall,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_WORLD,info)
-  if(info.ne.0)then;write(*,*)subnam,': mpi reduce neval failed: ',info;stop;endif
+  nevalall = nevalloc
 
   !if(me.eq.0)write(*,*)'clearing the tape'
   forall(p=l-1:m)tape(:,p)=(/ -1, -1, -1, -1 /)
   forall(p=l-1:m)tmpp(:,p)=(/ -2, -2, -2, -2 /)
   forall(p=l-1:m)upd(p)=.false.
-
-!  !report initial results
-!  if(me.eq.0)then
-!   t2 = timef()
-!   write(str,'(i3,a2,a,f5.1,a,2f6.3,a)') &
-!    0,'::',' rank', erank(arg), &
-!    ' log10t,n ',dlog(t2-t1)/dlog(10.d0),dlog(dble(nevalall))/dlog(10.d0),' ...  .......'
-!   if(present(quad))then
-!    write(stmp,'(a,'//sfmt//')')' val ',val
-!    str=trim(str)//trim(stmp)
-!   end if
-!   write(*,'(a)')trim(str)
-!  end if
 
   it=0; strike=0; ready=.false.; if(present(maxrank))ready=(it+1.ge.maxrank)
   do while(.not.ready) ! main loop increasing the ranks and hopefully accuracy
@@ -284,7 +245,8 @@ contains
      ilot=idamax(nlot,b,1); amax=dmax1(amax,dabs(b(ilot)))
      do ilot=1,nlot
       i=lot(ilot,1); j=lot(ilot,2); k=lot(ilot,3); q=lot(ilot,4)
-      b(ilot)=b(ilot)-ddot(r(p),col%u(p)%p(i,j,1),r(p-1)*n(p),row%u(p+1)%p(1,k,q),1)
+      !b(ilot)=b(ilot)-ddot(r(p),col%u(p)%p(i,j,1),r(p-1)*n(p),row%u(p+1)%p(1,k,q),1)
+      b(ilot)=b(ilot)-sum(col%u(p)%p(i,j,1:r(p))*row%u(p+1)%p(1:r(p),k,q))
       !write(*,'(a,i2,a,i2,a,4i4,a,4i4,a,e10.3)')'[',me,']{',p,'} err: ',i,j,k,q,' : ',i,j,k,q,' : ',b(ilot)
      end do
 
@@ -329,7 +291,7 @@ contains
        havecol=.true.; crs=crs+1; done=havecol.and.haverow.and.(crs.ge.2*piv)
        if(.not.done)then
         call dcopy(r(p-1)*n(p),acol1,1,bcol1,1)
-        call dgemv('n',r(p-1)*n(p),r(p),-1.d0,col%u(p)%p,r(p-1)*n(p),row%u(p+1)%p(1,kk,qq),1,1.d0,bcol1,1)
+        call dgemv('n',r(p-1)*n(p),r(p),-1.d0,col%u(p)%p,r(p-1)*n(p),row%u(p+1)%p(1:r(p),kk,qq),1,1.d0,bcol1,1)
         ij=idamax(r(p-1)*n(p),bcol1,1)-1; j=ij/r(p-1)+1; i=mod(ij,r(p-1))+1
         done=havecol.and.haverow.and. (i.eq.ii .and. j.eq.jj)
         ii=i;jj=j;pivot=bcol1(ii,jj)
@@ -349,7 +311,7 @@ contains
        haverow=.true.; crs=crs+1; done=havecol.and.haverow.and.(crs.ge.2*piv)
        if(.not.done)then
         call dcopy(n(p+1)*r(p+1),arow1,1,brow1,1)
-        call dgemv('t',r(p),n(p+1)*r(p+1),-1.d0,row%u(p+1)%p,r(p),col%u(p)%p(ii,jj,1),r(p-1)*n(p),1.d0,brow1,1)
+        call dgemv('t',r(p),n(p+1)*r(p+1),-1.d0,row%u(p+1)%p,r(p),col%u(p)%p(ii,jj,1:r(p)),1,1.d0,brow1,1)
         kq=idamax(n(p+1)*r(p+1),brow1,1)-1; q=kq/n(p+1)+1; k=mod(kq,n(p+1))+1
         done=havecol.and.haverow.and. (k.eq.kk .and. q.eq.qq)
         qq=q;kk=k;pivot=brow1(kk,qq)
@@ -388,8 +350,8 @@ contains
      deallocate(inv(p)%p); allocate(inv(p)%p((r(p)+1)**2),stat=info)
      call dcopy(r(p)**2,b,1,inv(p)%p,1)
      if(info.ne.0)then;write(*,'(a,i2,a,i5)')'[',me,']: cannot reallocate inverse: ',p;stop;endif
-     call dcopy(r(p),col%u(p)%p(ii,jj,1),r(p-1)*n(p),inv(p)%p(r(p)**2+1),1)
-     call dcopy(r(p),row%u(p+1)%p(1,kk,qq),1,inv(p)%p(r(p)**2+r(p)+1),1)
+     call dcopy(r(p),col%u(p)%p(ii,jj,1:r(p)),1,inv(p)%p(r(p)*r(p)+1:r(p)*(r(p)+1)),1)
+     call dcopy(r(p),row%u(p+1)%p(1:r(p),kk,qq),1,inv(p)%p(r(p)*(r(p)+1)+1:r(p)*(r(p)+2)),1)
      inv(p)%p((r(p)+1)**2)=pivot
 
      !write(*,'(a,i2,a,i2,a)') '[',me,']{',p,'}(arg): copying blocks'
@@ -421,7 +383,7 @@ contains
      if(p.gt.own(me))then
       !write(*,'(a,i2,a,i2,a)') '[',me,']{',p,'}(v): updating left rows'
       call dcopy(r(p-1)*n(p)*r(p),row%u(p)%p,1,bcol,1)
-      call dcopy(r(p-1)*n(p),arg%u(p)%p(1,1,r(p)+1),1,bcol1,1)
+      call dcopy(r(p-1)*n(p),arg%u(p)%p(:,:,r(p)+1),1,bcol1,1)
       call d2_luar(n(p),r(p-1),inv(p-1)%p,bcol1)
       call dcopy(r(p-1)*n(p),bcol1,1,bcol(1,1,r(p)+1),1)
       deallocate(row%u(p)%p); allocate(row%u(p)%p(r(p-1),n(p),r(p)+1), stat=info)
@@ -447,184 +409,8 @@ contains
     deallocate(acol1,arow1)
    end do !(loop over my cores)
 
-   if(nproc.gt.1)then
-    forall(p=l-1:m)tmpp(:,p)=(/ -2, -2, -2, -2 /)
-    !if(me.eq.0)write(*,*)'propagating tape to the right'
-    ihave=own(me+1)-l
-    ineed=own(me  )-l
-    if(me.eq.0)then
-     !write(*,'(a,i2,a,i6)')'[',me,'] sending tape right:',ihave
-     call mpi_send(tape(1,l),4*ihave,MPI_INTEGER,me+1,rgt,MPI_COMM_WORLD,info)
-     if(info.ne.0)then;write(*,'(a,i2,a,i6)')'[',me,'] mpi send fails for tape going right:',ihave;stop;endif
-    else if(me.eq.nproc-1)then
-     !write(*,'(a,i2,a,i6)')'[',me,'] receiving going right:',ineed
-     call mpi_recv(tmpp(1,l),4*ineed,MPI_INTEGER,me-1,rgt,MPI_COMM_WORLD,stat,info)
-     if(info.ne.0)then;write(*,'(a,i2,a,i6)')'[',me,'] mpi recv fails for tape going right:',ineed;stop;endif
-    else
-     !write(*,'(a,i2,a,2i6)')'[',me,'] sending and receiving tape going right:',ihave,ineed
-     call mpi_sendrecv(tape(1,l),4*ihave,MPI_INTEGER,me+1,rgt, &
-                       tmpp(1,l),4*ineed,MPI_INTEGER,me-1,rgt, &
-                       MPI_COMM_WORLD,stat,info)
-     if(info.ne.0)then;write(*,'(a,i2,a,2i6)')'[',me,'] mpi sendrecv fails for tape going right:',ihave,ineed;stop;endif
-    end if
-    !if(me.eq.0)write(*,*)'propagating tape to the left'
-    ihave=m-own(me);   q=own(me)
-    ineed=m-own(me+1); p=own(me+1)
-    if(me.eq.0)then
-     !write(*,'(a,i2,a,i6)')'[',me,'] receiving tape going left:',ineed
-     call mpi_recv(tmpp(1,p),4*ineed,MPI_INTEGER,me+1,lft,MPI_COMM_WORLD,stat,info)
-     if(info.ne.0)then;write(*,'(a,i2,a,i6)')'[',me,'] mpi recv fails for tape going left:',ineed;stop;endif
-    else if(me.eq.nproc-1)then
-     !write(*,'(a,i2,a,i6)')'[',me,'] sending tape to the left:',ihave
-     call mpi_send(tape(1,q),4*ihave,MPI_INTEGER,me-1,lft,MPI_COMM_WORLD,info)
-     if(info.ne.0)then;write(*,'(a,i2,a,i6)')'[',me,'] mpi send fails for tape going left:',ihave;stop;endif
-    else
-     !write(*,'(a,i2,a,2i6)')'[',me,'] sending and receiving tape going left:',ihave,ineed
-     call mpi_sendrecv(tape(1,q),4*ihave,MPI_INTEGER,me-1,lft, &
-                       tmpp(1,p),4*ineed,MPI_INTEGER,me+1,lft, &
-                       MPI_COMM_WORLD,stat,info)
-     if(info.ne.0)then;write(*,'(a,i2,a,2i6)')'[',me,'] mpi sendrecv fails for tape going left:',ihave,ineed;stop;endif
-    end if
-
-    !write(*,'(a,i2,a)')'[',me,'] reading from the tape and updating world info'
-    tape(:,l-1:m)=tmpp(:,l-1:m)
-    do p=l,m-1
-     if(.not.(own(me).le.p .and. p.le.own(me+1)-1))then
-      upd(p)=(tape(1,p).gt.0)
-      if(upd(p))then
-       allocate(lot(4,r(p)+1),stat=info); if(info.ne.0)then;write(*,*)'allocate lot fail:',info;stop;endif
-       forall(i=1:4,s=1:r(p))lot(i,s)=vip(p)%p(i,s)
-       deallocate(vip(p)%p); allocate(vip(p)%p(4,r(p)+1),stat=info); if(info.ne.0)then;write(*,*)'reallocate vip fail:',info;stop;endif
-       forall(i=1:4,s=1:r(p))vip(p)%p(i,s)=lot(i,s)
-       vip(p)%p(:,r(p)+1)=tape(:,p)
-       deallocate(lot)
-       r(p)=r(p)+1
-      end if
-     end if
-    end do
-
-   ! GLOBAL allreduce to communicate amax and pivots
-    bb(1)=amax
-    bb(2)=pivotmax
-    if(pivotmin.gt.0.d0)then;bb(3)=-pivotmin;else;bb(3)=-999d9;endif
-    call mpi_allreduce(bb,cc,3,MPI_REAL8,MPI_MAX,MPI_COMM_WORLD,info)
-    if(info.ne.0)then;write(*,*)subnam,': mpi allreduce amax failed: ',info;stop;endif
-    amax=cc(1)
-    pivotmax=cc(2)
-    pivotmin=-cc(3); if(pivotmin.eq.999d9)pivotmin=-1.d0
-
-    ! share blocks to the LEFT
-    q=own(me); p=own(me+1)-1
-    needsend=upd(q).and.(me.gt.0); needrecv=upd(p+1).and.(me.lt.nproc-1)
-    allocate(acol1(rr(q-1),n(q)),arow1(rr(p),n(p+1)),brow1(r(p),n(p+1)),brow(r(p),n(p+1),rr(p+1)), stat=info)
-    if(info.ne.0)then;write(*,*)'fail to allocate for moving left';stop;endif
-    if(needsend.and.needrecv)then
-     !write(*,'(a,i2,2(a,i2,a,2i4))')'[',me,'] left: sending block ',q,':',rr(q-1),n(q),' receiving block ',p,':',rr(p),n(p+1)
-     call dcopy(rr(q-1)*n(q),arg%u(q)%p(1,1,r(q)),1,acol1,1)
-     call mpi_sendrecv(acol1,rr(q-1)*n(q),typed,me-1,lft, &
-                       arow1,rr(p)*n(p+1),typed,me+1,lft, &
-                       MPI_COMM_WORLD,stat,info)
-     if(info.ne.0)then;write(*,*)'mpi: sendrecv going left fail: ',info,me;stop;endif
-    else if(needsend)then
-     !write(*,'(a,i2,a,i2,a,2i4)')'[',me,']: sending block ',q,' to the left: ',rr(q-1),n(q)
-     call dcopy(rr(q-1)*n(q),arg%u(q)%p(1,1,r(q)),1,acol1,1)
-     call mpi_send(acol1,rr(q-1)*n(q),typed,me-1,lft,MPI_COMM_WORLD,info)
-     if(info.ne.0)then;write(*,*)'mpi: send going left fail: ',info,me;stop;endif
-    else if(needrecv)then
-     !write(*,'(a,i2,a,i2,a,2i4)')'[',me,']: receiving block ',p+1,' going left: ',rr(p),n(p+1)
-     call mpi_recv(arow1,rr(p)*n(p+1),typed,me+1,lft,MPI_COMM_WORLD,stat,info)
-     if(info.ne.0)then;write(*,*)'mpi: recv going left fail: ',info,me;stop;endif
-    else
-     continue
-    end if
-    if(needrecv)then
-     call dcopy(r(p)*n(p+1)*rr(p+1),arg%u(p+1)%p,1,brow,1)
-     deallocate(arg%u(p+1)%p); allocate(arg%u(p+1)%p(r(p),n(p+1),r(p+1)),stat=info)
-     if(info.ne.0)then;write(*,*)subnam,': fail to allocate memory to expand block';stop;endif
-     call dcopy(r(p)*n(p+1)*rr(p+1),brow,1,arg%u(p+1)%p,1)
-     forall(j=1:rr(p),k=1:n(p+1))arg%u(p+1)%p(j,k,r(p+1))=arow1(j,k)
-     if(upd(p))then
-      !write(*,'(a,i2,a,i2,a)') '[',me,']: expanding block ',p,' to match the right neighbour'
-      ii=vip(p)%p(1,r(p)); jj=vip(p)%p(2,r(p))
-!$OMP PARALLEL DO
-      do k=1,n(p+1)
-       arg%u(p+1)%p(r(p),k,r(p+1))=dmrgg_fun(ii,jj,k,r(p+1), p, l,m,vip,r,n, fun, par)
-      end do
-!$OMP END PARALLEL DO
-      do k=1,n(p+1); amax=dmax1(amax,dabs(arg%u(p+1)%p(r(p),k,r(p+1)))); enddo
-      nevalloc=nevalloc+n(p+1)
-     end if ! upd(p)
-     !write(*,'(a,i2,a,i2,a,3i4,a,3i4)')'[',me,']{',p,'}: expand rows ',r(p),n(p+1),rr(p+1),' -> ',r(p),n(p+1),r(p+1)
-     call dcopy(r(p)*n(p+1)*rr(p+1),row%u(p+1)%p,1,brow,1)
-     call dcopy(r(p)*n(p+1),arg%u(p+1)%p(1,1,r(p+1)),1,brow1,1)
-     call d2_luar(n(p+1),r(p),inv(p)%p,brow1)
-     deallocate(row%u(p+1)%p); allocate(row%u(p+1)%p(r(p),n(p+1),r(p+1)),stat=info)
-     if(info.ne.0)then;write(*,*)subnam,': not enough memory for new rows';stop;endif
-     call dcopy(r(p)*n(p+1)*rr(p+1),brow,1,row%u(p+1)%p,1)
-     call dcopy(r(p)*n(p+1),brow1,1,row%u(p+1)%p(1,1,r(p+1)),1)
-    end if
-    deallocate(acol1,arow1,brow1,brow, stat=info)
-    if(info.ne.0)then;write(*,*)'fail to deallocate after moving left';stop;endif
-
-    ! share blocks to the RIGHT
-    q=own(me+1)-1; p=own(me)
-    needsend=upd(q).and.(me.lt.nproc-1); needrecv=upd(p-1).and.(me.gt.0)
-    allocate(arow1(n(q+1),rr(q+1)),acol1(n(p),rr(p)),bcol1(n(p),r(p)),bcol(rr(p-1),n(p),r(p)), stat=info)
-    if(info.ne.0)then;write(*,*)'fail to allocate for moving right';stop;endif
-    if(needsend.and.needrecv)then
-     !write(*,'(a,i2,2(a,i2,a,2i4))')'[',me,'] right: sending block ',q+1,':',n(q+1),rr(q+1),' receiving block ',p,':',n(p),rr(p)
-     call dcopy(n(q+1)*rr(q+1),arg%u(q+1)%p(r(q),1,1),r(q),arow1,1)
-     call mpi_sendrecv(arow1,n(q+1)*rr(q+1),typed,me+1,rgt, &
-                       acol1,n(p)*rr(p),typed,me-1,rgt, &
-                       MPI_COMM_WORLD,stat,info)
-     if(info.ne.0)then;write(*,*)'mpi: sendrecv going right fail: ',info,me;stop;endif
-    else if(needsend)then
-     !write(*,'(a,i2,a,i2,a,2i4)')'[',me,']: sending block ',q+1,' to the right: ',n(q+1),rr(q+1)
-     call dcopy(n(q+1)*rr(q+1),arg%u(q+1)%p(r(q),1,1),r(q),arow1,1)
-     call mpi_send(arow1,n(q+1)*rr(q+1),typed,me+1,rgt,MPI_COMM_WORLD,info)
-     if(info.ne.0)then;write(*,*)'mpi: send going right fail: ',info,me;stop;endif
-    else if(needrecv)then
-     !write(*,'(a,i2,a,i2,a,2i4)')'[',me,']: receiving block ',p,' going right: ',n(p),rr(p)
-     call mpi_recv(acol1,n(p)*rr(p),typed,me-1,rgt,MPI_COMM_WORLD,stat,info)
-     if(info.ne.0)then;write(*,*)'mpi: recv going right fail: ',info,me;stop;endif
-    else
-     continue
-    end if
-    if(needrecv)then
-     call dcopy(rr(p-1)*n(p)*r(p),arg%u(p)%p,1,bcol,1)
-     deallocate(arg%u(p)%p); allocate(arg%u(p)%p(r(p-1),n(p),r(p)),stat=info)
-     if(info.ne.0)then;write(*,*)subnam,': fail to allocate memory to expand block';stop;endif
-     forall(i=1:rr(p-1),j=1:n(p),k=1:r(p))arg%u(p)%p(i,j,k)=bcol(i,j,k)
-     forall(            j=1:n(p),k=1:rr(p))arg%u(p)%p(r(p-1),j,k)=acol1(j,k)
-     !do k=1,r(p); do j=1,n(p); do i=1,rr(p-1); arg%u(p)%p(i,j,k)=bcol(i,j,k); enddo;enddo;enddo
-     !do k=1,rr(p); do j=1,n(p); arg%u(p)%p(rr(p-1)+1,j,k)=acol1(j,k); enddo;enddo
-     if(upd(p))then ! r(p)=rr(p)+1
-      !write(*,'(a,i2,a,i2,a)') '[',me,']: expanding block ',p,' to match the left neighbour'
-      kk=vip(p)%p(3,r(p));qq=vip(p)%p(4,r(p))
-!$OMP PARALLEL DO
-      do j=1,n(p)
-       arg%u(p)%p(r(p-1),j,r(p))=dmrgg_fun(r(p-1),j,kk,qq, p, l,m,vip,r,n, fun, par)
-      end do
-!$OMP END PARALLEL DO
-      do j=1,n(p); amax=dmax1(amax,dabs(arg%u(p)%p(r(p-1),j,r(p)))); enddo
-      nevalloc=nevalloc+n(p)
-     end if ! upd(p)
-     !write(*,'(a,i2,a,i2,a,3i4,a,3i4)') '[',me,']{',p,'}: expand cols ',rr(p-1),n(p),r(p),' -> ',r(p-1),n(p),r(p)
-     forall(i=1:rr(p-1),j=1:n(p),k=1:r(p))bcol(i,j,k)=col%u(p)%p(i,j,k)
-     forall(            j=1:n(p),k=1:r(p))bcol1(j,k)=arg%u(p)%p(r(p-1),j,k)
-     call d2_lual(n(p),r(p),inv(p)%p,bcol1)
-     deallocate(col%u(p)%p); allocate(col%u(p)%p(r(p-1),n(p),r(p)),stat=info)
-     if(info.ne.0)then;write(*,*)subnam,': not enough memory for new cols';stop;endif
-     forall(i=1:rr(p-1),j=1:n(p),k=1:r(p))col%u(p)%p(i,j,k)=bcol(i,j,k)
-     forall(            j=1:n(p),k=1:r(p))col%u(p)%p(r(p-1),j,k)=bcol1(j,k)
-    end if
-    deallocate(arow1,acol1,bcol1,bcol, stat=info)
-    if(info.ne.0)then;write(*,*)'fail to deallocate after moving right';stop;endif
-   end if ! (nproc>1)
    pivotmax_prev = pivotmax
-
-   call mpi_reduce(nevalloc,nevalall,1,MPI_INTEGER8,MPI_SUM,0,MPI_COMM_WORLD,info)
-   if(info.ne.0)then;write(*,*)subnam,': mpi reduce neval failed: ',info;stop;endif
+   nevalall = nevalloc
 
    ! REPORT current progress
    t2 = timef()
@@ -639,7 +425,7 @@ contains
     first=own(me); last=own(me+1)-1; if(me.eq.nproc-1)last=m
     do p=first,last
      do k=1,r(p)
-      call dgemv('n',r(p-1),n(p),1.d0,arg%u(p)%p(1,1,k),r(p-1),quad%u(p)%p,1,0.d0,ttqq%u(p)%p(1,1,k),1)
+      call dgemv('n',r(p-1),n(p),1.d0,arg%u(p)%p(:,:,k),r(p-1),quad%u(p)%p,1,0.d0,ttqq%u(p)%p(1:r(p-1),1,k),1)
      end do
     end do
     call dtt_lua(ttqq,inv,own)
@@ -657,7 +443,6 @@ contains
     end if
     val_prev=val
    end if !(quad)
-   !if(me.eq.0)write(*,'(a)')trim(str)
 
    ! check exit conditions
    if(present(maxrank))ready=ready.or.(it+1.ge.maxrank)
@@ -667,12 +452,6 @@ contains
    end if
   end do  !(loop over ranks)
 
-  !write(*,'(a,i1,a,2f15.7)') '[',me,']: ',dnrm2(r(p-1)*n(p)*r(p),arg%u(p)%p,1),dnrm2(r(p)*n(p+1)*r(p+1),arg%u(p+1)%p,1)
-  !write(*,'(a,i1,a,2f15.7)') '[',me,']: ',minval(arg%u(p)%p),minval(arg%u(p+1)%p)
-  call mpi_barrier(MPI_COMM_WORLD,info)
-  if(info.ne.0)then;write(*,*)subnam,': mpi barrier fail: ',info;stop;endif
-  !write(*,'(a,i2,a,10i3)')'[',me,']: ',r(l-1:m)
-
   call dtt_lua(arg,inv,own)
 
   do p=l-1,m
@@ -681,13 +460,7 @@ contains
   call dealloc(col); call dealloc(row)
 
   if(present(neval))then
-   if(nproc.gt.1)then
-    call mpi_allreduce(nevalloc,nevalall,1,MPI_INTEGER8,MPI_SUM,MPI_COMM_WORLD,info)
-    if(info.ne.0)then;write(*,*)subnam,': mpi allreduce neval failed: ',info;stop;endif
-    neval=nevalall
-   else
     neval=nevalloc
-   endif
   end if
  end subroutine dtt_dmrgg
 
@@ -709,59 +482,19 @@ contains
 
  subroutine dtt_lua(arg,inv,own)
   implicit none
-  include 'mpif.h'
   type(dtt_tensor),intent(in) :: arg
   type(pointd) :: inv(0:tt_size)
   integer,intent(in) :: own(0:)
 
   character(len=*),parameter :: subnam='[dtt_lua]'
   integer,parameter :: tag=4
-  integer*4 :: me,nproc
-  integer :: p,q,m, typed,stat(MPI_STATUS_SIZE),info,r(0:tt_size),n(1:tt_size)
+  integer :: me,nproc
+  integer :: p,q,m, typed,info,r(0:tt_size),n(1:tt_size)
 
-  ! check how our double precision type compares to hard-coded MPI types
-  select case(storage_size(1.d0))
-   case(32);  typed=MPI_REAL4;
-   case(64);  typed=MPI_REAL8;
-   case(128); typed=MPI_REAL16;
-   case default
-    if(me.eq.0)write(*,'(a,a,i5,a)')subnam,': unknown storage_size(1.d0): ',storage_size(1.d0),' guessing 64'
-    typed=MPI_REAL8;
-  end select
-
-  ! check mpi vars
-  info = 0
-  call mpi_comm_size(MPI_COMM_WORLD,nproc,info)
-  if(info.ne.0)then;write(*,*)subnam//' mpi: comm_size fail: ',info;stop;endif
-  call mpi_comm_rank(MPI_COMM_WORLD,me,info)
-  if(info.ne.0)then;write(*,*)subnam//' mpi: comm_rank fail: ',info;stop;endif
+  ! MPI leftovers
+  nproc = 1; me = 0
 
   r=arg%r; n=arg%n
-
-  if(nproc.gt.1)then
-   ! local SEND RECV to share the rightmost inv with the neighbour
-   if(me.gt.0)then
-    p = own(me)-1
-    deallocate(inv(p)%p);allocate(inv(p)%p(r(p)**2), stat=info)
-    if(info.ne.0)then;write(*,*)'fail to allocate inv to receive going right';stop;endif
-   end if
-
-   p = own(me)-1; q = own(me+1)-1
-   if(me.eq.0)then
-    !write(*,'(a,i2,a,i2,a,i6)') '[',me,']: sending inv ',q,' to the right: ',r(q)**2
-    call mpi_send(inv(q)%p,r(q)**2,typed,me+1,tag,MPI_COMM_WORLD,info)
-    if(info.ne.0)then;write(*,*)'mpi: send inv to the right fail: ',info,me;stop;endif
-   else if(me.eq.nproc-1)then
-    !write(*,'(a,i2,a,i2,a,i6)') '[',me,']: receiving inv ',p,' going right: ',r(p)**2
-    call mpi_recv(inv(p)%p,r(p)**2,typed,me-1,tag,MPI_COMM_WORLD,stat,info)
-    if(info.ne.0)then;write(*,*)'mpi: recv inv going right fail: ',info,me;stop;endif
-   else
-    !write(*,'(a,i2,a,i2,a,i6,a,i2,a,i6)') '[',me,']: sending inv ',q,' of size ',r(q)**2,' recving ',p,' of size ',r(p)**2
-    call mpi_sendrecv(inv(q)%p,r(q)**2,typed,me+1,tag, inv(p)%p,r(p)**2,typed,me-1,tag,  MPI_COMM_WORLD,stat,info)
-    if(info.ne.0)then;write(*,*)'mpi: sendrecv inv going right fail: ',info,me;stop;endif
-   end if
-  end if
-
  !if(me.eq.0)write(*,*)'applying inverses'
   do p=own(me),own(me+1)-1
    !write(*,'(a,i2,a,i2,a)')'[',me,']{',p,'} applying inverses from both sides'
@@ -777,7 +510,6 @@ contains
 
  double precision function dtt_quad(arg,quad,mybonds) result(val) ! val is returned only on proc=0
   implicit none
-  include 'mpif.h'
   type(dtt_tensor),intent(in),target :: arg
   type(dtt_tensor),intent(in),optional :: quad
   integer,intent(in),optional,target :: mybonds(0:)
@@ -785,26 +517,13 @@ contains
   character(len=*),parameter :: subnam='[dtt_quad]'
   integer,parameter :: tagsize=11,tagdata=12
   integer,pointer :: r(:),n(:),own(:)
-  integer :: me,her,him,nproc,info,stat(MPI_STATUS_SIZE),typed, mym,myn,herm,hern
+  integer :: me,her,him,nproc,info,typed, mym,myn,herm,hern
   integer :: first,last, l,m,p,q,i,j,k, mn(2)
   double precision,pointer :: prev(:,:),curr(:,:),next(:,:)
 
   val=0.d0
-  ! check how our double precision type compares to hard-coded MPI types
-  select case(storage_size(1.d0))
-   case(32);  typed=MPI_REAL4
-   case(64);  typed=MPI_REAL8
-   case(128); typed=MPI_REAL16
-   case default
-    if(me.eq.0)write(*,'(a,a,i5,a)')subnam,': unknown storage_size(1.d0): ',storage_size(1.d0),' guessing 64'
-    typed=MPI_REAL8
-  end select
+  nproc = 1; me = 0
 
-  ! check mpi vars
-  call mpi_comm_size(MPI_COMM_WORLD,nproc,info)
-  if(info.ne.0)then;write(*,*)subnam//' mpi: comm_size fail: ',info;stop;endif
-  call mpi_comm_rank(MPI_COMM_WORLD,me,info)
-  if(info.ne.0)then;write(*,*)subnam//' mpi: comm_rank fail: ',info;stop;endif
 
   l=arg%l; m=arg%m; r=>arg%r; n=>arg%n
   ! distribute bonds (ranks) between procs
@@ -813,7 +532,8 @@ contains
   else
    allocate(own(0:nproc), stat=info)
    if(info.ne.0)then;write(*,*)subnam,': cannot allocate own bonds';stop;endif
-   call share(l,m-1,own)
+   own(0) = l
+   own(1) = m
   end if
   !write(*,'(a,i3,a,32i4)')'[',me,']: own: ',own(0:nproc)
 
@@ -824,7 +544,7 @@ contains
    allocate( curr(r(p-1), r(p)) )
    if(present(quad))then
     do k=1,r(p)
-     call dgemv('n',r(p-1),n(p),1.d0,arg%u(p)%p(1,1,k),r(p-1),quad%u(p)%p,1,0.d0,curr(1,k),1)
+     call dgemv('n',r(p-1),n(p),1.d0,arg%u(p)%p(:,:,k),r(p-1),quad%u(p)%p,1,0.d0,curr(1:r(p-1),k),1)
     end do
    else
     forall(i=1:r(p-1),k=1:r(p))curr(i,k)=sum(arg%u(p)%p(i,:,k))
@@ -847,48 +567,7 @@ contains
    stop
   endif
   q=1
-  do while(q.lt.nproc)
-   if(mod(me,2*q).eq.0)then
-    her=me+q
-    if(her.lt.nproc)then
-     ! have a right neighbour - need to receive
-     call mpi_recv(mn,2,MPI_INTEGER,her,tagsize,MPI_COMM_WORLD,stat,info)
-     if(info.ne.0)then;write(*,*)subnam,': mpi recv for sizes fail:',info;stop;endif
-     !write(*,'(a,i2,a,i2,a,8i5)')'[',me,'] received sizes from ',her,': ',mn
-     herm=mn(1); hern=mn(2)
-     if(myn.ne.herm)then
-      write(*,'(a,i2,a,2i5,a,2i5)')'[',me,'] size mismatch: me ',mym,myn,' her ',herm,hern
-      stop
-     end if
-     allocate(curr(herm,hern), next(mym,hern),stat=info)
-     if(info.ne.0)then;write(*,'(a,i2,a,4i10)')'[',me,'] cannot allocate block:',mym,myn,herm,hern;stop;endif
-     !write(*,'(a,i2,a,i7,1x,i7,a,i2)')'[',me,']: receiving ',herm,hern,' from ',her
-     call mpi_recv(curr,herm*hern,typed,her,tagdata,MPI_COMM_WORLD,stat,info)
-     if(info.ne.0)then;write(*,*)subnam,': mpi recv for data fail:',info;stop;endif
-     call dgemm('n','n',mym,hern,myn,1.d0,prev,mym,curr,herm,0.d0,next,mym)
-     deallocate(prev,curr)
-     prev=>next; nullify(next)
-     myn=hern
-    end if
-   else
-    if(mod(me,q).eq.0)then
-     ! need to send
-     him=me-q
-     mn(1)=mym; mn(2)=myn
-     !write(*,'(a,i2,a,i2,a,8i5)')'[',me,'] sending sizes to ',him,': ',mn
-     call mpi_send(mn,2,MPI_INTEGER,him,tagsize,MPI_COMM_WORLD,info)
-     if(info.ne.0)then;write(*,*)subnam,': mpi send for sizes fail:',info;stop;endif
-     !write(*,'(a,i2,a,i7,1x,i7,a,i2)')'[',me,']: sending ',mym,myn,' to ',him
-     call mpi_send(prev,mym*myn,typed,him,tagdata,MPI_COMM_WORLD,info)
-     if(info.ne.0)then;write(*,*)subnam,': mpi send for data fail:',info;stop;endif
-    end if
-   end if
-   ! walk up the tree
-   q=q*2
-  end do
-  call mpi_barrier(mpi_comm_world,info)
-  if(info.ne.0)then;write(*,*)subnam,': error at barrier: ',info;stop;endif
-  if(me.eq.0)val=prev(1,1)
+  val=prev(1,1)
   deallocate(prev)
 end function dtt_quad
 

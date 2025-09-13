@@ -338,13 +338,13 @@ contains
 
 
  subroutine init_random_seed_mpi(rseed)
- use mpi_f08, only: MPI_Comm_rank, MPI_COMM_WORLD
+ use mpi_f08
  integer, intent(in):: rseed
  !
- integer :: rank, info
+ integer(MPI_INTEGER_KIND) :: rank, ierr
  integer, dimension(:), allocatable :: seed
 
-    call MPI_Comm_rank(MPI_COMM_WORLD, rank, info)
+    call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
     call init_random_seed(rseed + rank)
 
  end subroutine init_random_seed_mpi

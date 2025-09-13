@@ -13,6 +13,7 @@
 
 module thor_lib
   use string_lib, only: str
+  use mat_lib, only: thor_matmul
   use thor_pointers, only: pointd,pointz, pointd3, pointz3, pointd4, pointz4
   implicit none
   integer,parameter :: tt_size=2048
@@ -1922,7 +1923,7 @@ module thor_lib
             call dscal(rr,1.d0/nrm,s,1)
             lognrm=lognrm+dlog(nrm)
          end if
-         do j=1,rr; call dscal(mm,s(j),u(1,j),1); enddo
+         do j=1,rr; call dscal(mm,s(j),u(1:mm,j),1); enddo
          !!
          call dgemm('n','n',kk,rr,mm,1.d0,tt%u(k-1)%p,kk,u,mm,0.d0,tmp,kk)
          if(r(k-1).ne.rr)then
@@ -1994,7 +1995,7 @@ module thor_lib
          if (info.ne.0) error stop subnam//': svd error '//str(info)
          r(k-1)=size(s)
          do i=1,r(k-1)
-            call dscal(mm,s(i),u(1,i),1)
+            call dscal(mm,s(i),u(1:mm,i),1)
          enddo
          if(associated(tt%u(k)%p)) deallocate(tt%u(k)%p)
          allocate(tt%u(k)%p(r(k-1),tt%n(k),r(k)))
@@ -2073,7 +2074,7 @@ module thor_lib
       l = this%l; m = this% m
       s1 = sum(this% u(l)% p, 2)/this%n(1)
       do k=l+1,m
-         s2 = matmul(s1, sum(this% u(k)% p, 2))
+         s2 = thor_matmul(s1, sum(this% u(k)% p, 2))
          s1 = s2/this% n(k)
       enddo
       gsum = s1(1,1)
@@ -2108,7 +2109,7 @@ module thor_lib
          nrm(i)= normfro(R)
          R = R/(nrm(i) + tiny(1d0))
          core1= reshape(this% u(i+1)% p, [rr(i),nn(i+1)*rr(i+1)])
-         core1= matmul(R, core1)
+         core1= thor_matmul(R, core1)
       enddo ortho_l2r
       nrm(d)= normfro(core1)
       norm= product(nrm(1:d))
@@ -2146,7 +2147,7 @@ module thor_lib
             nrm(i)= normfro(R)
             R = R/(nrm(i) + tiny(1d0))
             core1= reshape(this% u(i+1)% p, [rr(i),nn(i+1)*rr(i+1)])
-            core1= matmul(R, core1)
+            core1= thor_matmul(R, core1)
             sh = shape(Q)
             rr(i)= sh(2)
          enddo ortho_l2r
@@ -2387,8 +2388,8 @@ module thor_lib
          call dcopy(r(l-1)*n(l)*r(l), arg%u(l)%p, 1, p(0)%p, 1)
       else
          do j=1,r(l)
-            call dcopy(r(l-1), arg%u(l)%p(1,ii(l),j), 1, &
-                              p(0)%p(1+(j-1)*r(l-1)), 1)
+            call dcopy(r(l-1), arg%u(l)%p(1:r(l-1),ii(l),j), 1, &
+                                   p(0)%p(1+(j-1)*r(l-1):j*r(l-1)), 1)
          enddo
       end if
 
@@ -2402,8 +2403,8 @@ module thor_lib
          else
             if(nb*r(i).gt.mem) stop subnam//': nb-by-r > mem'
             do j=1,r(i)
-               call dcopy(r(i-1), arg%u(i)%p(1,ii(i),j), 1, &
-                                      q(1+(j-1)*r(i-1)), 1)
+               call dcopy(r(i-1), arg%u(i)%p(1:r(i-1),ii(i),j), 1, &
+                                           q(1+(j-1)*r(i-1):j*r(i-1)), 1)
             enddo
             call dgemm('n','n',nb,r(i),r(i-1),1.d0, p(pp)%p,nb, &
                         q,r(i-1),0.d0,p(1-pp)%p,nb)
@@ -2468,7 +2469,7 @@ module thor_lib
    !! T_IJK: ACCESS ELEMENT IJK (VALUE)
    !!
 
-   pure double precision function dtt_ijk(arg,ind) result (a)
+   double precision function dtt_ijk(arg,ind) result (a)
      implicit none
      type(dtt_tensor),intent(in) :: arg
      integer,intent(in) :: ind(:)
@@ -2486,7 +2487,7 @@ module thor_lib
        allocate(y(r(i-1),r(i)),z(r(i-1),r(m)),stat=info)
        if(info.ne.0)then;a=-2.d0;return;endif
        y=arg%u(i)%p(:,ind(i-l+1),:)
-       z=matmul(y,x)
+       z=thor_matmul(y,x)
        deallocate(x,y); x=>z; nullify(z)
      end do
      a=x(1,1)
@@ -2643,7 +2644,7 @@ module thor_lib
        deallocate(uu,vv,ss)
        !
        do j=1,rr
-         call dscal(mm,s(j),u(1,j),1) ! line 81 in round.m
+         call dscal(mm,s(j),u(1:mm,j),1) ! line 81 in round.m
        enddo
        ! line 83 in round.m
        call dgemm('n','n',kk,rr,mm,1.d0,tt%u(k-1)%p,kk,u,mm,0.d0,tmp,kk)

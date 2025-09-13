@@ -219,7 +219,7 @@ contains
           work1(i+(i-1)*n)=1d0
        end do
        do i=0,rx2*rx1-1
-          call dcopy(n*n, work1, 1, jacs(i*n*n+1), 1)
+          call dcopy(n*n, work1, 1, jacs(i*n*n+1:(i+1)*n*n), 1)
           call dgesv(n, n, work2(i*n*n+1), n, ipiv, jacs(i*n*n+1), n, info)
        end do
     end if
@@ -247,7 +247,7 @@ contains
           work2(i+(i-1)*rx1*n)=1d0
        end do
        do i=0,rx2-1
-          call dcopy(rx1*n*rx1*n, work2, 1, jacs(i*rx1*n*rx1*n+1), 1)
+          call dcopy(rx1*n*rx1*n, work2, 1, jacs(i*rx1*n*rx1*n+1:(i+1)*rx1*n*rx1*n), 1)
           call dgesv(rx1*n, rx1*n, work1(i*rx1*n*rx1*n+1), rx1*n, ipiv, jacs(i*rx1*n*rx1*n+1), rx1*n, info)
           if(info.ne.0)then;write(*,*)': dgesv problem ', info;endif
        end do
@@ -277,7 +277,7 @@ contains
           work2(i+(i-1)*rx2*n)=1d0
        end do
        do i=0,rx1-1
-          call dcopy(rx2*n*rx2*n, work2, 1, jacs(i*rx2*n*rx2*n+1), 1)
+          call dcopy(rx2*n*rx2*n, work2, 1, jacs(i*rx2*n*rx2*n+1:(i+1)*rx2*n*rx2*n), 1)
           call dgesv(rx2*n, rx2*n, work1(i*rx2*n*rx2*n+1), rx2*n, ipiv, jacs(i*rx2*n*rx2*n+1), rx2*n, info)
        end do
     end if
@@ -567,11 +567,11 @@ contains
        nrmr = dnrm2(sz,w,1)
        dbeta = 1d0/nrmr
        call dscal(sz,dbeta,w,1)
-       call dcopy(sz,w,1,U(1,1),1)
+       call dcopy(sz,w,1,U,1)
 
        do j=1,nrestart0
           ! HHT on last U
-          call dcopy(sz,U(1,j),1,w,1)
+          call dcopy(sz,U(1:sz,j),1,w,1)
           dbeta = -2d0*U(j,j)
           call dscal(sz,dbeta,w,1)
           w(j) = w(j) + 1d0
@@ -604,14 +604,14 @@ contains
                 U(i,j+1)=0d0;
              end do
              i = sz-j;
-             call dcopy(i, w(j+1), 1, U(j+1, j+1), 1);
-             dalpha = dnrm2(i, U(j+1, j+1), 1);
+             call dcopy(i, w(j+1:j+i), 1, U(j+1:j+i, j+1), 1);
+             dalpha = dnrm2(i, U(j+1:j+i, j+1), 1);
              if (.not.(dalpha==0d0)) then
                 if (w(j+1)<0d0) then
                    dalpha = -dalpha;
                 end if
                 U(j+1, j+1) = U(j+1,j+1) + dalpha;
-                dbeta = dnrm2(i, U(j+1, j+1), 1);
+                dbeta = dnrm2(i, U(j+1:j+i, j+1), 1);
                 dbeta = 1d0/dbeta;
                 call dscal(i,dbeta,U(j+1, j+1),1);
 
@@ -631,7 +631,7 @@ contains
 
           ! New rotator
           if (j<sz) then
-             dalpha = dnrm2(2, w(j), 1)
+             dalpha = dnrm2(2, w(j:j+1), 1)
              JJ(1,j) = w(j)/dalpha;
              JJ(2,j) = w(j+1)/dalpha;
              tau(j+1) = -JJ(2,j)*tau(j);
@@ -640,7 +640,7 @@ contains
              w(j+1) = 0d0;
           end if
 
-          call dcopy(j, w, 1, R(1,j), 1);
+          call dcopy(j, w, 1, R(1:j,j), 1);
 
           ! residual
           curres = dabs(tau(j+1))/nrmrhs;
@@ -657,7 +657,7 @@ contains
        call dtrsv('u','n','n',j,R,nrestart0+1,tau,1);
 
        ! Correction
-       call dcopy(sz, U(1,j), 1, w, 1);
+       call dcopy(sz, U(1:sz,j), 1, w, 1);
        dbeta = -2d0*U(j,j)*tau(j);
        call dscal(sz, dbeta, w, 1);
        w(j) = w(j) + tau(j);

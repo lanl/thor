@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -ne 1 ]; then
-  echo  "Usage: source load_env.sh (gnu|mac|intel|cuda)"
+  echo  "Usage: source load_env.sh (gnu|mac|intel|ch-intel|gnu132)"
   return
 fi
 

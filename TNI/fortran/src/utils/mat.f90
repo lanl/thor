@@ -874,11 +874,11 @@ contains
 
  ! WIP
    ! TODO
-   R2 = matmul(transpose(A), A)   ! R2 = A'*A
+   R2 = thor_matmul(transpose(A), A)   ! R2 = A'*A
    call d_svd(R2,up,sp,vp)        ! [u,s,v]=svd(R2, 'econ');
    deallocate(R2)
    v = transpose(vp)              ! v needs to be transposed for compat. w/matlab
-   u = matmul(A, v)               ! u = A*v
+   u = thor_matmul(A, v)          ! u = A*v
    s = sum(u**2, 1)               ! s = sum(u.^2, 1);
    s = sqrt(s)                    ! s = sqrt(s.') "s.'" is a non-conjugate transpose
                                   !               (simple transpose)
@@ -892,12 +892,12 @@ contains
       p = size(s)
    endif
 
-   u = matmul(u, matlab_diag(1d0/s))  !  u = u*spdiags(1./s, 0, numel(s), numel(s));
+   u = thor_matmul(u, matlab_diag(1d0/s))  !  u = u*spdiags(1./s, 0, numel(s), numel(s));
    !                                     if (issparse(u))
    !                                         u = full(u);
    !                                     end;
                                       !  r = diag(s)*v';
-   r = matmul(matlab_diag(s), vp)
+   r = thor_matmul(matlab_diag(s), vp)
 
    !% Run chol for reortogonalization.
    !% It will stop if the matrix will be singular.
@@ -905,7 +905,7 @@ contains
    if (s(1)/s(p).gt.1d7) then         !  if (s(1)/s(end)>1e7)
       p = 1                           !      p = 1;
       do while(p.gt.0d0)              !      while (p>0)
-         R2 = matmul(transpose(u), u) !          R2 = u'*u;
+         R2 = thor_matmul(u, u, 'tn') !          R2 = u'*u;
          RR = d_chol(R2, flag_=p)     !          [R,p] = chol(R2);
          deallocate(R2)
          if (p.gt.0) then             !          if (p>0)
@@ -914,8 +914,8 @@ contains
             r = r(1:p-1,:)            !              r = r(1:p-1,:);
          endif                        !          end;
          call matinv(RR, iR)          !          iR = inv(R);
-         u = matmul(u, iR)            !          u = u*iR;
-         r = matmul(RR, r)            !          r = R*r;
+         u = thor_matmul(u, iR)       !          u = u*iR;
+         r = thor_matmul(RR, r)       !          r = R*r;
          deallocate(RR,iR)
       enddo                           !      end;
    endif                              !  end;
@@ -1172,12 +1172,13 @@ contains
  implicit none
  double precision, allocatable :: C(:,:)
  double precision, intent(IN):: A(:,:), B(:,:)
- character(len=2), optional :: tsp_  !< are matrices transposed (NN/NT/TN/TT)
+ character(len=2), optional, intent(IN) :: tsp_  !< are matrices transposed (NN/NT/TN/TT)
  !
  character(len=2) :: tsp
  character(len=1) :: tspA, tspB
  logical :: A_transposed, B_transposed
  integer :: m, n, k, k1, ldA, ldB, ldC, shA(2), shB(2)
+ integer, parameter :: int_kind = selected_int_kind(18)
 
     tsp= 'nn'; if (present(tsp_)) tsp= tsp_
     tspA= tsp(1:1); tspB= tsp(2:2)
@@ -1341,7 +1342,7 @@ contains
        A2(1,:) = A(inds(mi2),:) - A(mi1, :)
 
        ! tensor product A1'@A2
-       A12 = matmul(A1,A2)/A(mi1,mi2)
+       A12 = thor_matmul(A2,A2)/A(mi1,mi2)
 
        ! finally
        A = A - A12
