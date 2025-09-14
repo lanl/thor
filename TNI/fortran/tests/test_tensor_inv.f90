@@ -124,8 +124,7 @@ contains
 
   subroutine test_tensor_inv(n, r, tol, l, m)
   use time_lib
-  use thor_lib, only : dtt_tensor, dtt_tensor_ones, operator(-), &
-      dtt_tensor_ones_like, sayfull, dealloc, dtt_tensor_rand
+  use thor_lib
   use matrix_util, only: pprint_matrix
   implicit none
   include 'mpif.h'
@@ -176,7 +175,7 @@ contains
 
   print*, "-- [6-4] create random tensor with specified ranks:"
   call system_timer_start
-  v1 = dtt_tensor_rand(n, r)
+  v1 = dtt_tensor_rand(n, r)*0.1d0 + 1d0
   call system_timer_stop
   print '("random tensor v1 created ["F7.2" s]: ")',system_dt
   call v1% say
