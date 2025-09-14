@@ -126,7 +126,7 @@ contains
   use time_lib
   use thor_lib, only : dtt_tensor, dtt_tensor_ones, operator(-), &
       dtt_tensor_ones_like, sayfull, dealloc, dtt_tensor_rand
-  use matlab_struct_module, only: pprint_matrix
+  use matrix_util, only: pprint_matrix
   implicit none
   include 'mpif.h'
   integer, intent(in) :: n(:), r(:)

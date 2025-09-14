@@ -13,7 +13,7 @@
 
 module thor_lib
   use string_lib, only: str
-  use mat_lib, only: thor_matmul
+  use mat_lib, only: thor_matmul, dtiny
   use thor_pointers, only: pointd,pointz, pointd3, pointz3, pointd4, pointz4
   implicit none
   integer,parameter :: tt_size=2048
@@ -183,7 +183,7 @@ module thor_lib
    print '("[+][empty_dtt_tensor_int4] entry")'
 #  endif
       l= 1; if (present(l_)) l= l_
-      m= size(n); if (present(m_)) m= m_
+      m= int(size(n),kind=4); if (present(m_)) m= m_
       this% l = l; this% m = m
       d= m - l + 1
       if (l.gt.size(n)) error stop "in empty_dtt_tensor_int4: l > |n|"
@@ -203,7 +203,7 @@ module thor_lib
       this% r(l-1:m)= 1
       if (present(r_)) this% r(l-1:m)= r_(l-1:m)
       do k=l,m
-         sh= [this% r(k-1), this% n(k), this% r(k)]
+         sh= int([this% r(k-1), this% n(k), this% r(k)], 4)
          call realloc_to_shape(this% u(k), int(sh))
          this% u(k)% p= 0d0
       enddo
@@ -288,7 +288,7 @@ module thor_lib
 
    !> constructor from a cell array
    function dtt_from_cell_array(cells) result(this)
-   use matlab_struct_module
+   use cell_arrays_module
    type(dtt_tensor):: this
    type(array3d), intent(in):: cells(:)
    integer:: l, m, d, k, sh(3)
@@ -636,7 +636,7 @@ module thor_lib
 
    !> constructor from a cell array
    function dttm_from_cell_array(cell_array) result(this)
-   use matlab_struct_module
+   use cell_arrays_module
    type(dtt_matrix):: this
    type(cell4d_array), intent(in):: cell_array
    integer:: l, m, d, k, sh(4)
@@ -850,31 +850,6 @@ module thor_lib
       endif
    end subroutine realloc_pointz4
 
-   !!
-   !! Pointers mem address
-   !!
-
-   subroutine compute_ps(m,r,n,ps)
-     implicit none
-     integer, intent(in) :: m, r(*), n(*)
-     integer, intent(out) :: ps(*)
-     integer i
-     ps(1)=1;
-     do i=1,m
-       ps(i+1) = ps(i) + r(i)*n(i)*r(i+1)
-     end do
-   end subroutine compute_ps
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine get_vec_ps(v,ps)
-     implicit none
-     type(dtt_tensor),intent(in)    :: v
-     integer, intent(out) :: ps(*)
-     integer i
-     ps(1)=1;
-     do i=1,v%m
-       ps(i+1) = ps(i) + v%r(i)*v%n(i)*v%r(i+1)
-     end do
-   end subroutine get_vec_ps
 
    !!
    !! ASSIGNEMENT (OPERATOR =)
@@ -1830,7 +1805,7 @@ module thor_lib
          forall(i=min(j,mm)+1:mn) mat(i+(j-1)*mn)=0.d0
        end do
        nrm=dnrm2(mn*nn,mat,1)
-       if(nrm.ne.0.d0)then
+       if(nrm > dtiny) then
          call dscal(mn*nn,1.d0/nrm,mat,1)
          lognrm=lognrm+dlog(nrm)
        endif
@@ -1852,7 +1827,7 @@ module thor_lib
      deallocate(work,tau,mat,u) ! this may malfunction
      !!
      nrm=dnrm2(r(m-1)*n(m)*r(m),arg%u(m)%p,1)
-     if(nrm.ne.0.d0)then
+     if(nrm > dtiny)then
        call dscal(r(m-1)*n(m)*r(m),1.d0/nrm,arg%u(m)%p,1)
        lognrm=lognrm+dlog(nrm)
      endif
@@ -1919,7 +1894,7 @@ module thor_lib
             error stop
          endif
          rr=size(s); nrm=dnrm2(rr,s,1)
-         if(nrm.ne.0.d0)then
+         if(nrm > dtiny)then
             call dscal(rr,1.d0/nrm,s,1)
             lognrm=lognrm+dlog(nrm)
          end if
@@ -1939,7 +1914,7 @@ module thor_lib
       end do
       !!
       nrm=dnrm2(r(l-1)*n(l)*r(l),tt%u(l)%p,1)
-      if(nrm.ne.0.d0)then
+      if(nrm > dtiny)then
          call dscal(r(l-1)*n(l)*r(l),1.d0/nrm,tt%u(l)%p,1)
          lognrm=lognrm+dlog(nrm)
       endif
@@ -1982,7 +1957,7 @@ module thor_lib
       if (8*nn.le.0) error stop subnam//': nn too big'
       allocate(tmp(nn),stat=info)
       if (info.ne.0) error stop subnam//': no memory'
-      if (dnrm2(nn,a,1).eq.0.d0) then
+      if (dnrm2(nn,a,1) < 10*dtiny) then
          tt= dtt_tensor_zeros(n)
          return
       endif
@@ -2243,7 +2218,7 @@ module thor_lib
 
 
    subroutine dtt_pprint(this, label_, line_len_)
-   use matlab_struct_module, only: pprint_matrix3d
+   use matrix_util, only: pprint_matrix3d
    implicit none
    type(dtt_tensor),intent(in) :: this
    character(len=*),intent(in),optional :: label_
@@ -2279,7 +2254,7 @@ module thor_lib
 
 
    subroutine dttm_pprint(this, label_, line_len_)
-   use matlab_struct_module, only: pprint_matrix3d
+   use matrix_util, only: pprint_matrix3d
    implicit none
    class(dtt_matrix),intent(in) :: this
    character(len=*),intent(in),optional :: label_
@@ -2329,7 +2304,7 @@ module thor_lib
      do i=arg%l,arg%m
        r=r+arg%r(i-1)*arg%n(i)*arg%r(i)
      end do
-     if(r.eq.0.d0)return
+     if(dabs(r) < dtiny)return
      b=arg%r(l-1)*arg%n(l) + arg%n(m)*arg%r(m)
      if(d.eq.2)then;r=r/b;return;endif
      a=sum(arg%n(l+1:m-1))
@@ -2591,7 +2566,7 @@ module thor_lib
        !
        nrm(k+1)=dnrm2(mn*nn,ru,1)
        !
-       if(nrm(k+1).ne.0.d0)then ! line 42-44 in round.m
+       if(nrm(k+1) > tiny(0d0))then ! line 42-44 in round.m
          call dscal(mn*nn,1.d0/nrm(k+1),ru,1)
        endif
        !
@@ -2667,7 +2642,7 @@ module thor_lib
      nrm(1)=dnrm2(r(l-1)*n(l)*r(l),tt%u(l)%p,1)
 
      ! line 96-98 in round.m
-     if(nrm(1).ne.0.d0)then
+     if(nrm(1) > dtiny) then
         call dscal(r(l-1)*n(l)*r(l),1.d0/nrm(1),tt%u(l)%p,1)
      endif
      ! line 102-103 in round.m
@@ -2688,7 +2663,7 @@ module thor_lib
   !! CORE2CELL FUNCTIONS
   !!
   function core2cell_dtt(tt) result(cc)
-  use matlab_struct_module, only: array3d
+  use cell_arrays_module, only: array3d
   implicit none
   type(dtt_tensor), intent(in):: tt
   type(array3d) :: cc(tt% m - tt% l + 1)
@@ -2704,7 +2679,7 @@ module thor_lib
 
 
   function core2cell_dttm(tt) result(cc)
-  use matlab_struct_module, only: array4d
+  use cell_arrays_module, only: array4d
   implicit none
   type(dtt_matrix), intent(in):: tt
   type(array4d) :: cc(tt% m - tt% l + 1)

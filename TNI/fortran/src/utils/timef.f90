@@ -41,7 +41,7 @@ contains
  subroutine system_timer_stop()
  integer :: c2
     call system_clock(c2)
-    system_dt= (c2 - counters(sp))/rate
+    system_dt= real(c2 - counters(sp))/rate
     if (system_dt.lt.0.0) system_dt = system_dt + cm/rate
     if (sp.gt.0) sp= sp - 1
  end subroutine

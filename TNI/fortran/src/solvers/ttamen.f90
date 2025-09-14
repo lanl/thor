@@ -277,7 +277,7 @@ contains
  !!  o A   : dtt_matrix, the matrix A in A*x = y
  !!  o x   : dtt_tensor, "vector" x in A*x = y
  !!  o tol : (double precision) approximation tolerance
- !! 
+ !!
  !! Output:
  !!  o y : dtt_tensor y in y = A*x
  !!
@@ -309,13 +309,12 @@ contains
  !!
  subroutine amen_mv(y, A, x, tol, &
     y0_, nswp_, verb_, kickrank_, init_qr_, renorm_, fkick_)
- use matlab_struct_module, only: array2d, array3d, array4d, rand_cell3d
+ use cell_arrays_module, only: array2d, array3d, array4d, rand_cell3d
  use mat_lib, only: svd, svdgram, bfun3, my_chop2, stack, &
                     diag => matlab_diag, zeros => matlab_zeros, &
-                    qr => matlab_qr, norm => normfro
+                    qr => matlab_qr, norm => normfro, thor_matmul
  use rnd_lib, only: rndmat
  use thor_lib, only: dtt_tensor, dtt_matrix, core2cell, dtt_random_ortho
- use mat_lib, only: thor_matmul
  use time_lib
  implicit none
  class(dtt_tensor), intent(INOUT) :: y
@@ -860,7 +859,7 @@ contains
  !!  o A : dtt_matrix, matrix A in A*Y = X
  !!  o Y : dtt_matrix, matrix Y in A*Y = X
  !!  o tol : (double precision) approximation tolerance
- !! 
+ !!
  !! Output:
  !!  o X : dtt_matrix X = A*Y
  !!
@@ -891,7 +890,8 @@ contains
  !!    +-- rightreduce_vector
 
  subroutine amen_mm(X, A, Y, tol, x0_, nswp_, verb_, kickrank_, init_qr_)
- use matlab_struct_module, only: array2d, array3d, array4d, rand_cell3d, pprint_matrix
+ use cell_arrays_module, only: array2d, array3d, array4d, rand_cell3d
+ use matrix_util, only: pprint_matrix
  use mat_lib, only: svd, svdgram, bfun3, my_chop2, stack, &
                     diag => matlab_diag, zeros => matlab_zeros, &
                     qr => matlab_qr, norm => normfro
@@ -1219,7 +1219,7 @@ contains
  !!
  !!********
  !!
- !!  Adopted for THOR from: function leftreduce_matrix 
+ !!  Adopted for THOR from: function leftreduce_matrix
  !!          in core/amen_mm.m in TT-Toolbox 2.2, 2009-2012
  !!          by Oleg Korobkin (korobkin@lanl.gov)
  !!
@@ -1270,7 +1270,7 @@ contains
  !!
  !!********
  !!
- !!  Adopted for THOR from: function rightreduce_matrix 
+ !!  Adopted for THOR from: function rightreduce_matrix
  !!          in core/amen_mm.m in TT-Toolbox 2.2, 2009-2012
  !!          by Oleg Korobkin (korobkin@lanl.gov)
  !!

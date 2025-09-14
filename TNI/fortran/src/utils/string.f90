@@ -11,7 +11,7 @@
 module string_lib
   implicit none
   interface str
-     module procedure str_i, str_d, str_f
+     module procedure str_i4, str_i8, str_d, str_f
   end interface
 
 contains
@@ -135,17 +135,30 @@ contains
   end function isplit
 
 
-  function str_i(n, frmt_)
-  integer, intent(IN) :: n
+  function str_i8(n, frmt_)
+  integer(8), intent(IN) :: n
   character(*), intent(IN), optional :: frmt_
-  character(:), allocatable :: str_i
+  character(:), allocatable :: str_i8
   !
   character(len=20) :: str_n
   character(len=30) :: frmt
      frmt='(I20)'; if (present(frmt_)) frmt= frmt_
      write(str_n, trim(frmt)) n
-     str_i= trim(adjustl(str_n))
-  end function str_i
+     str_i8= trim(adjustl(str_n))
+  end function str_i8
+
+
+  function str_i4(n, frmt_)
+  integer(4), intent(IN) :: n
+  character(*), intent(IN), optional :: frmt_
+  character(:), allocatable :: str_i4
+  !
+  character(len=20) :: str_n
+  character(len=30) :: frmt
+     frmt='(I20)'; if (present(frmt_)) frmt= frmt_
+     write(str_n, trim(frmt)) n
+     str_i4= trim(adjustl(str_n))
+  end function str_i4
 
 
   function str_d(x, frmt_)

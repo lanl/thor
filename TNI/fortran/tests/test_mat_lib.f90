@@ -15,8 +15,9 @@ program main
                      diag => matlab_diag, eye => matlab_eye, qr => matlab_qr, &
                      svdgram
   use lr_lib, only: d2_lual                   
-  use matrix_util, only: unravel_index, ravel_multi_index
-  use matlab_struct_module, only : pprint_matrix, pprint_matrix3d, array3d
+  use matrix_util, only: unravel_index, ravel_multi_index, pprint_matrix, &
+                         pprint_matrix3d
+  use cell_arrays_module, only : array3d
   use thor_lib, only: dtt_tensor, dtt_matrix, pprint, dtt_tensor_ones, core2cell, &
                      operator(*), dtt_random_ortho
   implicit none

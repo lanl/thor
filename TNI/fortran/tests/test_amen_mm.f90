@@ -107,8 +107,7 @@ contains
 
 
   subroutine permute
-  use matlab_struct_module, only: pprint_matrix
-  use matrix_util, only: perm3d
+  use matrix_util, only: pprint_matrix, perm3d
   use rnd_lib, only: randn
   use mat_lib, only: thor_matmul
   implicit none
@@ -137,7 +136,8 @@ contains
 
   subroutine test_amen_mm(qq, ss, r, lsave_tt, lread_tt)
   use time_lib
-  use matlab_struct_module, only : pprint_matrix, array3d
+  use matrix_util, only : pprint_matrix
+  use cell_arrays_module, only : array3d
   use thorio_lib, only: dttm_write_ascii_file
   use thor_lib
   use ttamen_lib, only: amen_mm

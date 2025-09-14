@@ -103,8 +103,7 @@ contains
   use mat_lib, only: normfro
   use thor_lib, only: dtt_matrix, dtt_matrix_zeros, dtt_matrix_zeros_like, &
       dtt_matrix_ones, dtt_matrix_ones_like
-  use matrix_util, only: unravel_index, ravel_multi_index
-  use matlab_struct_module, only : pprint_matrix
+  use matrix_util, only: unravel_index, ravel_multi_index, pprint_matrix
   implicit none
   integer, intent(in) :: q(:), s(:), r(:)
   !

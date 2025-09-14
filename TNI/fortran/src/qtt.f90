@@ -555,7 +555,7 @@ module qtt_lib
    !! CORE2CELL FUNCTIONS
    !!
    function core2cell_qtt(tt) result(cc)
-   use matlab_struct_module, only: array3d
+   use cell_arrays_module, only: array3d
    implicit none
    type(qtt_tensor), intent(in):: tt
    type(array3d) :: cc(tt% m - tt% l + 1)
@@ -571,7 +571,7 @@ module qtt_lib
 
 
    function core2cell_qttm(tt) result(cc)
-   use matlab_struct_module, only: array4d
+   use cell_arrays_module, only: array4d
    implicit none
    type(qtt_matrix), intent(in):: tt
    type(array4d) :: cc(tt% m - tt% l + 1)

@@ -4,7 +4,7 @@
 !!--------------------------------------------------------------------------~*/
 
 !!
-!! @file matlab_struct.f90
+!! @file mat.f90
 !! @author Oleg Korobkin, Ismael Boureima
 !! @date  October 2023
 !! @brief Data structures and functions inspired by Matlab toolbox
@@ -13,6 +13,7 @@ module mat_lib
  use nan_lib
  use, intrinsic :: iso_fortran_env, only: sp=>int32, dp=>int64
  implicit none
+ double precision, parameter :: dtiny = tiny(0d0)
 
  interface matinv
   module procedure matinv_d,matinv_z
@@ -549,15 +550,15 @@ contains
    nrm=-1
    return
   end if
-  if(xnrm.ne.1.d0)call dscal(n,1.d0/xnrm,x,1)
+  if(dabs(xnrm - 1d0) > 1d-14) call dscal(n,1.d0/xnrm,x,1)
 
   do i=1,32
    call dgemv('n',m,n,1.d0,a,m,x,1,0.d0,y,1)
    ynrm=dnrm2(m,y,1)
-   if(ynrm.ne.1.d0)call dscal(m,1.d0/ynrm,y,1)
+   if(dabs(ynrm - 1d0) > 1d-14) call dscal(m,1.d0/ynrm,y,1)
    call dgemv('t',m,n,1.d0,a,m,y,1,0.d0,x,1)
    xnrm=dnrm2(n,x,1)
-   if(xnrm.ne.1.d0)call dscal(n,1.d0/xnrm,x,1)
+   if(dabs(xnrm - 1d0) > 1d-14) call dscal(n,1.d0/xnrm,x,1)
    nrm=xnrm
   end do
 
@@ -704,18 +705,20 @@ contains
  !!   4.8600e-16
  !!
  subroutine matlab_qr_d(Q, R, A)
+ use string_lib, only: str
  implicit none
  double precision, intent(inout), allocatable :: Q(:,:)
  double precision, intent(inout), allocatable :: R(:,:)
  double precision, intent(in) :: A(:,:)
  !
- integer :: m, n, i, mn, lda, lwork, info
+ integer(4) :: m, n, i, mn, lda, lwork, info
  double precision, allocatable :: tau(:), work(:)
+ character(*), parameter :: subnam = "matlab_qr_d"
 
-    ! in LAPAQK, the routine DGEQRF computes the QR factorization
+    ! in LAPACK, the routine DGEQRF computes the QR factorization
     ! (https://netlib.org/lapack/lug/node40.html)
-    m = size(A,1)
-    n = size(A,2)
+    m = int(size(A,1),kind=4)
+    n = int(size(A,2),kind=4)
     mn = min(m,n)
     R = A
 
@@ -730,18 +733,18 @@ contains
     lwork = -1
     allocate(work(1))
     call dgeqrf(m,n,R,max(1,m),tau,work,lwork,info)
-    if(info.ne.0) error stop info
+    if(info.ne.0) error stop '[!]'//subnam//': 1st dgeqrf err= '
 
-    lwork = int(work(1))
+    lwork = int(work(1),kind=4)
     deallocate(work)
     allocate(work(lwork), tau(mn))
     call dgeqrf(m,n,R,max(1,m),tau,work,lwork,info)
-    if(info.ne.0) error stop info
+    if(info.ne.0) error stop '[!]'//subnam//': 2nd dgeqrf err= '//str(info)
 
     if (allocated(Q)) deallocate(Q)
     allocate(Q(m,mn)); Q = 0d0; Q(1:m,1:mn) = R(1:m,1:mn)
     call dorgqr(m,mn,mn,Q,m,tau,work,lwork,info)
-    if(info.ne.0) error stop info
+    if(info.ne.0) error stop '[!]'//subnam//': 3rd dgeqrf err= '//str(info)
     deallocate(work,tau)
     R = R(1:mn,1:n)
 
@@ -952,7 +955,7 @@ contains
 
     sz = size(sv)
     eps2 = eps*eps
-    if (sum(sv**2).eq.0d0) then
+    if (sum(sv**2) > dtiny) then
        r = 1
     else if (eps.le.0d0) then
        ! Check for zero tolerance

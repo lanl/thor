@@ -1,7 +1,9 @@
 #!/bin/bash
 
+USAGESTR="Usage: source load_env.sh (gnu|mac|intel|ch-intel|gnu132)"
+
 if [ $# -ne 1 ]; then
-  echo  "Usage: source load_env.sh (gnu|mac|intel|ch-intel|gnu132)"
+  echo $USAGESTR
   return
 fi
 
@@ -43,7 +45,7 @@ gnu132)
    ;;
 *)
    echo "Unsupported environment: $1" >> /dev/stderr
-   echo "Use one of (gnu|intel|cuda)" >> /dev/stderr
+   echo $USAGESTR
    return
 esac
 

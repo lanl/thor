@@ -19,7 +19,7 @@ SRCS := src/utils/rnd.f90\
 	src/utils/default.f90\
 	src/utils/string.f90\
 	src/utils/timef.f90\
-	src/utils/matlab_struct_module.f90\
+	src/utils/cell_arrays_module.f90\
 	src/utils/say.f90\
 	src/utils/nan.f90\
 	src/utils/linalg_utils.f90\
@@ -28,13 +28,13 @@ SRCS := src/utils/rnd.f90\
 	src/utils/ort.f90\
 	src/utils/lr.f90\
 	src/utils/trans.f90\
-	src/utils/ttlocsolve.f90\
 	src/thor_pointers.f90\
     src/thor.f90\
 	src/ttop.f90\
 	src/thorio.f90\
 	src/qtt.f90\
 	src/ttnodeop.f90\
+	src/cross/ttlocsolve.f90\
 	src/cross/dmrgg.f90\
 	src/solvers/ttamen.f90\
 
@@ -115,7 +115,7 @@ string_lib.mod := src/utils/string.o
 say_lib.mod := src/utils/say.o
 nan_lib.mod := src/utils/nan.o
 linalg_module.mod := src/utils/linalg_utils.o
-matlab_struct_module.mod := src/utils/matlab_struct_module.o
+cell_arrays_module.mod := src/utils/cell_arrays_module.o
 mat_lib.mod := src/utils/mat.o
 matrix_util.mod := src/utils/matrix_util.o
 ort_lib.mod := src/utils/ort.o
@@ -123,13 +123,13 @@ lr_lib.mod := src/utils/lr.o
 time_lib.mod := src/utils/timef.o
 default_lib.mod := src/utils/default.o
 trans_lib.mod := src/utils/trans.o
-ttlocsolve_lib.mod := src/utils/ttlocsolve.o
 cuda_solvers.mod := src/utils/cuda_solvers.f90.o
 thor_pointers.mod := src/thor_pointers.o
 thor_lib.mod := src/thor.o
 ttnodeop_lib.mod := src/ttnodeop.o
 ttop_lib.mod := src/ttop.o
 thor_io.mod := src/thorio.o
+ttlocsolve_lib.mod := src/cross/ttlocsolve.o
 dmrgg_lib.mod := src/cross/dmrgg.o
 qtt_lib.mod := src/qtt.o
 ttamen_lib.mod := src/solvers/ttamen.o
@@ -140,7 +140,7 @@ $(ort_lib.mod)        : $(nan_lib.mod)
 $(lr_lib.mod)         : $(ort_lib.mod)
 $(matrix_util.mod)    : $(mat_lib.mod)
 $(ttlocsolve_lib.mod) : $(trans_lib.mod)
-$(thor_lib.mod)       : $(rnd_lib.mod) $(say_lib.mod) $(lr_lib.mod) $(mat_lib.mod) $(thor_pointers.mod) $(matlab_struct_module.mod)
+$(thor_lib.mod)       : $(rnd_lib.mod) $(say_lib.mod) $(lr_lib.mod) $(mat_lib.mod) $(thor_pointers.mod) $(cell_arrays_module.mod) $(matrix_util.mod)
 $(ttnodeop_lib.mod)   : $(thor_pointers.mod) $(thor_lib.mod) $(default_lib.mod) $(trans_lib.mod) $(mat_lib.mod) $(ttlocsolve_lib.mod)
 $(ttop_lib.mod)       : $(qtt_lib.mod)
 $(thor_io.mod)        : $(thor_lib.mod) $(string_lib.mod)

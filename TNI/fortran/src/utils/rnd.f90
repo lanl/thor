@@ -285,8 +285,8 @@ contains
   allocate(pcol(0:m),prow(0:n),d(npnt,2),stat=info)
   if(info.ne.0)then;write(*,*)subnam,': cannot allocate';stop;endif
   scol=dasum(m,wcol,1); srow=dasum(n,wrow,1)
-  if(srow.eq.0d0) srow=1d-16
-  if(scol.eq.0d0) scol=1d-16
+  if(dabs(srow) < 1d-16) srow=1d-16
+  if(dabs(scol) < 1d-16) scol=1d-16
   pcol(0)=0.d0; do i=1,m;pcol(i)=pcol(i-1)+dabs(wcol(i))/scol;enddo
   prow(0)=0.d0; do j=1,n;prow(j)=prow(j-1)+dabs(wrow(j))/srow;enddo
   call random_number(d)

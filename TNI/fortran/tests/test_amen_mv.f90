@@ -102,7 +102,8 @@ contains
 
   subroutine test_amen_mv(qq, ss, r, lsave_tt)
   use time_lib
-  use matlab_struct_module, only : pprint_matrix, array3d
+  use matrix_util, only : pprint_matrix
+  use cell_arrays_module, only : array3d
   use thorio_lib, only: dtt_write_ascii_file, dttm_write_ascii_file
   use thor_lib
   use ttamen_lib, only: amen_mv

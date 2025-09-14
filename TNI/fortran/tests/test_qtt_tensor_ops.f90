@@ -112,8 +112,8 @@ contains
   use qtt_lib
   use ttop_lib
   use rnd_lib, only : random
-  use matrix_util, only: interlace_3d
-  use matlab_struct_module, only : array3d, pprint_matrix
+  use matrix_util, only: interlace_3d, pprint_matrix
+  use cell_arrays_module, only : array3d
   use ttamen_lib
   implicit none
   integer, intent(in) :: d, r(:)

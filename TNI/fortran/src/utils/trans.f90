@@ -238,4 +238,39 @@ contains
   prm3(:)=a(prm(:,p))
   return
  end function
+
+ subroutine dperm1324(n1,n2,n3,n4, A, B)
+  integer, intent(in) :: n1,n2,n3,n4
+  real(8), intent (in) :: A(n1,n2,n3,n4)
+  real(8), intent (inout) :: B(n1,n3,n2,n4)
+
+  integer i2,i3,i4
+
+  do i4=1,n4
+     do i3=1,n3
+        do i2=1,n2
+           call dcopy(n1, A(1,i2,i3,i4), 1, B(1,i3,i2,i4), 1)
+        end do
+     end do
+  end do
+
+ end subroutine dperm1324
+
+ subroutine zperm1324(n1,n2,n3,n4, A, B)
+  integer, intent(in) :: n1,n2,n3,n4
+  complex(8), intent (in) :: A(n1,n2,n3,n4)
+  complex(8), intent (inout) :: B(n1,n3,n2,n4)
+
+  integer i2,i3,i4
+
+  do i4=1,n4
+     do i3=1,n3
+        do i2=1,n2
+           call zcopy(n1, A(1,i2,i3,i4), 1, B(1,i3,i2,i4), 1)
+        end do
+     end do
+  end do
+
+ end subroutine zperm1324
+
 end module
