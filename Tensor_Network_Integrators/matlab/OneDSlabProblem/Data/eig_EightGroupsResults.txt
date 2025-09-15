@@ -1,0 +1,369 @@
+Case: Eight energy groups, with fission and uniform source
+
+ ******************************
+ *key start angular flux print*     
+ ******************************
+
+
+ angular flux for group =   1 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  2.089624E+00
+ *     2  1.150389E+00
+ *     3  0.000000E+00
+
+
+ angular flux for group =   1 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  1.150389E+00
+ *     3  2.089624E+00
+
+
+ angular flux for group =   2 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  2.110096E+00
+ *     2  1.160602E+00
+ *     3  0.000000E+00
+
+
+ angular flux for group =   2 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  1.160602E+00
+ *     3  2.110096E+00
+
+
+ angular flux for group =   3 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  2.109038E+00
+ *     2  1.191889E+00
+ *     3  0.000000E+00
+
+
+ angular flux for group =   3 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  1.191889E+00
+ *     3  2.109038E+00
+
+
+ angular flux for group =   4 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  2.244963E+00
+ *     2  1.262507E+00
+ *     3  0.000000E+00
+
+
+ angular flux for group =   4 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  1.262507E+00
+ *     3  2.244963E+00
+
+
+ angular flux for group =   5 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  2.227167E+00
+ *     2  1.299413E+00
+ *     3  0.000000E+00
+
+
+ angular flux for group =   5 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  1.299413E+00
+ *     3  2.227167E+00
+
+
+ angular flux for group =   6 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  2.191334E+00
+ *     2  1.333457E+00
+ *     3  0.000000E+00
+
+
+ angular flux for group =   6 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  1.333457E+00
+ *     3  2.191334E+00
+
+
+ angular flux for group =   7 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  2.080564E+00
+ *     2  1.318037E+00
+ *     3  0.000000E+00
+
+
+ angular flux for group =   7 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  1.318037E+00
+ *     3  2.080564E+00
+
+
+ angular flux for group =   8 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  1.795589E+00
+ *     2  1.204392E+00
+ *     3  0.000000E+00
+
+
+ angular flux for group =   8 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  1.204392E+00
+ *     3  1.795589E+00
+ *
+ ********************************************************************************************************************************
+
+Case: Eight energy groups, k-effective eigenvalue problem
+
+ eigenvalue summary integral-k-eff     2.4957162E-01
+
+ ******************************
+ *key start angular flux print*     
+ ******************************
+
+
+ angular flux for group =   1 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  4.644372E-01
+ *     2  2.556840E-01
+ *     3  0.000000E+00
+
+
+ angular flux for group =   1 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  2.556840E-01
+ *     3  4.644372E-01
+
+
+ angular flux for group =   2 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  4.689873E-01
+ *     2  2.579540E-01
+ *     3  0.000000E+00
+
+
+ angular flux for group =   2 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  2.579540E-01
+ *     3  4.689873E-01
+
+
+ angular flux for group =   3 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  4.687522E-01
+ *     2  2.649078E-01
+ *     3  0.000000E+00
+
+
+ angular flux for group =   3 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  2.649078E-01
+ *     3  4.687522E-01
+
+
+ angular flux for group =   4 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  4.989627E-01
+ *     2  2.806033E-01
+ *     3  0.000000E+00
+
+
+ angular flux for group =   4 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  2.806033E-01
+ *     3  4.989627E-01
+
+
+ angular flux for group =   5 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  4.950073E-01
+ *     2  2.888058E-01
+ *     3  0.000000E+00
+
+
+ angular flux for group =   5 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  2.888058E-01
+ *     3  4.950073E-01
+
+
+ angular flux for group =   6 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  4.870432E-01
+ *     2  2.963724E-01
+ *     3  0.000000E+00
+
+
+ angular flux for group =   6 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  2.963724E-01
+ *     3  4.870432E-01
+
+
+ angular flux for group =   7 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  4.624236E-01
+ *     2  2.929453E-01
+ *     3  0.000000E+00
+
+
+ angular flux for group =   7 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  2.929453E-01
+ *     3  4.624236E-01
+
+
+ angular flux for group =   8 for mu =  -5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  3.990853E-01
+ *     2  2.676866E-01
+ *     3  0.000000E+00
+
+
+ angular flux for group =   8 for mu =   5.7735E-01 weight =   5.0000E-01
+ *
+ * on vert cell edge      1
+ *
+ *         j=        1
+ *
+ *     1  0.000000E+00
+ *     2  2.676866E-01
+ *     3  3.990853E-01
+ *
+ ********************************************************************************************************************************

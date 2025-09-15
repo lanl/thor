@@ -1,0 +1,51 @@
+\documentclass[fontsize=12pt, paper=a4]{scrlttr2}
+
+\usepackage{amsmath}
+
+% Dont forget to read the KOMA-Script documentation, scrguien.pdf
+
+\setkomavar{fromname}{Mario I. Ortega, CCS-2 \\ Staff Scientist, PARTISN} % your name
+\setkomavar{fromaddress}{}
+
+\setkomavar{signature}{} % printed after the \closing
+\renewcommand{\raggedsignature}{\raggedright} % make the signature ragged right
+
+\setkomavar{subject}{} % subject of the letter
+
+\begin{document}
+\begin{letter}{Tensor Neutron Transport Project}
+
+\opening{}  % eg. Hello
+Hi all,
+
+As a test problem, consider the one-dimensional neutron transport equation shown in [\ref{eq:1dnt}]:
+
+\begin{multline}
+\bigg [ \mu \frac{d}{dx} + \frac{\alpha}{v(E)} + \sigma_{t}(x,E) \bigg ] \Psi(\mu,x,E) = \\\chi(E) \int_{0}^{\infty} dE' \, \nu(E') \sigma_{f}(x,E') \int_{-1}^{1} d\mu' \, \Psi(x,\mu',E) \,+ \\\int_{0}^{\infty} dE' \, \sigma_{s}(x, E' \rightarrow E) \int_{-1}^{1} d\mu' \, \Psi(x,\mu',E),
+\label{eq:1dnt}
+\end{multline}
+
+where $x$ is the spatial variable, $\mu$ is the direction of neutron travel, $E$ is the energy of the neutron, and all other values are nuclear cross-sections (these are given). In this directory is the nuclear data for a 261 energy-group, one-dimensional slab geometry neutron transport problem that uses 256 ordinates. The solution to this problem solves the following equation when it is discretized using the methods discussed in the PARTISN manual when $x \in [0, 4.2]$ and with $\Psi(-1,0,E) = \Psi(1,4.2,E) = 0$. The boundary conditions imply no neutrons are entering the geometry. There is no external source. This problem is an eigenvalue problem and the geometry is exactly critical ($k_{eff} = 1, \alpha = 0)$.
+
+The problem is discretized using 256 cells so that $\Delta x = 0.01640625$. The total number of unknowns for this problem is then ($256 \times 256 \times 261 = 17104896$). As you can imagine, constructing the linear system using the methods in Appendix A is almost impossible.
+
+I've provided five files in this directory:
+
+\begin{itemize}
+	\item {\tt{sigma\_t.txt}} - The total cross section, $\sigma_{t,g}$, for each energy group.
+	\item {\tt{nusigma\_t.txt}} - The product of the fission cross section with the average number of neutrons emitted in fission, $\nu\sigma_{f,g}$, for each energy group.
+	\item {\tt{vel.txt}} - The velocity, $v_{g}$, of the neutrons in each energy group.
+	\item {\tt{sigma\_s.txt}} - A 261 by 261 matrix containing the scattering cross sections. The row number corresponds to the group number $g$ and each column value represents the scattering cross section from $g'$ to $g$, $\sigma_{s,g'\rightarrow g}$.
+	\item {\tt{mu.txt}} - The quadrature points, $\mu_{\ell}$.
+	\item {\tt{wgt.txt}} - The weights for the quadrature points, $w_{\ell}$.
+	\item {\tt{chi.txt}} - The fraction of fission neutrons born into group $g$, $\chi_{g}$.
+\end{itemize}
+
+At LANL (but not everywhere), the energy groups are ordered from highest to lowest energy. So group $g=1$ is at a higher energy than group $g=2$, and so on.
+
+I will go ahead and generate a file with the solution in the next few days for testing. Please let me know if you have any questions!
+
+\closing{Mario Ortega} %eg. Regards
+
+\end{letter}
+\end{document}

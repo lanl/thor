@@ -1,4 +1,4 @@
-# Tensors for High-dimensional Object Representation (THOR)
+# Distributed Tensors for High-dimensional Object Representation (THOR)
 
 This repository contains a novel, multi-GPU implementation of tensors in tensor train format.  It is based on the modern Fortran MPI/GPU communication library (Thunder), and a CUDA-enabled algebra of distributed arrays (DRay).
 

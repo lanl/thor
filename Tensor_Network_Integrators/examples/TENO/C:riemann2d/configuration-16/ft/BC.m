@@ -1,0 +1,12 @@
+function Q=BC(Q,x,y,z,t,gam)
+    %
+    Q(:,1:3,:,:)       = Q(:,[4 4 4],:,:);
+    Q(:,end-2:end,:,:) = Q(:,[end-3 end-3 end-3],:,:);
+    % 
+    Q(:,:,1:3,:)       = Q(:,:,[4 4 4],:);
+    Q(:,:,end-2:end,:) = Q(:,:,[end-3 end-3 end-3],:);
+    % periodic in z
+    Q(:,:,:,1:3)       = Q(:,:,:,end-5:end-3);
+    Q(:,:,:,end-2:end) = Q(:,:,:,4:6);
+    %
+end

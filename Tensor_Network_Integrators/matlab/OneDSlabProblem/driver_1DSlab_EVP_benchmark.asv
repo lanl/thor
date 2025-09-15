@@ -1,0 +1,55 @@
+close all; clear; clc;
+run setup1DSlab.m;
+
+%% Multiple Nx
+Nx = [8, 16, 32, 64];
+R = cell(1,numel(Nx));
+for ix = 1:numel(Nx)
+  %% setup parameters
+  param.a = 0;
+  param.b = 1;
+  % param.alpha = 0; % no second term
+  % scatterting parameters
+  param.sigma_s = importdata('./Data/sigma_s_8groups.txt');
+  % fission parameters
+  param.nusigma_f = load('./Data/eig_nusigma_f.txt');
+  param.chi = load('./Data/eig_chi.txt');
+
+  param.sigma =[ 2.3336e-01,2.3105e-01, 3.0084e-01, 2.8809e-01, ...
+    3.8538e-01, 5.0120e-01, 6.1661e-01, 7.8866e-01 ];
+
+  param.nmu = ; % index l
+  param.nx = Nx(ix); % index i - number of EDGES
+
+  tol = 1e-3; %both convergence and tt
+
+  %% full-grid fixed-point
+  tic
+  [Psi1, k, convrate] = fg_1DSlab_EVP_fn(param, tol);
+  fg_time = toc;
+  %   fprintf('fixed point in TT - ktt = %.5e \n', k);
+  %% TT fixed-point
+  tic
+  [ttPsi1, ttk, ttconvrate] = tt_1DSlab_EVP_fn(param, tol);
+  tt_time = toc;
+
+  %   fprintf('||k-ktt|| = %.5e \n', abs(k-ttk));
+  %   fprintf('||Psi1tt-Psi1||/||Psi1|| = %.5e \n', check_tt_rel_error(Psi1,ttPsi1));
+  %   fprintf('fg time = %.5fs \n', fg_time)
+  %   fprintf('tt time = %.5fs \n', tt_time)
+  %   fprintf('Psi1 compress ratio = %.5e \n ', compress_ratio_tt(ttPsi1));
+
+  %% export results
+  R{ix}.Psi1 = Psi1;
+  R{ix}.k = k;
+  R{ix}.convrate = convrate;
+  R{ix}.fg_time = fg_time;
+  R{ix}.ttPsi1 = ttPsi1;
+  R{ix}.ttk = ttk;
+  R{ix}.ttconvrate = ttconvrate;
+  R{ix}.tt_time = tt_time;
+  R{ix}.tol = tol;
+  R{ix}.param = param;
+end
+save('./Results/1Dslab_EVP_tt.mat','R','Nx');
+

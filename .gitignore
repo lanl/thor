@@ -1,0 +1,15 @@
+*.mod
+*.exe
+*.a
+*.so
+*.o
+*.i90
+core.[0-9]*
+*.png
+*.back
+.DS_Store
+*pagosa*
+*.priv
+*.dat
+.*.swp
+make.inc

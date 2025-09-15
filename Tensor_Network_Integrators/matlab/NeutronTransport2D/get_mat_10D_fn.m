@@ -1,0 +1,3 @@
+function Tmat = get_mat_10D_fn(T,nx,ny,nmu,neta,nE)
+Tmat = double(reshape(permute(T,[1,3,5,7,9,2,4,6,8,10]),...
+  [nx*ny*nmu*neta*nE, nx*ny*nmu*neta*nE]));
