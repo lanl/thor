@@ -1,0 +1,593 @@
+Mon Jun  9 08:52:09 MDT 2025
+
+                            < M A T L A B (R) >
+                  Copyright 1984-2023 The MathWorks, Inc.
+             R2023a Update 7 (9.14.0.2674353) 64-bit (glnxa64)
+                               July 16, 2024
+
+ 
+For online documentation, see https://www.mathworks.com/support
+For product information, visit www.mathworks.com.
+ 
+Using 1 threads
+----------------------------------------------------------------------
+Starting to solve grid level=1 with Nx=10 Ny=10 Nz=10
+----------------------------------------------------------------------
+Time Step= 0	 Time=0.00000	 dt=1.07722e-02	 max_eig=0.00e+00
+Time Step= 1	 Time=0.01077	 dt=1.07722e-02	 max_eig=0.00e+00
+Time Step= 2	 Time=0.02154	 dt=1.07722e-02	 max_eig=0.00e+00
+Time Step= 3	 Time=0.03232	 dt=1.07722e-02	 max_eig=0.00e+00
+Time Step= 4	 Time=0.04309	 dt=1.07722e-02	 max_eig=0.00e+00
+Time Step= 5	 Time=0.05386	 dt=1.07722e-02	 max_eig=0.00e+00
+Time Step= 6	 Time=0.06463	 dt=1.07722e-02	 max_eig=0.00e+00
+Time Step= 7	 Time=0.07541	 dt=1.07722e-02	 max_eig=0.00e+00
+Time Step= 8	 Time=0.08618	 dt=1.07722e-02	 max_eig=0.00e+00
+Time Step= 9	 Time=0.09695	 dt=3.05044e-03	 max_eig=0.00e+00
+Time Step= 10	 Time=0.10000	 dt=0.00000e+00	 max_eig=0.00e+00
+
+
+L1 errors:
+ |  10x10x10  |
+ |------------|
+ | 9.130e-04  |
+ | 1.662e-03  |
+ | 7.523e-04  |
+ | 7.523e-04  |
+ | 2.629e-03  |
+
+
+L2 errors:
+ |  10x10x10  |
+ |------------|
+ | 1.134e-03  |
+ | 1.995e-03  |
+ | 9.091e-04  |
+ | 9.091e-04  |
+ | 3.108e-03  |
+
+
+Linf errors:
+ |  10x10x10  |
+ |------------|
+ | 1.936e-03  |
+ | 3.782e-03  |
+ | 1.864e-03  |
+ | 1.864e-03  |
+ | 6.408e-03  |
+
+----------------------------------------------------------------------
+Starting to solve grid level=2 with Nx=20 Ny=20 Nz=20
+----------------------------------------------------------------------
+Time Step= 0	 Time=0.00000	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 1	 Time=0.00339	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 2	 Time=0.00679	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 3	 Time=0.01018	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 4	 Time=0.01357	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 5	 Time=0.01697	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 6	 Time=0.02036	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 7	 Time=0.02375	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 8	 Time=0.02714	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 9	 Time=0.03054	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 10	 Time=0.03393	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 11	 Time=0.03732	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 12	 Time=0.04072	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 13	 Time=0.04411	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 14	 Time=0.04750	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 15	 Time=0.05090	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 16	 Time=0.05429	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 17	 Time=0.05768	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 18	 Time=0.06107	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 19	 Time=0.06447	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 20	 Time=0.06786	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 21	 Time=0.07125	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 22	 Time=0.07465	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 23	 Time=0.07804	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 24	 Time=0.08143	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 25	 Time=0.08483	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 26	 Time=0.08822	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 27	 Time=0.09161	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 28	 Time=0.09500	 dt=3.39302e-03	 max_eig=0.00e+00
+Time Step= 29	 Time=0.09840	 dt=1.60236e-03	 max_eig=0.00e+00
+Time Step= 30	 Time=0.10000	 dt=0.00000e+00	 max_eig=0.00e+00
+
+
+L1 errors:
+ |  10x10x10  |  20x20x20  | ORDER |
+ |------------|------------|-------|
+ | 9.130e-04  | 4.153e-05  | 4.459 |
+ | 1.662e-03  | 7.407e-05  | 4.488 |
+ | 7.523e-04  | 3.106e-05  | 4.598 |
+ | 7.523e-04  | 3.106e-05  | 4.598 |
+ | 2.629e-03  | 1.071e-04  | 4.618 |
+
+
+L2 errors:
+ |  10x10x10  |  20x20x20  | ORDER |
+ |------------|------------|-------|
+ | 1.134e-03  | 5.246e-05  | 4.434 |
+ | 1.995e-03  | 8.936e-05  | 4.480 |
+ | 9.091e-04  | 4.014e-05  | 4.501 |
+ | 9.091e-04  | 4.014e-05  | 4.501 |
+ | 3.108e-03  | 1.348e-04  | 4.527 |
+
+
+Linf errors:
+ |  10x10x10  |  20x20x20  | ORDER |
+ |------------|------------|-------|
+ | 1.936e-03  | 1.111e-04  | 4.124 |
+ | 3.782e-03  | 1.921e-04  | 4.300 |
+ | 1.864e-03  | 8.489e-05  | 4.457 |
+ | 1.864e-03  | 8.489e-05  | 4.457 |
+ | 6.408e-03  | 2.828e-04  | 4.502 |
+
+----------------------------------------------------------------------
+Starting to solve grid level=3 with Nx=40 Ny=40 Nz=40
+----------------------------------------------------------------------
+Time Step= 0	 Time=0.00000	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 1	 Time=0.00107	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 2	 Time=0.00214	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 3	 Time=0.00321	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 4	 Time=0.00427	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 5	 Time=0.00534	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 6	 Time=0.00641	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 7	 Time=0.00748	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 8	 Time=0.00855	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 9	 Time=0.00962	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 10	 Time=0.01069	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 11	 Time=0.01176	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 12	 Time=0.01282	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 13	 Time=0.01389	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 14	 Time=0.01496	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 15	 Time=0.01603	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 16	 Time=0.01710	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 17	 Time=0.01817	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 18	 Time=0.01924	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 19	 Time=0.02031	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 20	 Time=0.02137	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 21	 Time=0.02244	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 22	 Time=0.02351	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 23	 Time=0.02458	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 24	 Time=0.02565	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 25	 Time=0.02672	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 26	 Time=0.02779	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 27	 Time=0.02886	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 28	 Time=0.02992	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 29	 Time=0.03099	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 30	 Time=0.03206	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 31	 Time=0.03313	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 32	 Time=0.03420	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 33	 Time=0.03527	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 34	 Time=0.03634	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 35	 Time=0.03741	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 36	 Time=0.03847	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 37	 Time=0.03954	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 38	 Time=0.04061	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 39	 Time=0.04168	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 40	 Time=0.04275	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 41	 Time=0.04382	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 42	 Time=0.04489	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 43	 Time=0.04596	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 44	 Time=0.04702	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 45	 Time=0.04809	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 46	 Time=0.04916	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 47	 Time=0.05023	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 48	 Time=0.05130	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 49	 Time=0.05237	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 50	 Time=0.05344	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 51	 Time=0.05451	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 52	 Time=0.05557	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 53	 Time=0.05664	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 54	 Time=0.05771	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 55	 Time=0.05878	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 56	 Time=0.05985	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 57	 Time=0.06092	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 58	 Time=0.06199	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 59	 Time=0.06306	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 60	 Time=0.06412	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 61	 Time=0.06519	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 62	 Time=0.06626	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 63	 Time=0.06733	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 64	 Time=0.06840	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 65	 Time=0.06947	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 66	 Time=0.07054	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 67	 Time=0.07161	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 68	 Time=0.07267	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 69	 Time=0.07374	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 70	 Time=0.07481	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 71	 Time=0.07588	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 72	 Time=0.07695	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 73	 Time=0.07802	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 74	 Time=0.07909	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 75	 Time=0.08016	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 76	 Time=0.08122	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 77	 Time=0.08229	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 78	 Time=0.08336	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 79	 Time=0.08443	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 80	 Time=0.08550	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 81	 Time=0.08657	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 82	 Time=0.08764	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 83	 Time=0.08871	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 84	 Time=0.08977	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 85	 Time=0.09084	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 86	 Time=0.09191	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 87	 Time=0.09298	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 88	 Time=0.09405	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 89	 Time=0.09512	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 90	 Time=0.09619	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 91	 Time=0.09725	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 92	 Time=0.09832	 dt=1.06873e-03	 max_eig=0.00e+00
+Time Step= 93	 Time=0.09939	 dt=6.07648e-04	 max_eig=0.00e+00
+Time Step= 94	 Time=0.10000	 dt=0.00000e+00	 max_eig=0.00e+00
+
+
+L1 errors:
+ |  10x10x10  |  20x20x20  | ORDER |  40x40x40  | ORDER |
+ |------------|------------|-------|------------|-------|
+ | 9.130e-04  | 4.153e-05  | 4.459 | 1.401e-06  | 4.889 |
+ | 1.662e-03  | 7.407e-05  | 4.488 | 2.449e-06  | 4.919 |
+ | 7.523e-04  | 3.106e-05  | 4.598 | 1.036e-06  | 4.906 |
+ | 7.523e-04  | 3.106e-05  | 4.598 | 1.036e-06  | 4.906 |
+ | 2.629e-03  | 1.071e-04  | 4.618 | 3.579e-06  | 4.903 |
+
+
+L2 errors:
+ |  10x10x10  |  20x20x20  | ORDER |  40x40x40  | ORDER |
+ |------------|------------|-------|------------|-------|
+ | 1.134e-03  | 5.246e-05  | 4.434 | 1.770e-06  | 4.889 |
+ | 1.995e-03  | 8.936e-05  | 4.480 | 2.994e-06  | 4.900 |
+ | 9.091e-04  | 4.014e-05  | 4.501 | 1.349e-06  | 4.895 |
+ | 9.091e-04  | 4.014e-05  | 4.501 | 1.349e-06  | 4.895 |
+ | 3.108e-03  | 1.348e-04  | 4.527 | 4.499e-06  | 4.905 |
+
+
+Linf errors:
+ |  10x10x10  |  20x20x20  | ORDER |  40x40x40  | ORDER |
+ |------------|------------|-------|------------|-------|
+ | 1.936e-03  | 1.111e-04  | 4.124 | 3.999e-06  | 4.796 |
+ | 3.782e-03  | 1.921e-04  | 4.300 | 6.501e-06  | 4.885 |
+ | 1.864e-03  | 8.489e-05  | 4.457 | 2.876e-06  | 4.883 |
+ | 1.864e-03  | 8.489e-05  | 4.457 | 2.876e-06  | 4.883 |
+ | 6.408e-03  | 2.828e-04  | 4.502 | 9.582e-06  | 4.883 |
+
+----------------------------------------------------------------------
+Starting to solve grid level=4 with Nx=80 Ny=80 Nz=80
+----------------------------------------------------------------------
+Time Step= 0	 Time=0.00000	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 1	 Time=0.00034	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 2	 Time=0.00067	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 3	 Time=0.00101	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 4	 Time=0.00135	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 5	 Time=0.00168	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 6	 Time=0.00202	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 7	 Time=0.00236	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 8	 Time=0.00269	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 9	 Time=0.00303	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 10	 Time=0.00337	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 11	 Time=0.00370	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 12	 Time=0.00404	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 13	 Time=0.00438	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 14	 Time=0.00471	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 15	 Time=0.00505	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 16	 Time=0.00539	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 17	 Time=0.00572	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 18	 Time=0.00606	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 19	 Time=0.00640	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 20	 Time=0.00673	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 21	 Time=0.00707	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 22	 Time=0.00741	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 23	 Time=0.00774	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 24	 Time=0.00808	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 25	 Time=0.00842	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 26	 Time=0.00875	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 27	 Time=0.00909	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 28	 Time=0.00943	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 29	 Time=0.00976	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 30	 Time=0.01010	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 31	 Time=0.01044	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 32	 Time=0.01077	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 33	 Time=0.01111	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 34	 Time=0.01145	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 35	 Time=0.01178	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 36	 Time=0.01212	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 37	 Time=0.01246	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 38	 Time=0.01279	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 39	 Time=0.01313	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 40	 Time=0.01347	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 41	 Time=0.01380	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 42	 Time=0.01414	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 43	 Time=0.01448	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 44	 Time=0.01481	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 45	 Time=0.01515	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 46	 Time=0.01548	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 47	 Time=0.01582	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 48	 Time=0.01616	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 49	 Time=0.01649	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 50	 Time=0.01683	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 51	 Time=0.01717	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 52	 Time=0.01750	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 53	 Time=0.01784	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 54	 Time=0.01818	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 55	 Time=0.01851	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 56	 Time=0.01885	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 57	 Time=0.01919	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 58	 Time=0.01952	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 59	 Time=0.01986	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 60	 Time=0.02020	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 61	 Time=0.02053	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 62	 Time=0.02087	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 63	 Time=0.02121	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 64	 Time=0.02154	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 65	 Time=0.02188	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 66	 Time=0.02222	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 67	 Time=0.02255	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 68	 Time=0.02289	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 69	 Time=0.02323	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 70	 Time=0.02356	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 71	 Time=0.02390	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 72	 Time=0.02424	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 73	 Time=0.02457	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 74	 Time=0.02491	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 75	 Time=0.02525	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 76	 Time=0.02558	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 77	 Time=0.02592	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 78	 Time=0.02626	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 79	 Time=0.02659	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 80	 Time=0.02693	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 81	 Time=0.02727	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 82	 Time=0.02760	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 83	 Time=0.02794	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 84	 Time=0.02828	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 85	 Time=0.02861	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 86	 Time=0.02895	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 87	 Time=0.02929	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 88	 Time=0.02962	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 89	 Time=0.02996	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 90	 Time=0.03030	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 91	 Time=0.03063	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 92	 Time=0.03097	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 93	 Time=0.03131	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 94	 Time=0.03164	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 95	 Time=0.03198	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 96	 Time=0.03232	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 97	 Time=0.03265	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 98	 Time=0.03299	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 99	 Time=0.03333	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 100	 Time=0.03366	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 101	 Time=0.03400	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 102	 Time=0.03434	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 103	 Time=0.03467	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 104	 Time=0.03501	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 105	 Time=0.03535	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 106	 Time=0.03568	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 107	 Time=0.03602	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 108	 Time=0.03636	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 109	 Time=0.03669	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 110	 Time=0.03703	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 111	 Time=0.03737	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 112	 Time=0.03770	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 113	 Time=0.03804	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 114	 Time=0.03838	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 115	 Time=0.03871	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 116	 Time=0.03905	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 117	 Time=0.03939	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 118	 Time=0.03972	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 119	 Time=0.04006	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 120	 Time=0.04040	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 121	 Time=0.04073	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 122	 Time=0.04107	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 123	 Time=0.04141	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 124	 Time=0.04174	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 125	 Time=0.04208	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 126	 Time=0.04242	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 127	 Time=0.04275	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 128	 Time=0.04309	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 129	 Time=0.04343	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 130	 Time=0.04376	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 131	 Time=0.04410	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 132	 Time=0.04444	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 133	 Time=0.04477	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 134	 Time=0.04511	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 135	 Time=0.04545	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 136	 Time=0.04578	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 137	 Time=0.04612	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 138	 Time=0.04645	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 139	 Time=0.04679	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 140	 Time=0.04713	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 141	 Time=0.04746	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 142	 Time=0.04780	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 143	 Time=0.04814	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 144	 Time=0.04847	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 145	 Time=0.04881	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 146	 Time=0.04915	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 147	 Time=0.04948	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 148	 Time=0.04982	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 149	 Time=0.05016	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 150	 Time=0.05049	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 151	 Time=0.05083	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 152	 Time=0.05117	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 153	 Time=0.05150	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 154	 Time=0.05184	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 155	 Time=0.05218	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 156	 Time=0.05251	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 157	 Time=0.05285	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 158	 Time=0.05319	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 159	 Time=0.05352	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 160	 Time=0.05386	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 161	 Time=0.05420	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 162	 Time=0.05453	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 163	 Time=0.05487	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 164	 Time=0.05521	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 165	 Time=0.05554	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 166	 Time=0.05588	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 167	 Time=0.05622	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 168	 Time=0.05655	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 169	 Time=0.05689	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 170	 Time=0.05723	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 171	 Time=0.05756	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 172	 Time=0.05790	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 173	 Time=0.05824	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 174	 Time=0.05857	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 175	 Time=0.05891	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 176	 Time=0.05925	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 177	 Time=0.05958	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 178	 Time=0.05992	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 179	 Time=0.06026	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 180	 Time=0.06059	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 181	 Time=0.06093	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 182	 Time=0.06127	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 183	 Time=0.06160	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 184	 Time=0.06194	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 185	 Time=0.06228	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 186	 Time=0.06261	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 187	 Time=0.06295	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 188	 Time=0.06329	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 189	 Time=0.06362	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 190	 Time=0.06396	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 191	 Time=0.06430	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 192	 Time=0.06463	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 193	 Time=0.06497	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 194	 Time=0.06531	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 195	 Time=0.06564	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 196	 Time=0.06598	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 197	 Time=0.06632	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 198	 Time=0.06665	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 199	 Time=0.06699	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 200	 Time=0.06733	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 201	 Time=0.06766	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 202	 Time=0.06800	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 203	 Time=0.06834	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 204	 Time=0.06867	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 205	 Time=0.06901	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 206	 Time=0.06935	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 207	 Time=0.06968	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 208	 Time=0.07002	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 209	 Time=0.07036	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 210	 Time=0.07069	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 211	 Time=0.07103	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 212	 Time=0.07137	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 213	 Time=0.07170	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 214	 Time=0.07204	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 215	 Time=0.07238	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 216	 Time=0.07271	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 217	 Time=0.07305	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 218	 Time=0.07339	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 219	 Time=0.07372	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 220	 Time=0.07406	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 221	 Time=0.07440	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 222	 Time=0.07473	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 223	 Time=0.07507	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 224	 Time=0.07541	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 225	 Time=0.07574	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 226	 Time=0.07608	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 227	 Time=0.07642	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 228	 Time=0.07675	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 229	 Time=0.07709	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 230	 Time=0.07742	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 231	 Time=0.07776	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 232	 Time=0.07810	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 233	 Time=0.07843	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 234	 Time=0.07877	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 235	 Time=0.07911	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 236	 Time=0.07944	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 237	 Time=0.07978	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 238	 Time=0.08012	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 239	 Time=0.08045	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 240	 Time=0.08079	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 241	 Time=0.08113	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 242	 Time=0.08146	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 243	 Time=0.08180	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 244	 Time=0.08214	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 245	 Time=0.08247	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 246	 Time=0.08281	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 247	 Time=0.08315	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 248	 Time=0.08348	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 249	 Time=0.08382	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 250	 Time=0.08416	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 251	 Time=0.08449	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 252	 Time=0.08483	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 253	 Time=0.08517	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 254	 Time=0.08550	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 255	 Time=0.08584	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 256	 Time=0.08618	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 257	 Time=0.08651	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 258	 Time=0.08685	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 259	 Time=0.08719	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 260	 Time=0.08752	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 261	 Time=0.08786	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 262	 Time=0.08820	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 263	 Time=0.08853	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 264	 Time=0.08887	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 265	 Time=0.08921	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 266	 Time=0.08954	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 267	 Time=0.08988	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 268	 Time=0.09022	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 269	 Time=0.09055	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 270	 Time=0.09089	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 271	 Time=0.09123	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 272	 Time=0.09156	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 273	 Time=0.09190	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 274	 Time=0.09224	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 275	 Time=0.09257	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 276	 Time=0.09291	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 277	 Time=0.09325	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 278	 Time=0.09358	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 279	 Time=0.09392	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 280	 Time=0.09426	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 281	 Time=0.09459	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 282	 Time=0.09493	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 283	 Time=0.09527	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 284	 Time=0.09560	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 285	 Time=0.09594	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 286	 Time=0.09628	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 287	 Time=0.09661	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 288	 Time=0.09695	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 289	 Time=0.09729	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 290	 Time=0.09762	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 291	 Time=0.09796	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 292	 Time=0.09830	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 293	 Time=0.09863	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 294	 Time=0.09897	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 295	 Time=0.09931	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 296	 Time=0.09964	 dt=3.36630e-04	 max_eig=0.00e+00
+Time Step= 297	 Time=0.09998	 dt=2.07652e-05	 max_eig=0.00e+00
+Time Step= 298	 Time=0.10000	 dt=0.00000e+00	 max_eig=0.00e+00
+
+
+L1 errors:
+ |  10x10x10  |  20x20x20  | ORDER |  40x40x40  | ORDER |  80x80x80  | ORDER |
+ |------------|------------|-------|------------|-------|------------|-------|
+ | 9.130e-04  | 4.153e-05  | 4.459 | 1.401e-06  | 4.889 | 4.453e-08  | 4.976 |
+ | 1.662e-03  | 7.407e-05  | 4.488 | 2.449e-06  | 4.919 | 7.753e-08  | 4.981 |
+ | 7.523e-04  | 3.106e-05  | 4.598 | 1.036e-06  | 4.906 | 3.288e-08  | 4.977 |
+ | 7.523e-04  | 3.106e-05  | 4.598 | 1.036e-06  | 4.906 | 3.288e-08  | 4.977 |
+ | 2.629e-03  | 1.071e-04  | 4.618 | 3.579e-06  | 4.903 | 1.132e-07  | 4.983 |
+
+
+L2 errors:
+ |  10x10x10  |  20x20x20  | ORDER |  40x40x40  | ORDER |  80x80x80  | ORDER |
+ |------------|------------|-------|------------|-------|------------|-------|
+ | 1.134e-03  | 5.246e-05  | 4.434 | 1.770e-06  | 4.889 | 5.627e-08  | 4.975 |
+ | 1.995e-03  | 8.936e-05  | 4.480 | 2.994e-06  | 4.900 | 9.501e-08  | 4.978 |
+ | 9.091e-04  | 4.014e-05  | 4.501 | 1.349e-06  | 4.895 | 4.290e-08  | 4.975 |
+ | 9.091e-04  | 4.014e-05  | 4.501 | 1.349e-06  | 4.895 | 4.290e-08  | 4.975 |
+ | 3.108e-03  | 1.348e-04  | 4.527 | 4.499e-06  | 4.905 | 1.427e-07  | 4.979 |
+
+
+Linf errors:
+ |  10x10x10  |  20x20x20  | ORDER |  40x40x40  | ORDER |  80x80x80  | ORDER |
+ |------------|------------|-------|------------|-------|------------|-------|
+ | 1.936e-03  | 1.111e-04  | 4.124 | 3.999e-06  | 4.796 | 1.273e-07  | 4.973 |
+ | 3.782e-03  | 1.921e-04  | 4.300 | 6.501e-06  | 4.885 | 2.070e-07  | 4.973 |
+ | 1.864e-03  | 8.489e-05  | 4.457 | 2.876e-06  | 4.883 | 9.131e-08  | 4.977 |
+ | 1.864e-03  | 8.489e-05  | 4.457 | 2.876e-06  | 4.883 | 9.131e-08  | 4.977 |
+ | 6.408e-03  | 2.828e-04  | 4.502 | 9.582e-06  | 4.883 | 3.040e-07  | 4.978 |
+
+
+ ------ ------------
+ level | CPUtime (s)
+ ------ ------------
+     1 | 2.2892e+00
+     2 | 2.2867e+01
+     3 | 3.8614e+02
+     4 | 1.0848e+04
+

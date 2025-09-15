@@ -1,0 +1,28 @@
+version: 0.0.1
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Alexandrov
+    given-names: Boian
+  - family-names: Boureima
+    given-names: Ismael
+  - family-names: Chinomona
+    given-names: Rujeko
+  - family-names: Dai
+    given-names: William
+  - family-names: Danis
+    given-names: Engin
+  - family-names: Eren
+    given-names: Maksim
+  - family-names: Korobkin
+    given-names: Oleg
+  - family-names: Rasmussen
+    given-names: Kim
+  - family-names: Somasundaram
+    given-names: Rahul
+  - family-names: Truong
+    given-names: Duc
+title: "Tensors for High-dimensional Object Representation (THOR)"
+version: 0.0.1
+url: https://github.com/lanl/thor
+doi: 10.5281/zenodo.XXXX
+date-released: 2025-09-01

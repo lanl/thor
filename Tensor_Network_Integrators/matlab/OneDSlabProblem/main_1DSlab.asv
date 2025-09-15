@@ -1,0 +1,80 @@
+close all; clear; clc;
+run setup1DSlab.m;
+
+%% problem setup
+% solution Psi (261 Energy - 256 mu - 256 x)
+
+%% load parameters
+Param.sigma_t = importdata('./data/sigma_t.txt');
+Param.nusigma_f = importdata('./data/nusigma_f.txt');
+Param.vel = importdata('./data/vel.txt');
+Param.sigma_s = importdata('./data/sigma_s.txt');
+Param.mu = importdata('./data/mu.txt');
+Param.wgt = importdata('./data/wgt.txt');
+Param.chi = importdata('./data/chi.txt');
+
+
+
+%% rescale the problem
+alpha = 0; % no second term 
+nE = 261; % index g
+nmu = 8; % index l
+% regenerate mu va weight
+[mu,wgt] = legpts(nmu,[-1,1]);
+mu = flip(mu);
+wgt = flip(wgt'/2);
+
+%
+sigma_t = Param.sigma_t;
+nusigma_f = Param.nusigma_f;
+sigma_s = Param.sigma_s;
+chi = Param.chi;
+
+nx = 9; % index i
+dx = 4.2/(nx-1);
+
+
+
+%% %%%%%%%%% Fix point scheme  %%%%%%%%%%%%%%%
+%{
+
+
+%}
+
+%% Initial guess - random rank 1 tensor
+tPsi0 = tt_rand([nE,nmu,nx],3,1);
+Psi0 = tensor(full(tPsi0, size(tPsi0))); %dim nE x nmu x nx
+% set zero boundary in the x direction
+Psi0(:,:,1) = 0;
+Psi0(:,:,nx) = 0;
+
+%% compute RHS0
+% Hmu
+mu_mat = diag(mu)/dx;
+Hmu = ttt(tensor(mu_mat), ttt(tensor(eye(nE)), tensor(eye(nx-2))));
+Hg = ttt(tensor(eye(nmu)), ttt(tensor(1/2*diag(sigma_t)), tensor(eye(nx-2))));
+
+RHS0 = ttt((Hmu-Hg),Psi0(:,:,2:end-1);
+%% compute the Lterm
+%tempL can be used for both RHS1 and RHS2
+Lterm = 0.5*(Psi0(:,:,2:end-1) - Psi0(:,:,1:end-2)); %tempL dim nE x nmu x (nx-2)
+
+%contract along mu dimension
+Lterm = tensor(Lterm);
+%ttv is tensor time vector
+Lterm = ttv(Lterm,wgt,2); % dimension nE x (nx-2)
+
+
+%% compute the RHS1
+RHS1 = 0.5*ttv(Lterm,nusigma_f,1); % contract along the Energy dimension
+% form RHS1 as 3D tensor
+% outer product with ones in mu direction
+RHS1 = ttt(tensor(ones(1,nmu),nmu), RHS1); 
+% outer product with chi/2
+RHS1 = ttt(tensor(chi/2,nE), RHS1); % dimension of RHS1 nE x nmu x (nx-2);
+
+%% compute the RHS2
+RHS2 = 0.5*ttm(Lterm,sigma_s,1); % multiply sigma_s(g,g') with Lterm(g,i)
+RHS2 = ttt(tensor(ones(1,nmu),nmu), RHS2);
+RHS2 = permute(RHS2,[2,1,3]);
+

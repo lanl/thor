@@ -1,0 +1,48 @@
+# Compiler
+FC = mpif90
+
+# Optimization & safety/debug flags
+OPT = -cpp -g -O2 -fopenmp -fbacktrace -Wno-argument-mismatch \
+      -ffpe-trap=overflow -Wall -Wextra \
+      -Wno-uninitialized -Wno-unused-variable -Wno-unused-parameter \
+      -fbacktrace -fimplicit-none -fdefault-double-8 \
+      -ffree-line-length-none -fexternal-blas
+
+# BLAS/LAPACK
+BLASLIB = -I$(OPENBLAS_DIR)/include -L$(OPENBLAS_DIR)/lib64 -llapack -lblas
+
+# Directories with .mod files
+MOD_DIRS = ../../../fortran
+MOD_FLAGS = $(foreach dir,$(MOD_DIRS),-I$(dir))
+
+# Static libraries to link
+LIBS = ../../../fortran/libthor.a
+
+# Source files
+SRC_FD = TT_ST_FD.f90
+SRC_SC = TT_ST_SC.f90
+
+# Object files
+OBJ_FD = $(SRC_FD:.f90=.o)
+OBJ_SC = $(SRC_SC:.f90=.o)
+
+# Executables
+EXE_FD = TT_ST_FD.exe
+EXE_SC = TT_ST_SC.exe
+
+# Default rule builds both
+all: $(EXE_FD) $(EXE_SC)
+
+# Build rules
+$(EXE_FD): $(OBJ_FD) Makefile
+	$(FC) $(OPT) $(MOD_FLAGS) $(OBJ_FD) $(LIBS) $(BLASLIB) -o $(EXE_FD)
+
+$(EXE_SC): $(OBJ_SC) Makefile
+	$(FC) $(OPT) $(MOD_FLAGS) $(OBJ_SC) $(LIBS) $(BLASLIB) -o $(EXE_SC)
+
+%.o: %.f90
+	$(FC) $(OPT) $(MOD_FLAGS) -c $< -o $@
+
+# Clean rule
+clean:
+	rm -f $(OBJ_FD) $(OBJ_SC) $(EXE_FD) $(EXE_SC)

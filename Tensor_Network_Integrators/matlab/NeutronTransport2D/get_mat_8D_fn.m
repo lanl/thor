@@ -1,0 +1,3 @@
+function Tmat = get_mat_8D_fn(T,nx,ny,nmu,neta)
+Tmat = double(reshape(permute(T,[1,3,5,7,2,4,6,8]),...
+  [nx*ny*nmu*neta, nx*ny*nmu*neta]));
