@@ -6,6 +6,8 @@ This repository contains code to compute energy, pressure, and phase diagrams of
 Duc P. Truong, Benjamin Nebgen, Derek DeSantis, Dimiter N. Petsev, Kim Ø. Rasmussen, and Boian S. Alexandrov;
 Physical Review Materials. [DOI:10.1103/xrbw-xr49](https://doi.org/10.1103/xrbw-xr49)
 
+**[LANL Press Release](https://www.lanl.gov/media/news/0915-thor-ai)**
+
 ## Developers
  - [Duc P. Truong](https://github.com/ducptruong)
 
