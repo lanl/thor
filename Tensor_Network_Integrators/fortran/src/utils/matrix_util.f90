@@ -828,7 +828,7 @@ contains
         ! case 1: print
         !      1 2 ! 1 2 | 1 2
         !      2 3 ! 2 3 | 3 4
-        line_len= Nblocks*(block_width + 3) - 3
+        line_len= Nblocks*(block_width + 3)
         allocate(character(len=line_len) :: strings(0:max_rows))
         write (teststr, '("(",I5,"("" ""))")') line_len
         do i=0,max_rows
