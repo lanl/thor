@@ -87,7 +87,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ## Developer Test Suite
-Developer test suites are located under [```TNI/fortran/tests/```](TNI/fortran/tests/) directory.
+Developer test suites are located under [```TNI/fortran/tests/```](Tensor_Network_Integrators/fortran/tests/) directory.
 
 ## LANL HPC Installation Notes
 
