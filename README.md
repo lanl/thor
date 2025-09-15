@@ -9,7 +9,21 @@ For the collection of published examples, navigate to [```TNI```](TNI) subfolder
 
 ## How to Cite THOR
 
-Publications:
+If you used THOR for scientific publications, please include the following citation:
+```
+@techreport{alexandrov2024thor,
+  title        = {Tensors Optimized for High-level Research (THOR): an efficient and easy-to-use library for tensor networks},
+  author       = {Alexandrov, Boian and Boureima, Ismael Djibrilla and Korobkin, Oleg and Danis, Mustafa Engin},
+  institution  = {Los Alamos National Laboratory},
+  number       = {LA-UR-24-24375},
+  year         = {2024},
+  month        = {may},
+  day          = {6},
+  note         = {Approved for public release; distribution is unlimited},
+  type         = {Report}
+}
+```
+Upcoming publications:
  * Boureima et al. (in prep)
  * Truong et al. (in prep)
 
