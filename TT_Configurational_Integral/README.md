@@ -2,6 +2,13 @@
 
 This repository contains code to compute energy, pressure, and phase diagrams of atomic systems using the **Tensor-Train Configurational Integral (TTCI)** method.
 
+**Paper**: _"Breaking the curse of dimensionality: Solving configurational integrals for crystalline solids by tensor networks."_,
+Duc P. Truong, Benjamin Nebgen, Derek DeSantis, Dimiter N. Petsev, Kim Ø. Rasmussen, and Boian S. Alexandrov;
+Physical Review Materials. DOI: 10.1103/xrbw-xr49
+
+## Developers
+ - [Duc P. Truong](https://github.com/ducptruong)
+
 ## Dependencies
 
 You will need:
