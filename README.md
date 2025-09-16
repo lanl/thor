@@ -20,7 +20,7 @@ For the collection of published examples, navigate to the [Tensor Network Integr
   </a>
 </p>
 <p float="left">
-  <a href="https://github.com/lanl/thor/tree/main/Tensor_Network_Integrators/examples/Linear_STSC">
+  <a href="https://github.com/lanl/thor/tree/main/Tensor_Network_Integrators/examples/Linear-STSC">
      <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Adak2025-Fig5.png" width="55%" 
        title="Performance of the full grid, TT, and QTT solvers on the 3D CDR equation (Adak et al. 2025, Fig 5)" />
   </a>
