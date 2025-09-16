@@ -34,18 +34,18 @@ The code in this folder is derived from the following third-party libraries and 
 ## Capabilities
 
 The following capabilities are provided in [TNI](TNI):
-- [```HDI```](TNI/examples/HDI): multidimensional numerical integration using a low-rank TT ([Alexandrov et al. 2023](https://doi.org/10.3390/math11030534));
-- [```CI```](TNI/examples/CI): Solving configurational integrals for crystalline solids ([Truong et al. 2025](https://arxiv.org/abs/2505.21826));
-- [```Linear-STSC```](TNI/examples/Linear-STSC): TT space-time spectral collocation method for convection-diffusion-reaction
+- [```HDI```](examples/HDI): multidimensional numerical integration using a low-rank TT ([Alexandrov et al. 2023](https://doi.org/10.3390/math11030534));
+- [```CI```](examples/CI): Solving configurational integrals for crystalline solids ([Truong et al. 2025](https://arxiv.org/abs/2505.21826));
+- [```Linear-STSC```](examples/Linear-STSC): TT space-time spectral collocation method for convection-diffusion-reaction
            (CDR) equation ([Adak et al. 2024](https://arxiv.org/abs/2402.18073));
            with variable coefficients ([Adak et al. 2025](https://www.mdpi.com/2227-7390/13/14/2277));
-- [```Non-linear-STSC```](TNI/examples/Non-linear-STSC): space-time spectral collocation method for the nonlinear convection diffusion equation ([Adak et al. 2025](https://arxiv.org/abs/2406.02505));
-- [```Maxwell-Mimetic```](TNI/examples/Maxwell-Mimetic): mimetic finite difference method for 3D wave propagation ([Manzini et al. 2023](https://doi.org/10.1016/j.matcom.2023.03.026));
-- [```NTE```](TNI/examples/NTE): time-independent Boltzmann neutron transport equation ([Truong et al. 2024](https://www.sciencedirect.com/science/article/pii/S002199912400192X));
-- [```RK-1```](TNI/examples/RK-1): explicit and implicit Runge-Kutta integrators (Chinomona et al. 2025, LA-UR-25-25351);
-- [```SWE```](TNI/examples/SWE): high-order finite volume methods for shallow water equations with TT ([Danis et al. 2025](https://doi.org/10.1175/MWR-D-24-0165.1));
-- [```TENO```](TNI/examples/TENO): TT TENO scheme for compressible flows ([Danis et al. 2025](https://doi.org/10.2514/6.2025-0304));
-- [```WENO```](TNI/examples/WENO): TT WENO scheme for compressible flows ([Danis et al. 2025](https://doi.org/10.1016/j.jcp.2025.113891));
-- [```OpInf```](TNI/examples/OpInf): TT operator inference ([Danis et al._2025](https://doi.org/10.48550/arXiv.2509.08071));
-- [```IGA```](TNI/examples/IGA): isogeometric framework for complex geometries (Truong et al., in prep.);
-- [```Multimat```](TNI/examples/Multimat): Multimaterial hydrodynamics (Truong et al., in prep.).
+- [```Non-linear-STSC```](examples/Non-linear-STSC): space-time spectral collocation method for the nonlinear convection diffusion equation ([Adak et al. 2025](https://arxiv.org/abs/2406.02505));
+- [```Maxwell-Mimetic```](examples/Maxwell-Mimetic): mimetic finite difference method for 3D wave propagation ([Manzini et al. 2023](https://doi.org/10.1016/j.matcom.2023.03.026));
+- [```NTE```](examples/NTE): time-independent Boltzmann neutron transport equation ([Truong et al. 2024](https://www.sciencedirect.com/science/article/pii/S002199912400192X));
+- [```RK-1```](examples/RK-1): explicit and implicit Runge-Kutta integrators (Chinomona et al. 2025, LA-UR-25-25351);
+- [```SWE```](examples/SWE): high-order finite volume methods for shallow water equations with TT ([Danis et al. 2025](https://doi.org/10.1175/MWR-D-24-0165.1));
+- [```TENO```](examples/TENO): TT TENO scheme for compressible flows ([Danis et al. 2025](https://doi.org/10.2514/6.2025-0304));
+- [```WENO```](examples/WENO): TT WENO scheme for compressible flows ([Danis et al. 2025](https://doi.org/10.1016/j.jcp.2025.113891));
+- [```OpInf```](examples/OpInf): TT operator inference ([Danis et al._2025](https://doi.org/10.48550/arXiv.2509.08071));
+- [```IGA```](examples/IGA): isogeometric framework for complex geometries (Truong et al., in prep.);
+- [```Multimat```](examples/Multimat): Multimaterial hydrodynamics (Truong et al., in prep.).
