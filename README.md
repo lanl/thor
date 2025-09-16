@@ -21,11 +21,11 @@ For the collection of published examples, navigate to the [Tensor Network Integr
 </p>
 <p float="left">
   <a href="https://github.com/lanl/thor/tree/main/Tensor_Network_Integrators/examples/Linear-STSC/figures">
-     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/LinearSTSC_time.png" width="56%" 
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/LinearSTSC_time.png" width="40%" 
        title="Performance of the full grid and TT solvers on the 3D CDR equation (cf. Adak et al. 2025)" />
   </a>
   <a href="https://github.com/lanl/thor/blob/main/Tensor_Network_Integrators/examples/WENO/5.8%3Ariemann2d/Ex8_plotter.ipynb">
-     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/WENO_2DRiemann.png" width="33%" 
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/WENO_2DRiemann.png" width=45%" 
        title="Density heatmap for the 2D Riemann Problem (cf. Fig.12 in Danis et al. 2024)" />
   </a>
 </p>
