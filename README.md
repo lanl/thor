@@ -10,19 +10,19 @@ For the collection of published examples, navigate to the [Tensor Network Integr
 ## Gallery
 
 <p float="left">
-  <a href="https://github.com/lanl/thor/tree/main/Tensor_Network_Integrators/examples/HDI">
-     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Alexandrov2023HDI_Fig2.png" width="42%" 
-       title="Relative approximation error vs the number of interval per direction for the numerical integration of a d-dimensional polynomial of degree 10 (Fig.2 in Alexandrov et al. 2023)" />
+  <a href="https://github.com/lanl/thor/blob/main/Tensor_Network_Integrators/examples/HDI/02-pconvergence.ipynb">
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/HDI_pconvergence.png" width="40%" 
+       title="Relative approximation error vs the number of interval per direction for the numerical integration of a d-dimensional polynomial of degree 10 (cf. Fig.2 in Alexandrov et al. 2023)" />
   </a>
   <a href="https://github.com/lanl/thor/tree/main/TT_Configurational_Integral">
-     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Truong2025-Fig1.png" width="47%" 
-       title="Schematic illustration of the tensor-train (TT) decomposition of the Boltzmann tensor F and its application to computing the configurational integral (Fig.1 in Truong et al. 2025)." />
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Fig_Cu_FCC_smatb_energy_pressure.png" width="47%" 
+       title="Material properties of crystalline copper computed using configurational integral (see Truong et al. 2025)." />
   </a>
 </p>
 <p float="left">
-  <a href="https://github.com/lanl/thor/tree/main/Tensor_Network_Integrators/examples/Linear-STSC">
-     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Adak2025-Fig5.png" width="56%" 
-       title="Performance of the full grid, TT, and QTT solvers on the 3D CDR equation (Adak et al. 2025, Fig 5)" />
+  <a href="https://github.com/lanl/thor/tree/main/Tensor_Network_Integrators/examples/Linear-STSC/figures">
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/LinearSTSC_time.png" width="56%" 
+       title="Performance of the full grid and TT solvers on the 3D CDR equation (cf. Adak et al. 2025)" />
   </a>
   <a href="https://github.com/lanl/thor/blob/main/Tensor_Network_Integrators/examples/WENO/5.8%3Ariemann2d/Ex8_plotter.ipynb">
      <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/WENO_2DRiemann.png" width="33%" 
