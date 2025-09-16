@@ -24,9 +24,9 @@ For the collection of published examples, navigate to the [Tensor Network Integr
      <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Adak2025-Fig5.png" width="56%" 
        title="Performance of the full grid, TT, and QTT solvers on the 3D CDR equation (Adak et al. 2025, Fig 5)" />
   </a>
-  <a href="https://github.com/lanl/thor/tree/main/Tensor_Network_Integrators/examples/WENO/5.9%3AdoubleMachReflection">
-     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Danis2024-Fig12.jpg" width="33%" 
-       title="Density with 30 equally-spaced contour levels between 0.49 and 1.01 for the 2D Riemann Problem at T = 0.2 (Fig.12 in Danis et al. 2024)" />
+  <a href="https://github.com/lanl/thor/blob/main/Tensor_Network_Integrators/examples/WENO/5.8%3Ariemann2d/Ex8_plotter.ipynb">
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/WENO_2DRiemann.png" width="33%" 
+       title="Density heatmap for the 2D Riemann Problem (cf. Fig.12 in Danis et al. 2024)" />
   </a>
 </p>
 
