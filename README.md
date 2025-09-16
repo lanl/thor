@@ -19,6 +19,16 @@ For the collection of published examples, navigate to the [Tensor Network Integr
        title="Schematic illustration of the tensor-train (TT) decomposition of the Boltzmann tensor F and its application to computing the configurational integral (Fig.1 in Truong et al. 2025)." />
   </a>
 </p>
+<p float="left">
+  <a href="https://github.com/lanl/thor/tree/main/Tensor_Network_Integrators/examples/Linear_STSC">
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Adak2025-Fig5.png" width="55%" 
+       title="Performance of the full grid, TT, and QTT solvers on the 3D CDR equation (Adak et al. 2025, Fig 5)" />
+  </a>
+  <a href="https://github.com/lanl/thor/tree/main/Tensor_Network_Integrators/examples/WENO/5.9%3AdoubleMachReflection">
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Danis2024-Fig12.jpg" width="35%" 
+       title="Density with 30 equally-spaced contour levels between 0.49 and 1.01 for the 2D Riemann Problem at T = 0.2 (Fig.12 in Danis et al. 2024)" />
+  </a>
+</p>
 
 ## How to Cite THOR
 
