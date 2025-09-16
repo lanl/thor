@@ -7,6 +7,29 @@ We strive to provide a high-performance tensor library for various scientific ap
 
 For the collection of published examples, navigate to the [Tensor Network Integrators](Tensor_Network_Integrators) subdirectory. For Duc P. Truong's Tensor Train Configurational Integral code, navigate to [TT Configurational Integral](TT_Configurational_Integral).
 
+## Gallery
+
+<p float="left">
+  <a href="https://github.com/lanl/thor/blob/main/Tensor_Network_Integrators/examples/HDI/02-pconvergence.ipynb">
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/HDI_pconvergence.png" width="40%" 
+       title="Relative approximation error vs the number of interval per direction for the numerical integration of a d-dimensional polynomial of degree 10 (cf. Fig.2 in Alexandrov et al. 2023)" />
+  </a>
+  <a href="https://github.com/lanl/thor/tree/main/TT_Configurational_Integral">
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Fig_Cu_FCC_smatb_energy_pressure.png" width="47%" 
+       title="Material properties of crystalline copper computed using configurational integral (see Truong et al. 2025)." />
+  </a>
+</p>
+<p float="left">
+  <a href="https://github.com/lanl/thor/tree/main/Tensor_Network_Integrators/examples/Linear-STSC/figures">
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/LinearSTSC_time.png" width="40%" 
+       title="Performance of the full grid and TT solvers on the 3D CDR equation (cf. Adak et al. 2025)" />
+  </a>
+  <a href="https://github.com/lanl/thor/blob/main/Tensor_Network_Integrators/examples/WENO/5.8%3Ariemann2d/Ex8_plotter.ipynb">
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/WENO_2DRiemann.png" width=45%" 
+       title="Density heatmap for the 2D Riemann Problem (cf. Fig.12 in Danis et al. 2024)" />
+  </a>
+</p>
+
 ## How to Cite THOR
 
 If you used THOR for scientific publications, please include the following citation:

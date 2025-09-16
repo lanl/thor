@@ -35,7 +35,7 @@ The code in this folder is derived from the following third-party libraries and 
 
 The following capabilities are provided in [TNI](TNI):
 - [```HDI```](examples/HDI): multidimensional numerical integration using a low-rank TT ([Alexandrov et al. 2023](https://doi.org/10.3390/math11030534));
-- [```CI```](examples/CI): Solving configurational integrals for crystalline solids ([Truong et al. 2025](https://arxiv.org/abs/2505.21826));
+- [```CI```](../TT_Configurational_Integral): Solving configurational integrals for crystalline solids ([Truong et al. 2025](https://arxiv.org/abs/2505.21826));
 - [```Linear-STSC```](examples/Linear-STSC): TT space-time spectral collocation method for convection-diffusion-reaction
            (CDR) equation ([Adak et al. 2024](https://arxiv.org/abs/2402.18073));
            with variable coefficients ([Adak et al. 2025](https://www.mdpi.com/2227-7390/13/14/2277));
