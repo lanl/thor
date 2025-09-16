@@ -7,6 +7,19 @@ We strive to provide a high-performance tensor library for various scientific ap
 
 For the collection of published examples, navigate to the [Tensor Network Integrators](Tensor_Network_Integrators) subdirectory. For Duc P. Truong's Tensor Train Configurational Integral code, navigate to [TT Configurational Integral](TT_Configurational_Integral).
 
+## Gallery
+
+<p float="left">
+  <a href="https://github.com/lanl/thor/tree/main/Tensor_Network_Integrators/examples/HDI">
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Alexandrov2023HDI_Fig2.png" width="45%" 
+       title="Relative approximation error vs the number of interval per direction for the numerical integration of a d-dimensional polynomial of degree 10 (Fig.2 in Alexandrov et al. 2023)" />
+  </a>
+  <a href="https://github.com/lanl/thor/tree/main/TT_Configurational_Integral">
+     <img src="https://raw.githubusercontent.com/wiki/lanl/thor/figs/Truong2025-Fig1.png" width="45%" 
+       title="Schematic illustration of the tensor-train (TT) decomposition of the Boltzmann tensor F and its application to computing the configurational integral (Fig.1 in Truong et al. 2025)." />
+  </a>
+</p>
+
 ## How to Cite THOR
 
 If you used THOR for scientific publications, please include the following citation:
