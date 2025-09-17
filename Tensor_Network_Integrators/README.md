@@ -47,5 +47,5 @@ The following capabilities are provided in [TNI](TNI):
 - [```TENO```](examples/TENO): TT TENO scheme for compressible flows ([Danis et al. 2025](https://doi.org/10.2514/6.2025-0304));
 - [```WENO```](examples/WENO): TT WENO scheme for compressible flows ([Danis et al. 2025](https://doi.org/10.1016/j.jcp.2025.113891));
 - [```OpInf```](examples/OpInf): TT operator inference ([Danis et al._2025](https://doi.org/10.48550/arXiv.2509.08071));
-- [```IGA```](examples/IGA): isogeometric framework for complex geometries (Truong et al., in prep.);
+- [```IGA```](examples/IGA): isogeometric framework for complex geometries ([Tran et al._2025](https://doi.org/10.48550/arXiv.2509.13224));
 - [```Multimat```](examples/Multimat): Multimaterial hydrodynamics (Truong et al., in prep.).
