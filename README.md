@@ -60,6 +60,7 @@ Upcoming publications:
 - [Oleg Korobkin](mailto:korobkin@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Rahul Somasundaram](mailto:rahul@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Kim Rasmussen](mailto:kor@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Quoc Thai Tran](mailto:thai.tran@lanl.gov): Theoretial Division, Los Alamos National Laboratory
 - [Duc Truong](mailto:dptruong@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 
 ## Maintainers
