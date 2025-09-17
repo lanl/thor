@@ -51,23 +51,24 @@ Upcoming publications:
  * Truong et al. (in prep)
 
 ## Authors
+- [Dibyendu Adak](mailto:dadak@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Boian S. Alexandrov](mailto:boian@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Ismael Boureima](mailto:iboureima@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Rujeko Chinomona](mailto:crujeko@lanl.gov): Theoretical Division, Los Alamos National Laboratory
-- [William Dai](mailto:dai@lanl.gov): Theoretical Division, Los Alamos National Laboratory
-- [Engin Danis](mailto:danis@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [William Dai](mailto:dai@lanl.gov): Computational Physics Division, Los Alamos National Laboratory
+- [Engin Danis](mailto:edanis@missouri.edu): Mechanical and Aerospace Engineering, The University of Missouri
 - [Maksim Ekin Eren](mailto:maksim@lanl.gov): Information Systems and Modeling Group, Los Alamos National Laboratory ([Website](https://www.maksimeren.com/))
 - [Oleg Korobkin](mailto:korobkin@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Rahul Somasundaram](mailto:rahul@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Kim Rasmussen](mailto:kor@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Quoc Thai Tran](mailto:thai.tran@lanl.gov): Theoretial Division, Los Alamos National Laboratory
-- [Duc Truong](mailto:dptruong@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Duc P. Truong](mailto:dptruong@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 
 ## Maintainers
 - [Ismael Boureima](mailto:iboureima@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Oleg Korobkin](mailto:korobkin@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Rahul Somasundaram](mailto:rahul@lanl.gov): Theoretical Division, Los Alamos National Laboratory
-- [Duc Truong](mailto:dptruong@lanl.gov): Theoretical Division, Los Alamos National Laboratory
+- [Duc P. Truong](mailto:dptruong@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 
 ## Copyright Notice
 >© 2025. Triad National Security, LLC. All rights reserved.
