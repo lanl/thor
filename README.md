@@ -51,6 +51,7 @@ Upcoming publications:
  * Truong et al. (in prep)
 
 ## Authors
+- [Dibyendu Adak](mailto:dadak@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Boian S. Alexandrov](mailto:boian@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Ismael Boureima](mailto:iboureima@lanl.gov): Theoretical Division, Los Alamos National Laboratory
 - [Rujeko Chinomona](mailto:crujeko@lanl.gov): Theoretical Division, Los Alamos National Laboratory
