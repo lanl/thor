@@ -45,9 +45,9 @@ To have Jupyter on your local system with an interactive MATLAB code, please fol
 
 ### [FORTRAN](fortran), serial version
 
-* Clone the repo and change to `TNI/fortran` directory.
+* Clone the repo and change to [`fortran`](fortran) directory.
 * In the subdirectory `config`, find a configuration that most closely matches your system.
-* Copy it to `TNI/fortran` under the name `make.inc`. This is a system-dependent part of the Makefile.
+* Copy it to [`fortran`](fortran) under the name `make.inc`. This is a system-dependent part of the Makefile.
 * Modify it to match your compiler and the location of BLAS/LAPACK libraries.
 * Build the code using `make`. Test using `make test`.
 
