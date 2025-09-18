@@ -4,7 +4,7 @@ This folder contains applications in Matlab and Fortran, for a variety of scient
 
 ## Capabilities
 
-The following capabilities are provided in [TNI](TNI):
+The following capabilities are provided here:
 - [```HDI```](examples/HDI): multidimensional numerical integration using a low-rank TT ([Alexandrov et al. 2023](https://doi.org/10.3390/math11030534));
 - [```CI```](../TT_Configurational_Integral): Solving configurational integrals for crystalline solids ([Truong et al. 2025](https://arxiv.org/abs/2505.21826));
 - [```Linear-STSC```](examples/Linear-STSC): TT space-time spectral collocation method for convection-diffusion-reaction
