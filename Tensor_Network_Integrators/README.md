@@ -23,9 +23,14 @@ The following capabilities are provided in [TNI](TNI):
 
 ## Installation
 
-### MATLAB
-
-Please download [TT-toolbox](https://github.com/oseledets/TT-Toolbox) package at the same directory level as THOR. Refer to individual application in for additional tools.
+When cloning the git repo, make sure to pull it with all of its submodules:
+```sh
+  git clone --recursive https://github.com/lanl/thor.git
+```
+Alternatively, you can pull the submodules by running the following git command:
+```sh
+  git submodule update --init --recursive
+```
 
 ### Running MATLAB inside Jupyter Notebooks
 
