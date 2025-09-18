@@ -41,7 +41,9 @@ To have Jupyter on your local system with an interactive MATLAB code, please fol
 
 1. Have a working MATLAB with `matlab` command in your path.
 2. Use [this link](https://jupyter.org/install) for the up-to-date instructions on how to install Jupyter Notebook on your system.
-2. Install [Jupyter-MATLAB proxy](https://github.com/mathworks/jupyter-matlab-proxy).
+3. Install [Jupyter-MATLAB proxy](https://github.com/mathworks/jupyter-matlab-proxy).
+
+If you do not wish or cannot install Jupyter, you can also open the examples stored in this repo with a browser, and copy the Matlab code to an `*.m` file to run them directly in Matlab.
 
 ### [FORTRAN](fortran), serial version
 
