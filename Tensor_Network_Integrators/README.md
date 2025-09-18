@@ -27,7 +27,7 @@ When cloning the git repo, make sure to pull it with all of its submodules:
 ```sh
   git clone --recursive https://github.com/lanl/thor.git
 ```
-Alternatively, you can pull the submodules by running the following git command:
+Alternatively, you can pull the submodules after cloning, by running the following git command:
 ```sh
   git submodule update --init --recursive
 ```
