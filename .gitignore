@@ -12,4 +12,5 @@ core.[0-9]*
 *.priv
 *.dat
 .*.swp
+.ipynb_checkpoints
 make.inc
