@@ -1,0 +1,9 @@
+[submodule "Tensor_Network_Integrators/matlab/utils/chebfun"]
+	path = Tensor_Network_Integrators/matlab/utils/chebfun
+	url = https://github.com/chebfun/chebfun.git
+[submodule "Tensor_Network_Integrators/matlab/utils/tt-toolbox"]
+	path = Tensor_Network_Integrators/matlab/utils/tt-toolbox
+	url = https://github.com/oseledets/TT-Toolbox.git
+[submodule "Tensor_Network_Integrators/fortran/utils/stdlib"]
+	path = Tensor_Network_Integrators/fortran/utils/stdlib
+	url = https://github.com/fortran-lang/stdlib
