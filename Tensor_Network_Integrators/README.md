@@ -27,7 +27,18 @@ The following capabilities are provided in [TNI](TNI):
 
 Please download [TT-toolbox](https://github.com/oseledets/TT-Toolbox) package at the same directory level as THOR. Refer to individual application in for additional tools.
 
-### FORTRAN (serial version in [```TNI/fortran```](TNI/fortran))
+## Running MATLAB inside Jupyter Notebooks
+
+The [Jupyter Notebook](https://jupyter.org/) is a server-client application, very popular in Python community, that allows editing and running interactive notebooks with notes interspersed with the code, via a web browser. Jupyter can be installed on a wide variety of platforms, and run not only with Python but also with other programming languages, including MATLAB.  
+
+All of the examples in the [```examples```](examples) subdirectory are documented in Jupyter notebooks. 
+To have Jupyter on your local system with an interactive MATLAB code, please follows these steps:
+
+1. Have a working MATLAB/
+2. Use [this link](https://jupyter.org/install) for the up-to-date instructions on how to install Jupyter Notebook on your system.
+2. Follow [these instructions](https://github.com/mathworks/jupyter-matlab-proxy?tab=readme-ov-file#run-matlab-code-in-a-jupyter-notebook) for an installation of a MATLAB engine for Jupyter.
+
+### [FORTRAN](fortran), serial version)
 
 * Clone the repo and change to `TNI/fortran` directory.
 * In the subdirectory `config`, find a configuration that most closely matches your system.
