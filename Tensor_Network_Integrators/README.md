@@ -39,9 +39,9 @@ The [Jupyter Notebook](https://jupyter.org/) is a server-client application, ver
 All of the examples in the [```examples```](examples) subdirectory are documented in Jupyter notebooks. 
 To have Jupyter on your local system with an interactive MATLAB code, please follows these steps:
 
-1. Have a working MATLAB/
+1. Have a working MATLAB with `matlab` command in your path.
 2. Use [this link](https://jupyter.org/install) for the up-to-date instructions on how to install Jupyter Notebook on your system.
-2. Follow [these instructions](https://github.com/mathworks/jupyter-matlab-proxy?tab=readme-ov-file#run-matlab-code-in-a-jupyter-notebook) for an installation of a MATLAB engine for Jupyter.
+2. Install [Jupyter-MATLAB proxy](https://github.com/mathworks/jupyter-matlab-proxy).
 
 ### [FORTRAN](fortran), serial version
 
