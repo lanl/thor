@@ -110,26 +110,3 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-## Developer Test Suite
-Developer test suites are located under [```TNI/fortran/tests/```](Tensor_Network_Integrators/fortran/tests/) directory.
-
-## LANL HPC Installation Notes
-
-### Darwin
-```shell
-salloc -p general
-cd fortran
-. load_env.sh intel
-make -j
-make test # optional
-```
-
-### Chicoma
-```shell
-salloc --qos=debug --reservation=debug --partition=debug
-cd fortran
-. load_env.sh chicoma
-make -j
-make test # optional
-```
