@@ -8,3 +8,4 @@ cd thor/Tensor_Network_Integrators/matlab/data
 wget https://github.com/lanl/thor-data/archive/refs/heads/main.zip
 unzip main.zip
 ```
+This should create a folder `thor-data-main`.
