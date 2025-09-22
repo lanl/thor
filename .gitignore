@@ -14,3 +14,5 @@ core.[0-9]*
 .*.swp
 .ipynb_checkpoints
 make.inc
+
+Tensor_Network_Integrators/matlab/data/thor-data-main/

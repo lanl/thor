@@ -1,0 +1,19 @@
+               Tpod: 1.3853
+                  G: {2x1 cell}
+                 j1: 5
+                 j2: 501
+                 xp: [13120x1 double]
+               xptt: [13120x1 tt_tensor]
+              xphat: [751x33 double]
+              t_ode: [751x1 double]
+                  n: 33
+    retained_energy: 0
+                  A: [33x33 double]
+                  F: [33x561 double]
+                  B: []
+                  D: [1091x594 double]
+                  R: [1091x33 double]
+             Tlearn: 0.1645
+           Tpredict: 0.0250
+           Telapsed: 1.6328
+
