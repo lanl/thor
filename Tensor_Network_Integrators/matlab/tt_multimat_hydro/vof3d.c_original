@@ -1,0 +1,5109 @@
+#include <assert.h>
+#include <math.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <sys/time.h>
+#include <time.h>
+#include "mesh.h" 
+#include "vof3d.h"
+#include "util.h" 
+
+static int dim = 3; 
+
+static double accuracy = 1.0e-07;
+static double dzmin    = 0.0;     // to be reset cell by cell  
+static int    niter_mx = 25;
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+void reconstruct3d_nmat_pagosa(double *xl, double *dx,
+                        int ***nmat_mesh, int ****matid_mesh, double ****vf_mesh,
+                        int *nnode_final, double **coords_final,
+                        int *nnode_for_minterface, int ***nodes_for_minterface,
+                        int *nface_for_mat, int ***nnode_for_face_ea_mat,
+                        int ***nodelist_for_face_ea_mat);
+
+
+void reconstruct3d_nmat(double *xl, double *dx, int nmat, double *vf_ea_mat,
+                        double *norm_ea_mat, double *priority_ea_mat,
+                        int *nnode_out, double **coords_out,
+                        int *nnode_for_minterface, int ***nodes_for_minterface,
+                        int *nface_for_mpoly, int ***nnode_for_face_ea_mpoly,
+                        int ***nodelist_for_face_ea_mpoly);
+
+void interface3d_nmat_planar(double *x0_scale, double dx_scale,
+                      int nface, int nnode, double *coords,
+                      int *nnode_for_face, int *nodelist_for_face,
+                      double cell_vol, int nmat, double *vol_ea_mat,
+                      double *normals_ea_mat, double *priority_ea_mat,
+                      int *nnode_final, double **coords_final,
+            int *nnode_ea_interface, int **nodelist_for_face_ea_interface,
+            int *faceindexlow_of_interface, int *faceindexhgh_of_interface,
+            int **ifintersected_face_of_interface,
+            int **nodelist_intersected_face_of_interface,
+            int **nodes2_in_between_of_interface,
+            int *nface_ea_mat, int **nnode_for_face_ea_mat, int **nodelist_for_face_ea_mat, int **face2old_ea_mat);
+
+void polyhedron_plane1(int nface, int nnode, double *coords,
+                      int *nnode_ea_face, int *nodelist_for_face,
+                      double *norm_plane, double ds_plane,
+
+          int *nnode_tot, double **coords_tot,
+          int *nnode_interface, int **nodes_interface, int **interfacenode_to_edge,
+          int *nface_lower, int **nnode_ea_face_lower, int **nodelist_for_face_lower,
+          int *nface_upper, int **nnode_ea_face_upper, int **nodelist_for_face_upper);
+
+void polyhedron_plane0(int nface, int nedge, int nnode, double *coords,
+                      int *nnode_ea_face, int *nodelist_for_face,
+                      int *edgelist_for_face, int *nodelist_for_edge,
+                      int *facelist_for_edge, int *nedge_ea_node, int *edgelist_for_node,
+                      double *norm_plane, double ds_plane,
+
+                      int *nnode_tot, double **coords_tot,
+           int *nnode_interface, int **nodes_interface, int **interfacenode_to_edge,
+           int *nface_lower, int **nnode_ea_face_lower, int **nodelist_for_face_lower,
+           int *nface_upper, int **nnode_ea_face_upper, int **nodelist_for_face_upper);
+
+void get_own_nodes(int nnode_tot, double *coords_tot,
+          int nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower,
+          int nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper,
+
+          int *nnode_lower, int *nnode_upper,
+          double **coords_lower, double **coords_upper);
+
+void get_scaling(int nnode, double *coords, double *xmin, double *dxmax);
+
+void trim_nodes(int dim, int nface, int nnode_all, double *coords_all,
+                int *nnode_for_face, int *nodelist_for_face,
+                int offset_node,
+                int *nnode_clean, int **node_new2old, double **coords);
+
+void reset_nodelist(int offset_node, int nnode, int *node_new2old,
+                    int nface, int *nnodde_for_face, int *nodelist_for_face);
+
+void reset_interface(int offset_node, int nnode, int *node_new2old,
+                    int nnode_for_interface, int *nodelist_for_interface);
+
+void interface3d(double *x0_scale, double dx_scale,
+                 int nface, int nnode, double *coords,
+                 int *nnode_for_face, int *nodelist_for_face,
+                 double cell_vol, double vf_to_match, double *normal,
+                 int *ifinterface,
+                 int *nnode_new,  double **coords_new,
+                 int *nnode_for_interface, int **nodelist_for_interface,
+                 int *faceindexlow_of_interface, int *faceindexhgh_of_interface,
+                 int *ifintersected_face, int *nodelist_intersected_face, int **nodes2_in_between,
+                 int *nface_lower, int *nnode_for_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+                 int *nface_upper, int *nnode_for_face_upper, int *nodelist_for_face_upper, int *face2old_upper);
+
+void cal_distance(double vf_to_match, double volume, double *norm,
+                int nface, int nnode, double *coords,
+                int *nnode_ea_face, int *nodelist_for_face,
+                double *distance,
+                int *nnode_output, double **coords_output,
+                int *nnode_interface, int **nodelist_for_interface,
+        int *faceindexlow_of_interface, int *faceindexhgh_of_interface,
+        int *ifintersected_face, int *nodelist_intersected_face, int **nodes2_in_between,
+        int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+        int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper);
+
+void cal_distance_z(double vf_to_match, double volume,
+                 int nface, int nnode,
+                 double *coords,
+                 int *nnode_ea_face, int *nodelist_for_face,
+                 int *node_order_for_ds, double *ds_ea_node,
+                 double *distance,
+                 int *nnode_output, double **coords_output,
+                 int *nnode_interface, int **nodelist_for_interface,
+      int *faceindexlow_of_interface, int *faceindexhgh_of_interface,
+      int *ifintersected_face, int *nodelist_intersected_face, int **nodes2_in_between,
+
+      int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+      int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper);
+
+void divide_z(int nface, int nnode, double *coords,
+                 double ds, int *node_loc,
+                 int *nnode_ea_face, int *nodelist_for_face,
+
+                 int nedge, int *edgelist_for_face, int *nodelist_for_edge,
+                 int *nedge_ea_node, int *edgelist_for_node,
+                 int *facelist_for_edge, double **norm_ea_face,
+
+                 int nnode_input, double *coords_input,
+                 int nnode_interface, int *nodes_interface,
+                 int *interface_node_to_edge,
+                 int *faceindexlow_of_upper_interface, int *faceindexhgh_of_upper_interface,
+
+                 int *nnode_tot, double **coords_tot,
+        int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+        int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper);
+
+void get_lower_upper_polyhedron(int nface, int nedge, int nnode,
+                             int *nnode_ea_face, int *nodelist_for_face,
+                             int *edgelist_for_face, int *nodelist_for_edge,
+                             int nnode_new, int *edge_to_node,
+                             int nnode_interface, int *nodes_interface,
+                             int *node_loc, int *edge_loc,
+                             int interface_is_face,
+         int *faceindexlow_of_upper_interface, int *faceindexhgh_of_upper_interface,
+         int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+         int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper); 
+
+void bisection_z(double vf_to_match, double volume,
+                 double ds_lower, double ds_upper,
+                 double vf_lower, double vf_upper,
+                 int nface, int nedge, int nnode,
+                 double *coords,
+
+                 int *nnode_ea_face, int *nodelist_for_face,
+                 int *edgelist_for_face, int *nodelist_for_edge,
+
+                 double *ds, int *nnode_tot, double **coords_tot,
+      int *nnode_for_interface, int **nodelist_for_interface, int **interface_node_to_edge,
+      int *faceindexlow_of_upper_interface, int *faceindexhgh_of_upper_interface,
+      int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+      int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper);
+
+void bounds_z(double vf_to_match, double volume,
+              int nface, int nnode,
+              double *coords,
+              int *nnode_ea_face, int *nodelist_for_face,
+              int *node_order_for_ds, double *ds_ea_node,
+
+              int my_nedge, int *my_edgelist_for_face,
+              int *my_nodelist_for_edge,
+              int *my_nedge_ea_node, int *my_edgelist_for_node,
+              int *my_facelist_for_edge,
+              double **my_norm_ea_face,
+
+              double *ds_lower, double *ds_upper, double *vf_lower, double *vf_upper,
+              int *nnode_tot, double **coords_tot,
+
+              int *vol_matched,
+              int *nnode_upper_interface, int **nodelist_upper_interface,
+              int *faceindexlow_of_upper_interface, int *faceindexhgh_of_upper_interface,
+              int *ifintersected_face, int *nodelist_intersected_face, int **nodes2_in_between,
+              int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+              int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper);
+
+void find_interface_z(int nface, int nedge, int nnode, double *coords,
+                    int *nnode_ea_face, int *nodelist_for_face,
+                    int *edgelist_for_face, int *nodelist_for_edge,
+                    int *nedge_ea_node, int *edgelist_for_node,
+                    int *facelist_for_edge, int *node_loc, double ds,
+
+                    int *nnode_tot, double **coords_tot,
+                    int *nnode_interface, int *nodelist_for_interface,
+                    int *interfacenode_to_edge);
+
+void interface_face_intersect(int nface, int nedge, int nnode,
+                              int *nnode_for_face, int *nodelist_for_face, int *edgelist_for_face,
+                              int *nodelist_for_edge, int *facelist_for_edge,
+                              int *nedge_for_node, int *edgelist_for_node,
+                              int nnode_tot, int nnode_interface, int *nodelist_for_interface,
+                              int *interface_node_to_edge, int *ifintersected_face,
+                              int *nodelist_intersected_face, int **nodes2_in_between);
+
+void get_planar_poly(int nface, int nnode, double *coords,
+                     int *nnode_for_face, int *nodelist_for_face, int *ifcoplane_for_face,
+                     int *nface_ext, int *nnode_ext, double **coords_ext,
+                     int **nnode_for_face_ext, int **nodelist_for_face_ext);
+
+void rotate_to_norm(double *norm, int nnode, double *coords_s, double *coords_t);
+
+void rotate_back(double *norm, int nnode, double *coords_s, double *coords_t);
+
+void get_faces_ea_edge(int nface, int nedge, int nnode,
+                       int *nnode_ea_face, int *nodelist_for_face,
+                       int *edgelist_for_face, int *nodelist_for_edge,
+                       int *facelist_for_edge,
+                       int **nedge_ea_node, int **edgelist_for_node);
+
+void cal_norm_of_face(int nface, int nnode, double *coords,
+                      int *nnode_ea_face, int *nodelist_for_face,
+                      int *edgelist_for_face, double *interior_point,
+                      double *norm_ea_face);
+
+void get_interior_point(int dim, int nface, int nnode, double *coords,
+                        int *nnode_ea_face, int *nodelist_for_face,
+                        double *interior_point);
+
+void line_intersect_z(double *c0, double *c1, double zint, double *point);
+
+void cal_zone_ctr(int nface, int nnode, double *coords, int *nnode_for_face, int *nodelist_for_face, double *ctr);
+
+void cal_ctr(int nnode, double *coords, double *ctr);
+
+void cal_face_ctr(int nnode, double *coords, int nnode_this_face, int *nodelist, double *fctr);
+
+int face_coplane(int nnode, double *coords, int nnode_this_face, int *nodelist);
+
+void least_square(int dim, double v0, double *ctr,
+                  int nneighb, double *v_neighb, double *ctr_neighb,
+                  double *grad);
+
+double tet_vol(double *a, double *b, double *c, double *d); 
+
+void coords_scale(int ndim, double *x0_scale, double dx_scale,
+                  int nnode, double *coords, double *coords_scaled);
+
+void coords_scale_back(int ndim, double *x0_scale, double dx_scale,
+                       int nnode, double *coords);
+
+void sort_nodes_3d(int dim, int nnode, double *coords, int *node2edge,
+                int *nodelist_new, int *node2edge_new);
+
+void poly_overlap(int nnode1, double *coords1, int nnode_poly1, int *nodes_poly1, double *normal_poly1,
+                  int nnode2, double *coords2, int nnode_poly2, int *nodes_poly2, double *normal_poly2,
+                  int *nnode_overlap, double **coords_overlap, double *area_overlap,
+                  double *ctr_overlap);
+
+void sort_nodes(int nnode, double *coords, int *node2edge,
+                int *nodelist_new, int *node2edge_new, int *err);
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+void reconstruct3d_nmat_pagosa(double *xl, double *dx, 
+                        int ***nmat_mesh, int ****matid_mesh, double ****vf_mesh, 
+                        int *nnode_final, double **coords_final, 
+                        int *nnode_for_minterface, int ***nodes_for_minterface, 
+                        int *nface_for_mat, int ***nnode_for_face_ea_mat, 
+                        int ***nodelist_for_face_ea_mat)
+{ 
+     int dim, i, j, k, idx, nmat, m;
+     int n, nn_new, nnew, nnode, nnode_max, nface, nnode_out, f, nf, nn, nn_ea_face;  
+     int nm_neighb, m_neighb, m_other, ifinterface, faceindexlow, faceindexhgh; 
+     int nface_lower, nface_upper, nnode_interface, lsize, nfsum, nnode_previous, offset; 
+     int *nodelist_interface;
+     int *nnode_for_face_lower, *nodelist_for_face_lower; 
+     int *nnode_for_face_upper, *nodelist_for_face_upper; 
+     int nnode_for_face[6], nodelist_for_face[24], *nodelist; 
+     int *ids, *ids_neighb; 
+
+     double cell_vol, dx_max, priority_max, priority, vsq, factor; 
+     double vfs[2][3][3][3], mydx[3], norms[2][3], norm[3], grad[3];
+     double *mynorm, *coords, *coords_out, *c0, *c;
+
+     int *nodes2_in_between; 
+     int *ifintersected_face, *nodelist_intersected_face, *face2old_lower, *face2old_upper; 
+     int **nodes_for_minterface_tmp, **nnode_for_face_ea_mat_tmp, **nodelist_for_face_ea_mat_tmp; 
+
+     dim = 3;
+     nn_ea_face = 4;
+
+     dx_max = 0.0;
+     for (i = 0; i < dim; i++) { 
+         if (dx[i] > dx_max) dx_max = dx[i];
+     }
+     cell_vol = 1.0;
+     for (i = 0; i < dim; i++) {
+         mydx[i] = dx[i]/dx_max;
+         cell_vol *= mydx[i];
+     }
+     nnode = 8;
+     coords = (double *) malloc(nnode * dim * sizeof(double)); 
+     c0 = coords;
+     c0[0] = 0.0;
+     c0[1] = 0.0;
+     c0[2] = 0.0;
+     
+     c = c0 + dim;
+     memcpy(c, c0, (size_t)(dim * sizeof(double)));
+     c[0] = mydx[0];
+     c0 = c;
+
+     c  = c0 + dim; 
+     memcpy(c, c0, (size_t)(dim * sizeof(double)));
+     c[1] = mydx[1]; 
+     c0 = c; 
+ 
+     c  = c0 + dim; 
+     memcpy(c, c0, (size_t)(dim * sizeof(double))); 
+     c[0] = 0.0;  
+     c0 = c;  
+     
+     c = c0 + dim;
+     memcpy(c, coords, (size_t)(dim * sizeof(double))); 
+     c[2] = mydx[2]; 
+     c0   = c;
+ 
+     c = c0 + dim;
+     memcpy(c, c0, (size_t)(dim * sizeof(double)));
+     c[0] = mydx[0];
+     c0 = c;
+
+     c  = c0 + dim;
+     memcpy(c, c0, (size_t)(dim * sizeof(double)));
+     c[1] = mydx[1];
+     c0 = c;
+
+     c  = c0 + dim;
+     memcpy(c, c0, (size_t)(dim * sizeof(double)));
+     c[0] = 0.0;
+     c0 = c;
+
+     nmat = nmat_mesh[1][1][1];
+
+     nnode_max = nnode * nmat;
+     *coords_final = (double *) malloc(nnode_max * dim * sizeof(double));
+     memcpy(*coords_final, coords, (size_t)(nnode * dim * sizeof(double)));
+     *nnode_final = nnode;
+
+     nface = 6;
+     for (i = 0; i < nface; i++) { 
+         nnode_for_face[i] = 4;
+     } 
+//   x0 
+     nodelist = nodelist_for_face;
+     nodelist[0] = 0;
+     nodelist[1] = 4;
+     nodelist[2] = 7;
+     nodelist[3] = 3;
+//   x1 
+     nodelist += nn_ea_face;
+     nodelist[0] = 1;
+     nodelist[1] = 2;
+     nodelist[2] = 6;
+     nodelist[3] = 5; 
+//   y0 
+     nodelist += nn_ea_face;
+     nodelist[0] = 0;
+     nodelist[1] = 1;
+     nodelist[2] = 5;
+     nodelist[3] = 4;
+//   y1
+     nodelist += nn_ea_face;
+     nodelist[0] = 2;
+     nodelist[1] = 3;
+     nodelist[2] = 7;
+     nodelist[3] = 6;
+//   z0 
+     nodelist += nn_ea_face;
+     nodelist[0] = 0;
+     nodelist[1] = 3;
+     nodelist[2] = 2;
+     nodelist[3] = 1;
+//   y1
+     nodelist += nn_ea_face;
+     nodelist[0] = 4;
+     nodelist[1] = 5;
+     nodelist[2] = 6;
+     nodelist[3] = 7;
+
+     ifintersected_face        = (int *) malloc(nface * sizeof(int)); 
+     nodelist_intersected_face = (int *) malloc((nface + nface) * sizeof(int));
+     face2old_lower            = (int *) malloc((nface + 1) * sizeof(int));
+     face2old_upper            = (int *) malloc((nface + 1) * sizeof(int));     
+
+     nodes_for_minterface_tmp     = (int **) malloc((nmat -1) * sizeof(int *));
+     nnode_for_face_ea_mat_tmp    = (int **) malloc(nmat * sizeof(int *));
+     nodelist_for_face_ea_mat_tmp = (int **) malloc(nmat * sizeof(int *)); 
+
+     for (m = 0; m < nmat; m++) { 
+         nnode_for_face_ea_mat_tmp[m] = NULL;
+         nodelist_for_face_ea_mat_tmp[m] = NULL;
+     }
+     for (k = 0; k <= 2; k++) { 
+         for (j = 0; j <= 2; j++) {
+             for (i = 0; i <= 2; i++) {
+                 vfs[0][k][j][i] = 0.0;
+             }
+         }
+     } 
+     nmat = nmat_mesh[1][1][1]; 
+     for (m = 0; m < nmat-1; m++) { 
+         for (k = 0; k <= 2; k++) {  
+             for (j = 0; j <= 2; j++) {
+                 for (i = 0; i <= 2; i++) { 
+                     if ((k == 1) && (i == 1) && (j == 1)) continue;
+                     vfs[1][k][j][i] = 0.0;  
+                 }
+             }
+         } 
+         vfs[0][1][1][1] += vf_mesh[1][1][1][m];   // vfs[inner:outer][k][j][i]
+         vfs[1][1][1][1]  = 1.0 - vfs[0][1][1][1]; 
+          
+         ids = matid_mesh[1][1][1];
+         for (k = 0; k <= 2; k++) { 
+             for (j = 0; j <= 2; j++) { 
+                 for (i = 0; i <= 2; i++) {  
+                     if ((i == 1) && (j == 1) && (k == 1)) continue; 
+    
+                     nm_neighb  = nmat_mesh[k][j][i]; 
+                     ids_neighb = matid_mesh[k][j][i];  
+                     for (m_neighb = 0; m_neighb < nm_neighb; m_neighb++) { 
+                         if (ids_neighb[m_neighb] == ids[m]) { 
+                             vfs[0][k][j][i] += vf_mesh[k][j][i][m_neighb];     
+                         } 
+                         else { 
+                             for (m_other = m + 1; m_other < nmat; m_other++) { 
+                                 if (ids_neighb[m_neighb] == ids[m_other]) { 
+                                     vfs[1][k][j][i] += vf_mesh[k][j][i][m_neighb]; 
+                                     break;
+                                 }
+                             }
+                         } 
+                     }
+                 }
+             } 
+         } 
+//       now, we have the distribution of vfs[0] and vfs[1] each of which is a 2x2 mesh 
+         
+         priority_max = 0.0;
+         idx = 0;
+         for (m_other = 0; m_other < 2; m_other++) { 
+             mynorm = norms[m_other]; 
+             cal_cell_zgrad3d(dx, vfs[m_other], grad);
+             vsq = 0.0;
+             for (i = 0; i < dim; i++) {
+                 mynorm[i] = - grad[i];
+                 vsq += (mynorm[i] * mynorm[i]);
+             }
+             factor = sqrt(vsq); 
+             priority = factor * sqrt(vfs[m_other][1][1][1]);
+             if (priority > priority_max) {  
+                 idx = m_other;
+             }
+             factor = 1.0/(factor + tiny);
+             for (i = 0; i < dim; i++) {
+                 mynorm[i] *= factor;
+             }
+         } 
+         mynorm = norms[idx];
+         if (idx == 1) {
+             for (i = 0; i < dim; i++) { 
+                 norm[i] = - mynorm[i];
+             }
+         }
+         else { 
+             for (i = 0; i < dim; i++) { 
+                 norm[i] = mynorm[i];
+             }
+         } 
+         nnode_out = 0;   
+         coords_out = NULL;
+         nnode_interface = 0;
+         nodelist_interface = NULL;
+
+         nface_lower = 0;
+         nnode_for_face_lower    = (int *) malloc((nface + 1) * sizeof(int));
+         nodelist_for_face_lower = (int *) malloc((nface + 1) * 8 * sizeof(int));
+
+         nface_upper = 0;
+         nnode_for_face_upper    = (int *) malloc((nface + 1) * sizeof(int));
+         nodelist_for_face_upper = (int *) malloc((nface + 1) * 8 * sizeof(int));
+
+         nodes2_in_between = NULL;
+
+         interface3d(NULL, dx_max,
+                     nface, nnode, coords,
+                     nnode_for_face, nodelist_for_face,
+                     cell_vol, vfs[0][1][1][1], norm,
+                     &ifinterface,
+                     &nnode_out,  &coords_out,
+                 &nnode_interface, &nodelist_interface,
+                 &faceindexlow, &faceindexhgh,
+                 ifintersected_face, nodelist_intersected_face, &nodes2_in_between,
+                 &nface_lower, nnode_for_face_lower, nodelist_for_face_lower, face2old_lower,
+                 &nface_upper, nnode_for_face_upper, nodelist_for_face_upper, face2old_upper);
+
+         if (*nnode_final + (nnode_out - nnode) > nnode_max) { 
+             nnode_max += nmat * (nnode_out - nnode);
+             *coords_final = (double *) realloc(*coords_final, (size_t)(nnode_max * dim * sizeof(double))); 
+         }
+         nn_new = nnode_out - nnode; 
+         memcpy(*coords_final + (*nnode_final * dim), coords_out + (nnode * dim), 
+                (size_t)(nn_new * dim * sizeof(double)));
+         if (coords_out) free(coords_out); 
+
+         nnode_for_minterface[m] = nnode_interface;
+
+         if (nnode_interface > 2) {  
+             for (i = 0; i < nnode_interface; i++) {
+                 n = nodelist_interface[i];
+                 if (n >= nnode) {
+                     nnew = n - nnode;
+                     nodelist_interface[i] = *nnode_final + nnew;
+                 }
+             }
+         }
+         nodelist = nodelist_for_face_lower; 
+         for (f = 0; f < nface_lower; f++) { 
+             nn = nnode_for_face_lower[f];
+             for (i = 0; i < nn; i++) { 
+                 n = nodelist[i];
+                 if (n > nnode) { 
+                     nnew = n - nnode; 
+                     nodelist[i] = *nnode_final + nnew; 
+                 }
+             }
+             nodelist += nn;
+         }  
+         nface_for_mat[m]                = nface_lower; 
+         nodes_for_minterface_tmp[m] = nodelist_interface;
+         nnode_for_face_ea_mat_tmp[m] = nnode_for_face_lower;
+         nodelist_for_face_ea_mat_tmp[m] = nodelist_for_face_lower;
+         
+         if (m < nmat - 2) { 
+             if (nnode_for_face_upper) free(nnode_for_face_upper);
+             if (nodelist_for_face_upper) free(nodelist_for_face_upper); 
+         }
+         nnode_previous = *nnode_final;    // for the last nodelist_upper 
+         *nnode_final  += nn_new;
+     }
+     *coords_final = (double *) realloc(*coords_final, (size_t)((*nnode_final) * dim * sizeof(double)));
+
+     nodelist = nodelist_for_face_upper;
+     for (f = 0; f < nface_upper; f++) {
+         nn = nnode_for_face_upper[f];
+         for (i = 0; i < nn; i++) {
+             n = nodelist[i];
+             if (n > nnode) {
+                 nnew = n - nnode;
+                 nodelist[i] = nnode_previous  + nnew;
+             }
+         }
+         nodelist += nn;
+     }
+     nface_for_mat[m]                = nface_upper;  
+     nnode_for_face_ea_mat_tmp[m]    = nnode_for_face_upper; 
+     nodelist_for_face_ea_mat_tmp[m] = nodelist_for_face_upper; 
+
+    
+
+     lsize = 0;
+     for (m = 0; m < nmat - 1; m++) { 
+         lsize += nnode_for_minterface[m];
+     }
+     *nodes_for_minterface      = (int **) malloc((nmat - 1) * sizeof(int *));
+     (*nodes_for_minterface)[0] = (int  *) malloc(lsize * sizeof(int));
+     for (m = 1; m < nmat - 1; m++) { 
+         (*nodes_for_minterface)[m] = (*nodes_for_minterface)[m-1] + nnode_for_minterface[m-1];
+     }
+     for (m = 0; m < nmat - 1; m++) { 
+         nn = nnode_for_minterface[m]; 
+         memcpy((*nodes_for_minterface)[m], nodes_for_minterface_tmp[m], (size_t)(nn * sizeof(int)));
+         free(nodes_for_minterface_tmp[m]);
+     }
+     free(nodes_for_minterface_tmp);  
+
+     nfsum = 0;
+     lsize = 0;  
+     for (m = 0; m < nmat; m++) { 
+         nf = nface_for_mat[m];
+         for (f = 0; f < nf; f++) { 
+             lsize += nnode_for_face_ea_mat_tmp[m][f];
+         }
+         nfsum += nf;
+     } 
+     *nnode_for_face_ea_mat      = (int **) malloc(nmat * sizeof(int *));
+     (*nnode_for_face_ea_mat)[0] = (int  *) malloc(nfsum * sizeof(int));
+     for (m = 1; m < nmat; m++) { 
+         (*nnode_for_face_ea_mat)[m] = (*nnode_for_face_ea_mat)[m-1] + nface_for_mat[m-1];  
+     } 
+     for (m = 0; m < nmat; m++) { 
+         nf = nface_for_mat[m];
+         memcpy((*nnode_for_face_ea_mat)[m], nnode_for_face_ea_mat_tmp[m], (size_t)(nf * sizeof(int)));
+         free(nnode_for_face_ea_mat_tmp[m]);
+     }
+     free(nnode_for_face_ea_mat_tmp);
+
+     *nodelist_for_face_ea_mat      = (int **) malloc(nmat * sizeof(int *)); 
+     (*nodelist_for_face_ea_mat)[0] = (int  *) malloc(lsize * sizeof(int));
+     lsize = 0;
+     nf = nface_for_mat[0];
+     for (f = 0; f < nf; f++) { 
+         lsize += (*nnode_for_face_ea_mat)[0][f];
+     }
+     memcpy((*nodelist_for_face_ea_mat)[0], nodelist_for_face_ea_mat_tmp[0], (size_t)(lsize * sizeof(int)));
+     free(nodelist_for_face_ea_mat_tmp[0]); 
+     for (m = 1; m < nmat; m++) { 
+         (*nodelist_for_face_ea_mat)[m] = (*nodelist_for_face_ea_mat)[m-1] + lsize;
+         lsize = 0;
+         nf = nface_for_mat[m];
+         for (f = 0; f < nf; f++) { 
+             lsize += (*nnode_for_face_ea_mat)[m][f]; 
+         }
+         memcpy((*nodelist_for_face_ea_mat)[m], nodelist_for_face_ea_mat_tmp[m], (size_t)(lsize * sizeof(int))); 
+         free(nodelist_for_face_ea_mat_tmp[m]);
+     }
+     free(nodelist_for_face_ea_mat_tmp);
+
+//   put the coordinates back 
+     for (n = 0; n < *nnode_final; n++) { 
+         c = *coords_final + (n * dim);
+         for (i = 0; i < dim; i++) {
+             c[i] = xl[i] + dx_max * c[i];
+         }   
+     }
+     free(ifintersected_face);
+     free(nodelist_intersected_face);
+     free(face2old_lower);
+     free(face2old_upper);  
+
+     free(coords); 
+
+     return;
+ } 
+
+void reconstruct3d_nmat(double *xl, double *dx, int nmat, double *vf_ea_mat, 
+                        double *norm_ea_mat, double *priority_ea_mat, 
+                        int *nnode_out, double **coords_out, 
+                        int *nnode_for_minterface, int ***nodes_for_minterface, 
+                        int *nface_for_mpoly, int ***nnode_for_face_ea_mpoly, 
+                        int ***nodelist_for_face_ea_mpoly)
+{ 
+     int dim, i, m, n, nnode, nface, f, nf, nn, nn_ea_face, offset;  
+     int lsize, nfsum; 
+     int nnode_for_face[6], nodelist_for_face[24], *nodelist, *nodelist_s; 
+
+     int **nodelist_for_face_ea_interface, **ifintersected_face_of_interface;
+     int **nodelist_intersected_face_of_interface, **nodes2_in_between_of_interface;
+   
+     int *faceindexlow_of_interface, *faceindexhgh_of_interface;
+     int **face2old_ea_mat, **nnode_for_face_ea_mat, **nodelist_for_face_ea_mat;
+
+     double cell_vol, dx_max, dxinv; 
+     double *coords, *c0, *c, dx_scaled[3], *vol_ea_mat;
+     
+     dim = 3;
+     nn_ea_face = 4;
+
+     vol_ea_mat = (double *) malloc(nmat * sizeof(double));
+
+     dx_max = 0.0;
+     for (i = 0; i < dim; i++) { 
+         if (dx[i] > dx_max) dx_max = dx[i];
+     }
+     dxinv = 1.0/dx_max; 
+     cell_vol = 1.0;
+     for (i = 0; i < dim; i++) {
+         dx_scaled[i] = dxinv * dx[i];
+         cell_vol *= dx_scaled[i];
+     } 
+     for (m = 0; m < nmat; m++) { 
+         vol_ea_mat[m] = cell_vol * vf_ea_mat[m];
+     }
+     nnode = 8;
+     coords = (double *) malloc(nnode * dim * sizeof(double)); 
+     c0 = coords;
+     c0[0] = 0.0;
+     c0[1] = 0.0;
+     c0[2] = 0.0;
+     
+     c = c0 + dim;
+     memcpy(c, c0, (size_t)(dim * sizeof(double)));
+     c[0] = dx_scaled[0];
+     c0 = c;
+
+     c  = c0 + dim; 
+     memcpy(c, c0, (size_t)(dim * sizeof(double)));
+     c[1] = dx_scaled[1]; 
+     c0 = c; 
+ 
+     c  = c0 + dim; 
+     memcpy(c, c0, (size_t)(dim * sizeof(double))); 
+     c[0] = 0.0;  
+     c0 = c;  
+     
+     c = c0 + dim;
+     memcpy(c, coords, (size_t)(dim * sizeof(double))); 
+     c[2] = dx_scaled[2]; 
+     c0   = c;
+ 
+     c = c0 + dim;
+     memcpy(c, c0, (size_t)(dim * sizeof(double)));
+     c[0] = dx_scaled[0];
+     c0 = c;
+
+     c  = c0 + dim;
+     memcpy(c, c0, (size_t)(dim * sizeof(double)));
+     c[1] = dx_scaled[1];
+     c0 = c;
+
+     c  = c0 + dim;
+     memcpy(c, c0, (size_t)(dim * sizeof(double)));
+     c[0] = 0.0;
+     c0 = c;
+
+     nface = 6;
+     for (i = 0; i < nface; i++) { 
+         nnode_for_face[i] = 4;
+     } 
+//   x0 
+     nodelist = nodelist_for_face;
+     nodelist[0] = 0;
+     nodelist[1] = 4;
+     nodelist[2] = 7;
+     nodelist[3] = 3;
+//   x1 
+     nodelist += nn_ea_face;
+     nodelist[0] = 1;
+     nodelist[1] = 2;
+     nodelist[2] = 6;
+     nodelist[3] = 5; 
+//   y0 
+     nodelist += nn_ea_face;
+     nodelist[0] = 0;
+     nodelist[1] = 1;
+     nodelist[2] = 5;
+     nodelist[3] = 4;
+//   y1
+     nodelist += nn_ea_face;
+     nodelist[0] = 2;
+     nodelist[1] = 3;
+     nodelist[2] = 7;
+     nodelist[3] = 6;
+//   z0 
+     nodelist += nn_ea_face;
+     nodelist[0] = 0;
+     nodelist[1] = 3;
+     nodelist[2] = 2;
+     nodelist[3] = 1;
+//   y1
+     nodelist += nn_ea_face;
+     nodelist[0] = 4;
+     nodelist[1] = 5;
+     nodelist[2] = 6;
+     nodelist[3] = 7;
+
+     nodelist_for_face_ea_interface         = (int **) malloc((nmat - 1) * sizeof(int *));
+     ifintersected_face_of_interface        = (int **) malloc((nmat - 1) * sizeof(int *));
+     nodelist_intersected_face_of_interface = (int **) malloc((nmat - 1) * sizeof(int *));
+     nodes2_in_between_of_interface         = (int **) malloc((nmat - 1) * sizeof(int *));
+
+     for (m = 0; m < nmat - 1; m++) { 
+         nodelist_for_face_ea_interface[m]        = NULL;
+         ifintersected_face_of_interface[m]       = NULL;
+         nodelist_intersected_face_of_interface[m] = NULL;
+         nodes2_in_between_of_interface[m]         = NULL;
+     }
+     faceindexlow_of_interface      = (int  *) malloc((nmat - 1) * sizeof(int));
+     faceindexhgh_of_interface      = (int  *) malloc((nmat - 1) * sizeof(int));
+     
+     face2old_ea_mat          = (int **) malloc(nmat * sizeof(int *));
+     nnode_for_face_ea_mat    = (int **) malloc(nmat * sizeof(int *));
+     nodelist_for_face_ea_mat = (int **) malloc(nmat * sizeof(int *));
+
+     for (m = 0; m < nmat; m++) { 
+         face2old_ea_mat[m]       = NULL;
+         nnode_for_face_ea_mat[m] = NULL;
+         nodelist_for_face_ea_mat[m] = NULL;
+     }
+     interface3d_nmat_planar(NULL, dx_max, nface, nnode, coords, 
+                             nnode_for_face, nodelist_for_face, 
+                             cell_vol, nmat, vol_ea_mat, norm_ea_mat, priority_ea_mat, 
+                             nnode_out, coords_out,       
+                             nnode_for_minterface, nodelist_for_face_ea_interface, 
+                             faceindexlow_of_interface, faceindexhgh_of_interface, 
+                             ifintersected_face_of_interface, 
+                             nodelist_intersected_face_of_interface,  
+                             nodes2_in_between_of_interface, 
+                             nface_for_mpoly,  nnode_for_face_ea_mat, nodelist_for_face_ea_mat, 
+                             face2old_ea_mat);
+
+     *nodes_for_minterface = (int **) malloc((nmat - 1) * sizeof(int *));
+     lsize = 0;
+     for (m = 0; m < nmat-1; m++) { 
+         lsize += nnode_for_minterface[m];
+     }
+     (*nodes_for_minterface)[0] = (int *) malloc(lsize * sizeof(int));
+     for (m = 1; m < nmat-1; m++) {
+         (*nodes_for_minterface)[m] = (*nodes_for_minterface)[m-1] + nnode_for_minterface[m-1];
+     }
+     for (m = 0; m < nmat-1; m++) { 
+         nn = nnode_for_minterface[m];
+         memcpy((*nodes_for_minterface)[m], nodelist_for_face_ea_interface[m], (size_t)(nn * sizeof(int)));
+     }   
+     *nnode_for_face_ea_mpoly = (int **) malloc(nmat * sizeof(int *));
+     nfsum = 0.0; 
+     lsize = 0;
+     for (m = 0; m < nmat; m++) { 
+         nf = nface_for_mpoly[m];
+         for (f = 0; f < nf; f++) { 
+             lsize += nnode_for_face_ea_mat[m][f];
+         }
+         nfsum += nf; 
+     }
+     (*nnode_for_face_ea_mpoly)[0] =(int *) malloc(nfsum * sizeof(int));
+     for (m = 1; m < nmat; m++) { 
+         (*nnode_for_face_ea_mpoly)[m] = (*nnode_for_face_ea_mpoly)[m-1] + nface_for_mpoly[m-1];
+     } 
+     for (m = 0; m < nmat; m++) { 
+         nf = nface_for_mpoly[m]; 
+         memcpy((*nnode_for_face_ea_mpoly)[m], nnode_for_face_ea_mat[m], (size_t)(nf * sizeof(int))); 
+     }
+     *nodelist_for_face_ea_mpoly      = (int **) malloc(nmat  * sizeof(int *));
+     (*nodelist_for_face_ea_mpoly)[0] = (int  *) malloc(lsize * sizeof(int)); 
+     lsize = 0; 
+     nf = nface_for_mpoly[0];
+     for (f = 0; f <  nf; f++) {
+         lsize += nnode_for_face_ea_mat[0][f];
+     }
+     for (m = 1; m < nmat; m++) { 
+         (*nodelist_for_face_ea_mpoly)[m] = (*nodelist_for_face_ea_mpoly)[m-1] + lsize;
+         nf = nface_for_mpoly[m];
+         lsize = 0;
+         for (f = 0; f <  nf; f++) { 
+             lsize += nnode_for_face_ea_mat[m][f]; 
+         }
+     } 
+     for (m = 0; m < nmat; m++) {
+         nf = nface_for_mpoly[m]; 
+         lsize = 0;
+         for (f = 0; f <  nf; f++) {
+             lsize += nnode_for_face_ea_mat[m][f]; 
+         }
+         memcpy((*nodelist_for_face_ea_mpoly)[m], nodelist_for_face_ea_mat[m], (size_t)(lsize * sizeof(int))); 
+     } 
+//   put the coordinates back 
+     for (n = 0; n < *nnode_out; n++) { 
+         c = *coords_out + (n * dim);
+         for (i = 0; i < dim; i++) {
+             c[i] = xl[i] + dx_max * c[i];
+         }   
+     }
+     for (m = 0; m < nmat; m++) {
+         if (face2old_ea_mat[m]) free(face2old_ea_mat[m]);
+         if (nnode_for_face_ea_mat[m]) free(nnode_for_face_ea_mat[m]);
+         if (nodelist_for_face_ea_mat[m]) free(nodelist_for_face_ea_mat[m]);
+     }
+     free(face2old_ea_mat);
+     free(nnode_for_face_ea_mat);
+     free(nodelist_for_face_ea_mat); 
+
+     for (m = 0; m < nmat - 1; m++) {
+         if (nodelist_for_face_ea_interface[m])         free(nodelist_for_face_ea_interface[m]);
+         if (ifintersected_face_of_interface[m])        free(ifintersected_face_of_interface[m]);
+         if (nodelist_intersected_face_of_interface[m]) free(nodelist_intersected_face_of_interface[m]);
+         if (nodes2_in_between_of_interface[m])         free(nodes2_in_between_of_interface[m]);
+     }
+     free(nodelist_for_face_ea_interface);
+     free(ifintersected_face_of_interface);
+     free(nodelist_intersected_face_of_interface);
+     free(nodes2_in_between_of_interface);
+      
+     return;
+ } 
+
+
+void interface3d_nmat_planar(double *x0_scale, double dx_scale, 
+                      int nface, int nnode, double *coords, 
+                      int *nnode_for_face, int *nodelist_for_face, 
+                      double cell_vol, int nmat, double *vol_ea_mat, 
+                      double *normals_ea_mat, double *priority_ea_mat,
+                      int *nnode_final, double **coords_final, 
+            int *nnode_ea_interface, int **nodelist_for_face_ea_interface, 
+            int *faceindexlow_of_interface, int *faceindexhgh_of_interface,            
+            int **ifintersected_face_of_interface, 
+            int **nodelist_intersected_face_of_interface, 
+            int **nodes2_in_between_of_interface,
+            int *nface_ea_mat, int **nnode_for_face_ea_mat, int **nodelist_for_face_ea_mat, int **face2old_ea_mat)
+{
+//   In the output, there are (nmat-1) interfaces, and nmat material polyhedrons.
+//   The ith interface is also a face of ith and (i+1)st polyhedrons.
+//   faceindexlow_of_interface[i] is the face number of the ith interface in the ith polyhedron.
+//   faceindexhgh_of_interface[i] is the face number of the ith interface in the (i+1)st polyhedron.
+
+//   ifintersected_face_of_interface[minterf][0:nface): output,
+//                         ifintersected_face_of_interface[minterf][f] = 1 for the case the 
+//                         interface and face f intersected; 0 for the case not intersected.
+//   nodelist_intersected_face_of_interface[minterf][0:2*nface): output, the values at [f+f][f+f+1] are the two nodes
+//                         where interface and face f intersect. 
+//                                            
+//   *nodes2_in_between_of_interface[minterf][0:nnode_for_interface): output, 
+//                        contains the two original nodes surrounding each interface node.
+//   *nodes2_in_between_of_interface[minterd] needs to be freed if not NULL.
+
+
+//   face2old_ea_mat[m][0:nface_ea_mat): output. If it is >= 0, it is the face id of
+//   the original cell, and this face is a part or all of the original face. If it is -1,
+//   this face is an interface. 
+
+     char meshname[32]; 
+     int m, i, nold, lsize, ifinterface, faceindexlow, faceindexhgh; 
+     int nface_current, nnode_current, *nnode_for_face_current, *nodelist_for_face_current;
+     int nnode_new; 
+     int nnode_this_interface, *nodelist_this_interface;  
+     int nface_lower, *nnode_for_face_lower, *nodelist_for_face_lower, *face2old_lower; 
+     int nface_upper, *nnode_for_face_upper, *nodelist_for_face_upper, *face2old_upper;
+     double factor, volume, vol_used, vol, current_cell_vol, vf_current;
+     double *coords_scaled, *coords_old, *coords_current, *coords_new, *normal_current; 
+     double *volume_ea_mat, *nullptr; 
+
+     int    offset_node, nn_added, *node_new2old, *node_old2new;
+     double *coords_this_cell; 
+
+     int *ifintersected_face, *nodelist_intersected_face, *nodes2_in_between; 
+     int **face2old_upper_ea_intersection, *nface_upper_ea_interaction;
+     int *face2old, *face2old_previous, nf, nf_previous, f, fold;  
+
+     int mxnface = nface * nface;
+     int mxnodelist = 16 * mxnface;
+     nnode_for_face_lower = (int *) malloc(mxnface * sizeof(int));
+//   nnode_for_face_upper = (int *) malloc(mxnface * sizeof(int));
+     face2old_lower       = (int *) malloc(mxnface * sizeof(int)); 
+     face2old_upper       = (int *) malloc(mxnface * sizeof(int));
+     nodelist_for_face_lower = (int *) malloc(mxnodelist * sizeof(int)); 
+//   nodelist_for_face_upper = (int *) malloc(mxnodelist * sizeof(int)); 
+
+     if (x0_scale) { 
+         coords_scaled = (double *) malloc(nnode * dim * sizeof(double));
+         coords_scale(dim, x0_scale, dx_scale, nnode, coords, coords_scaled);  
+         factor = 1.0/(dx_scale * dx_scale * dx_scale); 
+         volume = cell_vol * factor;
+         volume_ea_mat = (double *) malloc(nmat * sizeof(double));
+         for (m = 0; m < nmat; m++) { 
+             volume_ea_mat[m] = vol_ea_mat[m] * factor;
+         } 
+     } 
+     else { 
+         coords_scaled = coords; 
+         volume = cell_vol; 
+         volume_ea_mat = vol_ea_mat; 
+     }  
+     nullptr = NULL;
+
+     face2old_upper_ea_intersection = NULL;
+     nface_upper_ea_interaction     = NULL;
+     if (nmat > 2) { 
+         face2old_upper_ea_intersection = (int **) malloc((nmat - 1) * sizeof(int *));
+         nface_upper_ea_interaction     = (int  *) malloc( nmat * sizeof(int));
+     } 
+
+     coords_current = coords_scaled;
+     nface_current = nface;
+     nnode_current = nnode;
+     nnode_for_face_current    = nnode_for_face;
+     nodelist_for_face_current = nodelist_for_face; 
+  
+     nnode_current = nnode; 
+     vol_used = 0.0; 
+
+     offset_node      = 0;
+    
+     coords_this_cell = NULL;  
+     node_new2old     = NULL; 
+     node_old2new     = NULL;
+
+     for (m = 0; m < nmat - 1; m++) { 
+         vol = volume_ea_mat[m];
+         current_cell_vol = volume - vol_used;
+         vf_current = vol / current_cell_vol; 
+         normal_current = normals_ea_mat + (m * dim);
+         if (priority_ea_mat) { 
+             if (priority_ea_mat[m+1] > priority_ea_mat[m]) { 
+                 normal_current += dim;
+             }
+         } 
+         ifintersected_face        = (int *) malloc(nface_current * sizeof(int));
+         nodelist_intersected_face = (int *) malloc((nface_current + nface_current) * sizeof(int));
+         nodes2_in_between         = NULL; 
+
+         mxnface    = nface_current + nface_current; 
+         mxnodelist = 16 * mxnface; 
+         nnode_for_face_upper    = (int *) malloc(mxnface * sizeof(int));
+         nodelist_for_face_upper = (int *) malloc(mxnodelist * sizeof(int));
+         
+//       vf_current is supposed to at the opposite direction of normal_current within the cell.
+//       For example, if normal_current = (1,0,0), then vf_current is at the left side of x 
+//       within the cell. If normal_current = (-1,0,0), vf_current is at the right side of x
+//       within the cell.
+
+         interface3d(nullptr, dx_scale, 
+                     nface_current, nnode_current, coords_current, 
+                     nnode_for_face_current, nodelist_for_face_current, 
+                 current_cell_vol, vf_current, normal_current,
+                 &ifinterface,
+                 &nnode_new,  &coords_new,
+                 &nnode_this_interface, &nodelist_this_interface,
+                 &faceindexlow, &faceindexhgh, 
+                 ifintersected_face, nodelist_intersected_face, &nodes2_in_between,
+                 &nface_lower, nnode_for_face_lower, nodelist_for_face_lower, face2old_lower,
+                 &nface_upper, nnode_for_face_upper, nodelist_for_face_upper, face2old_upper);
+
+//        The checker has to be put before the use of memory. todo.
+
+
+          if (m > 0) { 
+              free(nnode_for_face_current);
+              free(nodelist_for_face_current);
+          }
+          assert(nface_lower < mxnface);
+          assert(nface_upper < mxnface); 
+
+          if (nmat > 2) {   
+              if (m > 0) { 
+                  free(coords_current);
+                  coords_current = NULL;
+              } 
+              if (m == 0) { 
+                  offset_node = nnode_new;
+                  coords_this_cell = coords_new; 
+              }
+              else { 
+                  reset_nodelist(offset_node, nnode_current, node_new2old, 
+                                 nface_lower, nnode_for_face_lower, nodelist_for_face_lower);
+
+                  reset_interface(offset_node, nnode_current, node_new2old, 
+                                 nnode_this_interface, nodelist_this_interface);
+
+                  nn_added = nnode_new - nnode_current; 
+                  coords_this_cell = (double *)realloc(coords_this_cell,(size_t)(dim*(offset_node+nn_added)*sizeof(double))); 
+                  memcpy(coords_this_cell+(offset_node*dim), coords_new+(nnode_current*dim),(size_t)(nn_added*dim*sizeof(double)));  
+              } 
+//            trim un-referenced nodes in nodelist_for_face_upper. 
+
+              if (m < nmat - 2) {
+
+                  if (node_new2old)   free(node_new2old);
+                  if (coords_current) free(coords_current);
+                  node_new2old   = NULL;
+                  coords_current = NULL; 
+//                trim unreferenced nodes and reset nodelist_for_face_upper. 
+                  trim_nodes(dim, nface_upper, nnode_new, coords_new,
+                         nnode_for_face_upper, nodelist_for_face_upper,
+                         offset_node,  
+                         &nnode_current, &node_new2old, &coords_current);
+              }
+              else { // m = nmat - 1   
+                  reset_nodelist(offset_node, nnode_current, node_new2old,
+                                 nface_upper, nnode_for_face_upper, nodelist_for_face_upper);
+              }
+              nface_current             = nface_upper; 
+              nnode_for_face_current    = nnode_for_face_upper;
+              nodelist_for_face_current = nodelist_for_face_upper;
+
+              if (m > 0) { 
+                  free(coords_new);
+                  coords_new = NULL;    
+                  offset_node += nn_added;
+              }
+              vol_used += vol; 
+
+
+
+//             
+              nface_upper_ea_interaction[m]     = nface_upper; 
+              face2old_upper_ea_intersection[m] = (int *) malloc(nface_upper * sizeof(int));
+              memcpy(face2old_upper_ea_intersection[m], face2old_upper, (size_t)(nface_upper * sizeof(int)));                
+
+
+
+
+         
+          }    // nmat > 2) {  
+          nnode_ea_interface[m]             = nnode_this_interface;
+          nodelist_for_face_ea_interface[m] = nodelist_this_interface;
+
+          nface_ea_mat[m]             = nface_lower;
+          face2old_ea_mat[m]          = (int *) malloc(nface_lower * sizeof(int)); 
+          memcpy(face2old_ea_mat[m], face2old_lower, (size_t)(nface_lower * sizeof(int))); 
+          nnode_for_face_ea_mat[m]    = (int *) malloc(nface_lower * sizeof(int));
+          memcpy(nnode_for_face_ea_mat[m], nnode_for_face_lower, (size_t)(nface_lower * sizeof(int)));
+          lsize = 0;
+          for (i = 0; i < nface_lower; i++) { 
+              lsize += nnode_for_face_lower[i];
+          }
+          assert(lsize <= mxnodelist); 
+          nodelist_for_face_ea_mat[m] = (int *) malloc(lsize * sizeof(int));
+          memcpy(nodelist_for_face_ea_mat[m], nodelist_for_face_lower, (size_t)(lsize * sizeof(int))); 
+
+          faceindexlow_of_interface[m] = faceindexlow;  
+          faceindexhgh_of_interface[m] = faceindexhgh;
+
+          ifintersected_face_of_interface[m]        = ifintersected_face;
+          nodelist_intersected_face_of_interface[m] = nodelist_intersected_face;
+          nodes2_in_between_of_interface[m]         = nodes2_in_between; 
+
+     }    // m  
+     if (node_new2old) free(node_new2old); 
+     if (nmat <= 2) { 
+         *nnode_final  = nnode_new; 
+         *coords_final = coords_new;
+     }
+     else { 
+         *nnode_final  = offset_node;
+         *coords_final = coords_this_cell;
+         if (coords_current) free(coords_current);
+     }
+     m                           = nmat - 1;
+     nface_ea_mat[m]             = nface_upper;
+     face2old_ea_mat[m]          = (int *) malloc(nface_upper * sizeof(int));
+     memcpy(face2old_ea_mat[m], face2old_upper, (size_t)(nface_upper * sizeof(int)));
+
+     nnode_for_face_ea_mat[m]    = (int *) malloc(nface_upper * sizeof(int));
+     memcpy(nnode_for_face_ea_mat[m], nnode_for_face_upper, (size_t)(nface_upper * sizeof(int)));
+     lsize = 0;
+     for (i = 0; i < nface_upper; i++) {
+         lsize += nnode_for_face_upper[i];
+     }
+     assert(lsize <= mxnodelist); 
+
+     nodelist_for_face_ea_mat[m] = (int *) malloc(lsize * sizeof(int));
+     memcpy(nodelist_for_face_ea_mat[m], nodelist_for_face_upper, (size_t)(lsize * sizeof(int)));
+     
+     if (x0_scale) { 
+         coords_scale_back(dim, x0_scale, dx_scale, *nnode_final, *coords_final);  
+//       free(coords_scaled);    // already freed through coords_current  
+         free(volume_ea_mat); 
+     } 
+     free(face2old_lower);
+     free(face2old_upper);
+     free(nnode_for_face_lower);
+     free(nodelist_for_face_lower);
+     free(nnode_for_face_upper);
+     free(nodelist_for_face_upper); 
+
+     if (nmat > 2) { 
+
+         for (m = 1; m < nmat - 1; m++) { 
+             nf = nface_upper_ea_interaction[m];
+             face2old = face2old_upper_ea_intersection[m];
+             nf_previous = nface_upper_ea_interaction[m-1];
+             face2old_previous  = face2old_upper_ea_intersection[m-1];
+             for (f = 0; f < nf; f++) { 
+                 fold = face2old[f];
+                 if (fold >= 0) { 
+                     face2old[f] = face2old_previous[fold];
+                 }
+             } 
+         }      
+         for (m = 1; m < nmat; m++) { 
+             nf = nface_ea_mat[m];
+             face2old = face2old_ea_mat[m];
+             face2old_upper = face2old_upper_ea_intersection[m-1]; 
+             
+             for (f = 0; f < nf; f++) { 
+                 fold = face2old[f];
+                 if (fold >= 0) { 
+                     face2old[f] = face2old_upper[fold];
+                 }
+             }
+         } 
+         for (m = 0; m < nmat - 1; m++) { 
+             free(face2old_upper_ea_intersection[m]);
+         }
+         free(nface_upper_ea_interaction); 
+         free(face2old_upper_ea_intersection); 
+     } 
+
+     return; 
+ }
+
+
+
+
+
+
+
+
+
+void polyhedron_plane(int nface, int nnode, double *coords,
+                      int *nnode_ea_face, int *nodelist_for_face,
+                      double *norm_plane, double ds_plane, 
+
+          int *nface_lower, int *nnode_lower, double **coords_lower,
+          int **nnode_ea_face_lower, int **nodelist_for_face_lower,
+          int *nface_upper, int *nnode_upper, double **coords_upper,
+          int **nnode_ea_face_upper, int **nodelist_for_face_upper)
+{
+     int nnode_tot, nnode_interface;
+     int *nodes_interface, *interfacenode_to_edge;
+     double *coords_tot;  
+
+     nodes_interface = NULL;
+     interfacenode_to_edge = NULL;
+     coords_tot = NULL;
+     
+     polyhedron_plane1(nface, nnode, coords,
+                       nnode_ea_face, nodelist_for_face,
+                       norm_plane, ds_plane,
+
+                       &nnode_tot, &coords_tot,
+             &nnode_interface, &nodes_interface, &interfacenode_to_edge,
+             nface_lower, nnode_ea_face_lower, nodelist_for_face_lower,
+             nface_upper, nnode_ea_face_upper, nodelist_for_face_upper);
+
+     if (nodes_interface)       free(nodes_interface);
+     if (interfacenode_to_edge) free(interfacenode_to_edge);
+
+//     check_redundant_face(nface_lower, *nnode_ea_face_lower, *nodelist_for_face_lower);
+//     check_redundant_face(nface_upper, *nnode_ea_face_upper, *nodelist_for_face_upper);
+
+     get_own_nodes(nnode_tot, coords_tot, 
+              *nface_lower, *nnode_ea_face_lower, *nodelist_for_face_lower, 
+              *nface_upper, *nnode_ea_face_upper, *nodelist_for_face_upper,
+              nnode_lower, nnode_upper,
+              coords_lower, coords_upper);
+
+     if (coords_tot) free(coords_tot);
+
+     return;
+  } 
+
+
+void polyhedron_plane1(int nface, int nnode, double *coords,
+                      int *nnode_ea_face, int *nodelist_for_face,
+                      double *norm_plane, double ds_plane,
+      
+          int *nnode_tot, double **coords_tot,
+          int *nnode_interface, int **nodes_interface, int **interfacenode_to_edge,
+          int *nface_lower, int **nnode_ea_face_lower, int **nodelist_for_face_lower,
+          int *nface_upper, int **nnode_ea_face_upper, int **nodelist_for_face_upper)
+{  
+     int nedge; 
+     int *edgelist_for_face, *nodelist_for_edge;
+     int *facelist_for_edge, *nedge_ea_node, *edgelist_for_node;
+
+     *nnode_tot       = 0;
+     *nnode_interface = 0;
+     *nface_lower     = 0;
+     *nface_upper     = 0;
+     
+     *coords_tot              = NULL;
+     *nodes_interface         = NULL;
+     *interfacenode_to_edge   = NULL;
+     *nnode_ea_face_lower     = NULL;
+     *nodelist_for_face_lower = NULL;
+     *nnode_ea_face_upper     = NULL;
+     *nodelist_for_face_upper = NULL; 
+      
+     if (!nface) return;
+
+     edgelist_for_face = NULL;
+     nodelist_for_edge = NULL;
+     get_edges(nface, nnode, nnode_ea_face, nodelist_for_face,
+               &nedge, &edgelist_for_face, &nodelist_for_edge);
+
+     facelist_for_edge = (int *) malloc((nedge + nedge + 1) * sizeof(int));
+     nedge_ea_node     = NULL;
+     edgelist_for_node = NULL;
+     get_faces_ea_edge(nface, nedge, nnode, nnode_ea_face, nodelist_for_face,
+                       edgelist_for_face, nodelist_for_edge,
+                       facelist_for_edge, &nedge_ea_node, &edgelist_for_node);
+     
+     polyhedron_plane0(nface, nedge, nnode, coords, 
+                       nnode_ea_face, nodelist_for_face,
+                       edgelist_for_face, nodelist_for_edge, 
+                       facelist_for_edge, nedge_ea_node, edgelist_for_node,
+                       norm_plane, ds_plane,
+ 
+                       nnode_tot, coords_tot,
+                       nnode_interface, nodes_interface, interfacenode_to_edge,
+                       nface_lower, nnode_ea_face_lower, nodelist_for_face_lower,
+                       nface_upper, nnode_ea_face_upper, nodelist_for_face_upper);
+     
+     free(facelist_for_edge);
+
+     if (edgelist_for_face) free(edgelist_for_face);
+     if (nodelist_for_edge) free(nodelist_for_edge);
+     if (nedge_ea_node)     free(nedge_ea_node);
+     if (edgelist_for_node) free(edgelist_for_node);
+
+     return;
+  } 
+
+
+void polyhedron_plane0(int nface, int nedge, int nnode, double *coords, 
+                      int *nnode_ea_face, int *nodelist_for_face, 
+                      int *edgelist_for_face, int *nodelist_for_edge,
+                      int *facelist_for_edge, int *nedge_ea_node, int *edgelist_for_node,
+                      double *norm_plane, double ds_plane, 
+
+                      int *nnode_tot, double **coords_tot, 
+           int *nnode_interface, int **nodes_interface, int **interfacenode_to_edge, 
+           int *nface_lower, int **nnode_ea_face_lower, int **nodelist_for_face_lower,
+           int *nface_upper, int **nnode_ea_face_upper, int **nodelist_for_face_upper)
+{ 
+//   Equation of the plane   norm(0)*x + norm(1)*y + norm(2)*z = ds_plane 
+
+     int dim, szint, szdim, found, is_at_oneside, err;
+     int i, k, f, e, n, n0, n1, nn, ne, sz, offset, nnode_new; 
+     int f_on_plane, n_out_plane, interface_is_face;
+     int *node_loc, *edge_loc, *edge_to_node, *node_included;
+     int *nodes, *edges, *node_order_for_ds; 
+     int *nnode_ea_face_out, *nodelist_for_face_out; 
+     int *face2old_lower, *face2old_upper;
+     int *faceindexlow_of_upper_interface, *faceindexhgh_of_upper_interface;
+     int **edges_ea_node;
+
+     double dxmax, tmp, ds, xmin[3], point[3];
+     double *coords_rotated, *coords_shifted, *coords_new;
+     double *ds_ea_node, *c, *c0, norm_rotated[3];  
+     
+     int *node_new2old, *nodes_interface_work, *interfacenode_to_edge_work;
+     double *coords_work;
+
+     dim   = 3;
+     szdim = dim * sizeof(double);
+     szint = sizeof(int);
+
+     get_scaling(nnode, coords, xmin, &dxmax);
+     
+     coords_rotated = (double *) malloc((nnode + nnode) * dim * sizeof(double));
+     coords_shifted = coords_rotated + (nnode * dim);
+
+     tmp = 1.0/dxmax; 
+     for (n = 0; n < nnode; n++) { 
+         c0 = coords + (n * dim);
+         c  = coords_shifted + (n * dim);
+         for (i = 0; i < dim; i++) { 
+             c[i] = tmp *(c0[i] - xmin[i]);
+         }
+     } 
+     ds = ds_plane;
+     for (i = 0; i < dim; i++) { 
+         ds -= (norm_plane[i] * xmin[i]);
+     }
+     ds *= tmp;
+     rotate_to_norm(norm_plane, nnode, coords_shifted, coords_rotated);  
+ 
+     node_order_for_ds = (int    *) malloc(nnode * sizeof(int));
+     ds_ea_node        = (double *) malloc(nnode * sizeof(double));
+ 
+     norm_rotated[0] = 0.0;
+     norm_rotated[1] = 0.0;
+     norm_rotated[2] = 1.0;
+ 
+     order_nodes_along_norm(dim, norm_rotated, nnode,
+                            coords_rotated, node_order_for_ds, ds_ea_node);
+ 
+     node_loc  = (int *) malloc((nnode + nedge) * sizeof(int));
+     edge_loc  = node_loc + nnode; 
+
+     for (n = 0; n < nnode; n++) { 
+         c = coords_rotated + (dim * n);
+         if (fabs(c[2] - ds) <= small) {    
+             node_loc[n] = 0;   // on the plane
+         } 
+         else if (c[2] > ds) { 
+             node_loc[n] = 1;   // above the plane  
+         }
+         else { 
+             node_loc[n] = -1;  // below the plane  
+         }  
+     }
+//   Check whether all nodes are above or below the plane
+
+     is_at_oneside = 0;  // 0 for not determined; 1 for above; -1 for below 
+     for (n = 0; n < nnode; n++) { 
+         if (node_loc[n] > 0) { 
+             if (is_at_oneside < 0) { 
+                 is_at_oneside = 0;
+                 break;
+             }
+             is_at_oneside = 1;
+         }  
+         else if (node_loc[n] < 0) { 
+             if (is_at_oneside > 0) { 
+                 is_at_oneside = 0; 
+                 break;
+             }
+             is_at_oneside = -1;
+         }
+     }   
+     for (e = 0; e < nedge; e++) { 
+         nodes = nodelist_for_edge + (e + e);
+         n0 = nodes[0];
+         n1 = nodes[1]; 
+         if ((node_loc[n0] == 0) && (node_loc[n1] == 0)) {
+             edge_loc[e] = 0;   // on the interface
+         }
+         else if ((node_loc[n0] >= 0) && (node_loc[n1] >= 0)) {
+             edge_loc[e] = 1;   // above the interface 
+         }
+         else if ((node_loc[n0] <= 0) && (node_loc[n1] <= 0)) {
+             edge_loc[e] = -1;   // below the interface 
+         }
+         else { 
+             edge_loc[e] = 2; // across the plane
+         }  
+     }
+//   check whether some face is on the plane
+
+     edges = edgelist_for_face;
+     for (f = 0; f < nface; f++) { 
+         found = 1;
+         ne = nnode_ea_face[f];
+         for (i = 0; i < ne; i++) { 
+             e = edges[i]; 
+             if (edge_loc[e] != 0) {
+                 found = 0;
+                 break;
+             }  
+         }
+         if (found) { 
+             f_on_plane = f;
+             break;
+         } 
+         edges += ne; 
+     } 
+     if (found) { 
+         
+//       find some node that is not on the face 
+         
+         nnode_ea_face_out = (int *) malloc(nface * sizeof(int));
+         memcpy(nnode_ea_face_out, nnode_ea_face, (size_t)(nface * sizeof(int))); 
+         sz = 0;
+         for (f = 0; f < nface; f++) { 
+             sz += nnode_ea_face[f]; 
+         }
+         nodelist_for_face_out = (int *) malloc(sz * sizeof(int));
+         memcpy(nodelist_for_face_out, nodelist_for_face, (size_t)(sz * sizeof(int)));
+
+         *nnode_tot = nnode;
+         *coords_tot = (double *) malloc(nnode * dim * sizeof(double));
+         memcpy(*coords_tot, coords, (size_t)(nnode * dim * sizeof(double)));
+
+         offset = 0;
+         for (i = 0; i < f_on_plane; i++) { 
+             offset += nnode_ea_face[i];
+         }
+         nodes = nodelist_for_face + offset;
+         *nnode_interface = nnode_ea_face[f_on_plane]; 
+         *nodes_interface = (int *) malloc((*nnode_interface) * sizeof(int));
+         memcpy(*nodes_interface, nodes, (size_t)((*nnode_interface) * sizeof(int)));
+
+         *interfacenode_to_edge = (int *) malloc((*nnode_interface) * sizeof(int)); 
+         for (i = 0; i < *nnode_interface; i++) { 
+             (*interfacenode_to_edge)[i] = -1;
+         }
+         nn = nnode_ea_face[f_on_plane];
+         for (n = 0; n < nnode; n++) { 
+             found = 0;
+             for (i = 0; i < *nnode_interface; i++) {
+                 if (n == nodes[i]) { 
+                     found = 1;
+                     break;
+                 } 
+             }
+             if (!found) { 
+                 n_out_plane = n; 
+                 break;
+             }
+         }
+         assert(!found);
+
+         c = coords_rotated + (dim * n_out_plane);
+         if (c[2] < ds) { 
+             *nface_lower             = nface;
+             *nnode_ea_face_lower     = nnode_ea_face_out;
+             *nodelist_for_face_lower = nodelist_for_face_out;
+      
+             *nface_upper = 0;
+             *nnode_ea_face_upper     = NULL;
+             *nodelist_for_face_upper = NULL;
+         }  
+         else { 
+             *nface_lower = 0;
+             *nnode_ea_face_lower     = NULL;
+             *nodelist_for_face_lower = NULL;
+
+             *nface_upper = nface;
+             *nnode_ea_face_upper     = nnode_ea_face_out;
+             *nodelist_for_face_upper = nodelist_for_face_out;
+         }
+     } 
+     else {  // for !found  
+//       check whether all nodes are above or below the plane 
+
+         if ((is_at_oneside == 1) || (is_at_oneside == -1)) { 
+             nn = 0;
+             for (n = 0; n < nnode; n++) { 
+                 if (node_loc[n] == 0) nn++;
+             }
+             *nnode_interface = nn;
+             *nodes_interface = (int *) malloc((1 + nn) * sizeof(int));
+             *interfacenode_to_edge = (int *) malloc((1 + nn) * sizeof(int)); 
+             nn = 0;
+             for (n = 0; n < nnode; n++) {
+                 if (node_loc[n] == 0) {
+                     (*nodes_interface)[nn] = n;     
+                     (*interfacenode_to_edge)[nn] = -1;
+                     nn++;
+                 }
+             } 
+             sz = 0;
+             for (f = 0; f < nface; f++) { 
+                 sz += nnode_ea_face[f];
+             }
+             nnode_ea_face_out = (int *) malloc(nface * sizeof(int)); 
+             memcpy(nnode_ea_face_out, nnode_ea_face, (size_t)(nface * szint));
+             nodelist_for_face_out = (int *) malloc(sz * sizeof(int));
+             memcpy(nodelist_for_face_out, nodelist_for_face, (size_t)(sz * szint));
+             *nnode_tot = nnode;
+             *coords_tot = (double *) malloc(nnode * szdim); 
+             memcpy(*coords_tot, coords, (size_t)(nnode * szdim));
+
+             if (is_at_oneside == 1) { 
+                 *nface_upper             = nface;
+                 *nnode_ea_face_upper     = nnode_ea_face_out;
+                 *nodelist_for_face_upper = nodelist_for_face_out; 
+ 
+                 *nface_lower = 0;
+                 *nnode_ea_face_lower = NULL;
+                 *nodelist_for_face_lower = NULL;
+             }
+             else {   // for is_at_onesider = -1;
+
+                 *nface_lower             = nface;
+                 *nnode_ea_face_lower     = nnode_ea_face_out;
+                 *nodelist_for_face_lower = nodelist_for_face_out; 
+ 
+                 *nface_upper = 0;
+                 *nnode_ea_face_upper = NULL;
+                 *nodelist_for_face_upper = NULL;
+             } 
+         }       // end of (is_at_oneside == 1) || (is_at_oneside == -1)   
+         else {   // for (is_at_oneside != 1) && ((is_at_oneside != 1)    
+//           find the interface of this plane with the polyhedron
+             
+             edges_ea_node = (int **) malloc(nnode * sizeof(int *));
+             offset = 0;
+             for (i = 0; i < nnode; i++) {
+                 edges_ea_node[i] = edgelist_for_node + offset;
+                 offset += nedge_ea_node[i];
+             }
+             edge_to_node  = (int *) malloc((nedge + nnode)* sizeof(int));
+             node_included = edge_to_node + nedge;
+             for (i = 0; i < nedge; i++) { 
+                 edge_to_node[i] = -1;
+             }
+             for (n = 0; n < nnode; n++) {
+                 node_included[n] = 0;
+             }
+             coords_new       = (double  *) malloc(nedge * szdim);
+             *nodes_interface = (int     *) malloc(2*nnode * sizeof(int));
+             *interfacenode_to_edge = (int *) malloc(2*nnode * sizeof(int));
+    
+             *nnode_interface = 0;
+             nnode_new = 0;
+    
+    //       for nodes on the plane
+    
+             for (e = 0; e < nedge; e++) { 
+                 nodes = nodelist_for_edge + (e + e);
+                 n0 = nodes[0];
+                 n1 = nodes[1];
+                 if (node_loc[n0] * node_loc[n1] > 0) continue;
+    //           if ((edge_loc[e] == 1) || (edge_loc[e] == -1)) continue;
+    
+                 if (!edge_loc[e]) {   // the edge is on the plane 
+                     memcpy(*nodes_interface + (*nnode_interface), nodes, (size_t)(szint + szint));
+                     (*interfacenode_to_edge)[*nnode_interface   ] = -1;
+                     (*interfacenode_to_edge)[*nnode_interface +1] = -1;
+                     node_included[n0] = 1;
+                     node_included[n1] = 1;
+                     *nnode_interface += 2;
+                 }
+                 else if (!node_loc[n0] && !node_included[n0]) { 
+                     (*nodes_interface)[*nnode_interface]       = n0;
+                     (*interfacenode_to_edge)[*nnode_interface] = -1;  
+                     node_included[n0] = 1; 
+                     (*nnode_interface)++;
+                 }
+                 else if (!node_loc[n1] && !node_included[n1]) { 
+                     (*nodes_interface)[*nnode_interface]       = n1;
+                     (*interfacenode_to_edge)[*nnode_interface] = -1;   
+                     node_included[n1] = 1;
+                     (*nnode_interface)++;
+                 } 
+                 else if ((edge_loc[e] != 1) && (edge_loc[e] != -1)) { // the edge intersects with the plane 
+                     c0 = coords_rotated + (n0 * dim);
+                     c  = coords_rotated + (n1 * dim);
+    
+                     line_intersect_z(c0, c, ds, point);
+                     memcpy(coords_new + (dim * nnode_new), point, (size_t)szdim);
+                     (*nodes_interface)[*nnode_interface] = nnode + nnode_new;
+                     (*interfacenode_to_edge)[*nnode_interface] = e;
+                     edge_to_node[e] = nnode + nnode_new;
+                     (*nnode_interface)++;
+                     nnode_new++;
+                 }
+             }  
+    //       remove possible redundant nodes
+    
+             nn = 0;
+             for (i = 0; i < *nnode_interface; i++) { 
+                 n = (*nodes_interface)[i];
+                 found = 0;
+                 for (k = 0; k < nn; k++) { 
+                     if (n == (*nodes_interface)[k]) { 
+                         found = 1;
+                         break;
+                     }
+                 }
+                 if (!found) { 
+                     if (nn != i) {  
+                         (*nodes_interface)[nn] = n;
+                         (*interfacenode_to_edge)[nn] = (*interfacenode_to_edge)[i]; 
+                     }
+                     nn++;
+                 }
+             }
+             *nnode_interface = nn;
+    
+             if (*nnode_interface > 3) { 
+
+                 node_new2old               = (int *) malloc(3 * (*nnode_interface + 1) * sizeof(int));
+                 nodes_interface_work       = node_new2old + (*nnode_interface + 1);
+                 interfacenode_to_edge_work = nodes_interface_work + (*nnode_interface + 1);
+                 coords_work = (double *) malloc((*nnode_interface + 1) * 2 * sizeof(double));
+
+                 for (i = 0; i < *nnode_interface; i++) {
+                     n0 = (*nodes_interface)[i];
+                     if (n0 < nnode) { 
+                         c0 = coords_rotated + (n0 * dim);
+                     }
+                     else { 
+                         c0 = coords_new + ((n0 - nnode) * dim); 
+                     }
+                     c  = coords_work + (i + i);
+                     c[0] = c0[0];
+                     c[1] = c0[1]; 
+                     node_new2old[i] = n0;
+                 }
+                 sort_nodes(*nnode_interface, coords_work, *interfacenode_to_edge, 
+                            nodes_interface_work, interfacenode_to_edge_work, &err); 
+
+                 memcpy(*interfacenode_to_edge, interfacenode_to_edge_work, 
+                       (size_t)((*nnode_interface) * sizeof(int)));
+
+                 for (i = 0; i < *nnode_interface; i++) {
+                      n1 = nodes_interface_work[i];
+                      (*nodes_interface)[i] = node_new2old[n1];
+                 }
+                 free(node_new2old);
+                 free(coords_work);
+        
+                 assert(!err);
+
+
+
+             }
+             interface_is_face = 0;
+           
+             *nnode_ea_face_lower = (int *) malloc((nface + nface) * sizeof(int));
+             *nnode_ea_face_upper = (int *) malloc((nface + nface) * sizeof(int));
+             nn = 0;
+             for (i = 0; i < nface; i++) {
+                 nn += (nnode_ea_face[i] + nnode_ea_face[i]);
+             }
+             nn += nn;
+             *nodelist_for_face_lower = (int *) malloc(nn * sizeof(int));
+             *nodelist_for_face_upper = (int *) malloc(nn * sizeof(int));
+    
+             face2old_lower = (int *) malloc((nface + 1) * sizeof(int));
+             face2old_upper = (int *) malloc((nface + 1) * sizeof(int));
+             faceindexlow_of_upper_interface = (int *) malloc((nface + 1) * sizeof(int)); 
+             faceindexhgh_of_upper_interface = (int *) malloc((nface + 1) * sizeof(int));
+
+             get_lower_upper_polyhedron(nface, nedge, nnode,
+                                        nnode_ea_face, nodelist_for_face,
+                                        edgelist_for_face, nodelist_for_edge,
+                                        nnode_new, edge_to_node,
+                                        *nnode_interface,     *nodes_interface,
+                                        node_loc, edge_loc,   interface_is_face,
+                   faceindexlow_of_upper_interface, faceindexhgh_of_upper_interface, 
+                   nface_lower, *nnode_ea_face_lower, *nodelist_for_face_lower, face2old_lower,
+                   nface_upper, *nnode_ea_face_upper, *nodelist_for_face_upper, face2old_upper);
+          
+             free(face2old_lower);
+             free(face2old_upper);
+             free(faceindexlow_of_upper_interface);
+             free(faceindexhgh_of_upper_interface); 
+
+             *nnode_tot = nnode + nnode_new;
+             *coords_tot = (double *) malloc((*nnode_tot) * szdim);
+             memcpy(*coords_tot, coords, (size_t)(nnode * szdim));
+
+             if (*nface_upper < 4) {
+                 *nface_upper = 0;
+                 free(*nnode_ea_face_upper);
+                 free(*nodelist_for_face_upper);
+                 *nnode_ea_face_upper = NULL;
+                 *nodelist_for_face_upper = NULL;
+             }
+             if (*nface_lower < 4) {
+                 *nface_lower = 0;
+                 free(*nnode_ea_face_lower);
+                 free(*nodelist_for_face_lower);
+                 *nnode_ea_face_lower = NULL;
+                 *nodelist_for_face_lower = NULL;
+             }
+             rotate_back(norm_plane, nnode_new, coords_new, coords_rotated);
+             for (k = 0; k < nnode_new; k++) { 
+                 c  = coords_rotated + (k * dim);
+                 for (i = 0; i < dim; i++) { 
+                     c[i] *= dxmax;
+                     c[i] += xmin[i];
+                 }
+             }
+             memcpy(*coords_tot + (nnode * dim), coords_rotated, (size_t)(nnode_new * szdim));
+    
+             free(coords_new); 
+             free(edge_to_node); 
+             free(edges_ea_node); 
+         }      // end of else of ((is_at_oneside == 1) || (is_at_oneside == -1)) 
+     }          // end of (!found)  
+
+     free(coords_rotated);
+     free(node_order_for_ds);
+     free(ds_ea_node);
+     free(node_loc);
+
+     return;
+   }
+
+
+void get_own_nodes(int nnode_tot, double *coords_tot, 
+          int nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower,
+          int nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper,
+
+          int *nnode_lower, int *nnode_upper, 
+          double **coords_lower, double **coords_upper)
+{ 
+    int dim, i, n, f, nn, offset;
+    int *nodes, *to_include, *node_old2new, *node_new2old; 
+    double *cs, *ct;
+    
+    dim = 3;
+
+    to_include   = (int *) malloc(3 * nnode_tot * sizeof(int));  
+    node_old2new = to_include   + nnode_tot;
+    node_new2old = node_old2new + nnode_tot; 
+
+//  for the lower polyhedron 
+
+    for (i = 0; i < nnode_tot; i++) {
+        to_include[i] = 0;
+    }
+    offset = 0;
+    for (f = 0; f < nface_lower; f++) {
+        nodes = nodelist_for_face_lower + offset;
+        nn    = nnode_ea_face_lower[f];
+        for (i = 0; i < nn; i++) {
+            n  = nodes[i];
+            to_include[n] = 1;
+        }
+        offset += nn;
+    }
+    nn = 0;
+    for (n = 0; n < nnode_tot; n++) {
+        if (to_include[n]) {
+            node_old2new[n] = nn;
+            node_new2old[nn] = n;
+            nn++;
+        }
+    }
+    *nnode_lower  = nn;
+    *coords_lower = NULL;
+    if (*nnode_lower) {  
+        *coords_lower = (double *) malloc((*nnode_lower) * dim * sizeof(double));
+    
+        for (i = 0; i < *nnode_lower; i++) {
+            ct = *coords_lower + (i * dim);
+            n  = node_new2old[i];
+            cs = coords_tot + (n * dim);
+            memcpy(ct, cs, (size_t)(dim * sizeof(double)));
+        }
+        nn = 0;
+        for (i = 0; i < nface_lower; i++) {
+            nn += nnode_ea_face_lower[i];
+        }
+        for (i = 0; i < nn; i++) {
+            n = nodelist_for_face_lower[i];
+            nodelist_for_face_lower[i] = node_old2new[n];
+        }
+    } 
+//  for the upper polyhedron 
+
+    for (i = 0; i < nnode_tot; i++) { 
+        to_include[i] = 0;
+    }
+    offset = 0;
+    for (f = 0; f < nface_upper; f++) { 
+        nodes = nodelist_for_face_upper + offset;
+        nn    = nnode_ea_face_upper[f]; 
+        for (i = 0; i < nn; i++) { 
+            n  = nodes[i];
+            to_include[n] = 1;
+        }
+        offset += nn; 
+    }
+    nn = 0;
+    for (i = 0; i < nnode_tot; i++) { 
+        if (to_include[i]) { 
+            node_old2new[i] = nn;
+            node_new2old[nn] = i;
+            nn++;
+        }
+    }
+    *nnode_upper  = nn;
+    *coords_upper = NULL;
+   
+    if (*nnode_upper) { 
+
+        *coords_upper = (double *) malloc((*nnode_upper) * dim * sizeof(double));
+    
+        for (i = 0; i < *nnode_upper; i++) { 
+            ct = *coords_upper + (i * dim);
+            n  = node_new2old[i]; 
+            cs = coords_tot + (n * dim);
+            memcpy(ct, cs, (size_t)(dim * sizeof(double)));
+        }
+        nn = 0;
+        for (i = 0; i < nface_upper; i++) { 
+            nn += nnode_ea_face_upper[i]; 
+        }
+        for (i = 0; i < nn; i++) { 
+            n = nodelist_for_face_upper[i];
+            nodelist_for_face_upper[i] = node_old2new[n];
+        }
+    }   
+    free(to_include);
+
+    return;
+
+  } 
+
+void get_scaling(int nnode, double *coords, double *xmin, double *dxmax)
+{ 
+     int n, i, dim;
+     double dx, xmax[3], *c; 
+     
+     assert(nnode > 0); 
+
+     dim = 3;
+
+     c = coords;
+     memcpy(xmin, c, (size_t)(dim * sizeof(double)));
+     memcpy(xmax, c, (size_t)(dim * sizeof(double)));
+     for (n = 1; n < nnode; n++) { 
+         c = coords + (dim * n);
+         for (i = 0; i < dim; i++) { 
+             if (c[i] < xmin[i]) { 
+                 xmin[i] = c[i];
+             }
+             else if (c[i] > xmax[i]) { 
+                 xmax[i] = c[i];
+             }
+         }
+     }
+     *dxmax = xmax[0] - xmin[0];
+     for (i = 1; i < dim; i++) { 
+         dx = xmax[i] - xmin[i];
+         if (*dxmax < dx) {  
+             *dxmax = dx;
+         }
+     }
+     return;
+ } 
+
+
+
+void trim_nodes(int dim, int nface, int nnode_all, double *coords_all, 
+                int *nnode_for_face, int *nodelist_for_face,
+                int offset_node, 
+                int *nnode_clean, int **node_new2old, double **coords)
+{
+//   take the unused nodes out in nodelist_for_face. 
+//   node_new2old and coords need to be deallocated.
+     
+     int i, n, f, nn, nnode_clean_pre;
+     int *included, *node_old2new, *nodelist, *node_new2old_pre; 
+
+     node_new2old_pre = NULL;  
+     nnode_clean_pre  = 0; 
+     if (*node_new2old) { 
+         assert(*nnode_clean > 0);
+         nnode_clean_pre = *nnode_clean;
+         node_new2old_pre = (int *) malloc(nnode_clean_pre * sizeof(int));
+         memcpy(node_new2old_pre, *node_new2old, (size_t)(nnode_clean_pre * sizeof(int)));
+         free(*node_new2old); 
+     }  
+     included = (int *) malloc(nnode_all * sizeof(int));
+     for (i = 0; i < nnode_all; i++) {
+         included[i] = 0;
+     }
+     nodelist = nodelist_for_face;
+     for (f = 0; f < nface; f++) {
+         nn = nnode_for_face[f];
+         for (i = 0; i < nn; i++) {
+             n = nodelist[i];
+             included[n] = 1;
+         }
+         nodelist += nn;
+     }
+     *nnode_clean = 0;
+     for (i = 0; i < nnode_all; i++) {
+         if (included[i]) {
+             (*nnode_clean)++;
+         }
+     }
+     node_old2new  = (int *) malloc(nnode_all   * sizeof(int));
+     *node_new2old = (int *) malloc((*nnode_clean) * sizeof(int));
+     *coords       = (double *) malloc((*nnode_clean) * dim * sizeof(double));
+ 
+     *nnode_clean = 0;
+     for (i = 0; i < nnode_all; i++) {
+         if (included[i]) {
+             node_old2new[i] = *nnode_clean;
+             (*node_new2old)[*nnode_clean] = i;
+             memcpy(*coords + (dim * (*nnode_clean)), coords_all + (i * dim), (size_t)(dim * sizeof(double)));
+             (*nnode_clean)++;
+         }
+         else {
+             node_old2new[i] = -1;
+         }
+     }
+     nodelist = nodelist_for_face;
+     for (f = 0; f < nface; f++) {
+         nn = nnode_for_face[f];
+         for (i = 0; i < nn; i++) {
+             n = nodelist[i];
+             nodelist[i] = node_old2new[n];
+         }
+         nodelist += nn;
+     }
+
+     if (node_new2old_pre) {
+         for (i = 0; i < *nnode_clean; i++) { 
+             n = (*node_new2old)[i];
+             if (n < nnode_clean_pre) { 
+                 (*node_new2old)[i] = node_new2old_pre[n];
+             }
+             else { 
+                 (*node_new2old)[i] = offset_node + (n - nnode_clean_pre);  
+             }
+         } 
+         free(node_new2old_pre); 
+     } 
+     free(included);
+     free(node_old2new);
+
+     return;
+}  
+ 
+void reset_nodelist(int offset_node, int nnode, int *node_new2old,  
+                    int nface, int *nnodde_for_face, int *nodelist_for_face)
+{   
+     int i, f, n, nn; 
+     int *nodelist; 
+
+     nodelist = nodelist_for_face;
+     for (f = 0; f < nface; f++) { 
+         nn = nnodde_for_face[f];
+         for (i = 0; i < nn; i++) { 
+             n = nodelist[i];
+             if (n < nnode) { 
+                 nodelist[i] = node_new2old[n]; 
+             }
+             else { 
+                 nodelist[i] = offset_node + (n - nnode);
+             }  
+         }
+         nodelist += nn;
+     }
+     return;
+ }  
+
+void reset_interface(int offset_node, int nnode, int *node_new2old,
+                    int nnode_for_interface, int *nodelist_for_interface)
+{
+     int i, n;
+
+     for (i = 0; i < nnode_for_interface; i++) {
+         n = nodelist_for_interface[i];
+         if (n < nnode) {  
+             nodelist_for_interface[i] = node_new2old[n];
+         }
+         else { 
+             nodelist_for_interface[i] = offset_node + (n - nnode);
+         }  
+     }   
+     return;
+ }   
+
+
+void interface3d(double *x0_scale, double dx_scale,
+                 int nface, int nnode, double *coords,   
+                 int *nnode_for_face, int *nodelist_for_face, 
+                 double cell_vol, double vf_to_match, double *normal,
+                 int *ifinterface, 
+                 int *nnode_new,  double **coords_new, 
+                 int *nnode_for_interface, int **nodelist_for_interface, 
+                 int *faceindexlow_of_interface, int *faceindexhgh_of_interface,
+                 int *ifintersected_face, int *nodelist_intersected_face, int **nodes2_in_between,
+                 int *nface_lower, int *nnode_for_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+                 int *nface_upper, int *nnode_for_face_upper, int *nodelist_for_face_upper, int *face2old_upper)
+{ 
+//   In the output, the interface is also a face in both lower and upper polyhedrons.
+//   faceindexlow_of_interface is the face index of the interface in the lower polyhedron, and
+//   faceindexhgh_of_interface is the face index in the upper polyhedron.
+
+//   ifintersected_face[0:nface): output, ifintersected_face[f] = 1 for the case the 
+//                                interface and face f intersected; 0 for the case not intersected.
+//   nodelist_intersected_face[0:2*nface): output, the values at [f+f][f+f+1] are the two nodes
+//                                         where interface and face f intersect. 
+//                                            
+//   *nodes2_in_between[0:nnode_for_interface): output, contains the two original nodes surrounding each
+//                                              interface node. 
+//   *nodes2_in_between needs to be freed if not NULL.
+
+//   face2old_lower[0:nface_lower): output. If face2old_lower[i] >= 0, face2old_lower[i] is the face id of
+//   the original cell, for which the face i is a part or all of the face. face2old_lower[i] = -1 to
+//   indicate that this face is an interface.
+    
+     int n, i;
+     double volume, distance;
+     double *coords_scaled, *c, *c0; 
+
+//   scale
+
+     if (x0_scale) {
+         coords_scaled = (double *) malloc(nnode * dim * sizeof(double));
+         coords_scale(dim, x0_scale, dx_scale, nnode, coords, coords_scaled);
+         volume = cell_vol /(dx_scale * dx_scale * dx_scale); 
+     }
+     else { 
+         coords_scaled = coords;
+         volume   = cell_vol; 
+     } 
+     cal_distance(vf_to_match, volume, normal,
+                  nface, nnode, coords_scaled,
+                  nnode_for_face, nodelist_for_face,
+                  &distance,
+                  nnode_new, coords_new,
+                  nnode_for_interface, nodelist_for_interface,
+                  faceindexlow_of_interface, faceindexhgh_of_interface, 
+                  ifintersected_face, nodelist_intersected_face, nodes2_in_between,
+                  nface_lower, nnode_for_face_lower, nodelist_for_face_lower, face2old_lower,
+                  nface_upper, nnode_for_face_upper, nodelist_for_face_upper, face2old_upper);
+   
+//   The first nnode nodes in coords_this_cell are original coordinates, coords. 
+
+//   scale back
+     if (x0_scale) { 
+         coords_scale_back(dim, x0_scale, dx_scale, *nnode_new, *coords_new);
+         free(coords_scaled);
+     } 
+     return;
+ }  
+
+
+void cal_distance(double vf_to_match, double volume, double *norm,
+                int nface, int nnode, double *coords,
+                int *nnode_ea_face, int *nodelist_for_face,
+                double *distance,  
+                int *nnode_output, double **coords_output,
+                int *nnode_interface, int **nodelist_for_interface,
+        int *faceindexlow_of_interface, int *faceindexhgh_of_interface,
+        int *ifintersected_face, int *nodelist_intersected_face, int **nodes2_in_between,
+        int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+        int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper) 
+{  
+//  get the distance defined in the material interface
+//  norm[0] * x + nprm[1] * y + norm[2] * z = distance
+
+//   In the output, the interface is also a face in both lower and upper polyhedrons.
+//   faceindexlow_of_interface is the face index of the interface in the lower polyhedron, and
+//   faceindexhgh_of_interface is the face index in the upper polyhedron.
+
+//   ifintersected_face[0:nface): output, ifintersected_face[f] = 1 for the case the 
+//                                interface and face f intersected; 0 for the case not intersected.
+//   nodelist_intersected_face[0:2*nface): output, the values at [f+f][f+f+1] are the two nodes
+//                                         where interface and face f intersect. 
+//                                           
+//   *nodes2_in_between[0:nnode_for_interface): output, contains the two original nodes surrounding each
+//                                              interface node.
+//   *nodes2_in_between needs to be freed if not NULL. 
+
+//   face2old_lower[0:nface_lower): output. If face2old_lower[i] >= 0, face2old_lower[i] is the face id of
+//   the original cell, for which the face i is a part or all of the face. face2old_lower[i] = -1 to
+//   indicate that this face is an interface.
+
+    int i, n, nnode_tot, sz;
+    int *node_order_for_ds;
+    double zmin, zmax; 
+    double dvf, norm_rotated[3]; 
+    double *c, *coords_rotated, *coords_tot, *ds_ea_node; 
+    int i0, *node_order_for_ds_reversed; 
+    double ds_min, ds, *ds_ea_node_reversed;
+
+// char name[32];
+// int fid; 
+// long long llsz; 
+
+    zmin = 1.0e+10;
+    zmax = -zmin;
+    for (i = 0; i < nnode; i++) {
+        c = coords + (i * dim);
+        if (c[2] > zmax) zmax = c[2];
+        if (c[2] < zmin) zmin = c[2];
+    }
+    dzmin = 1.0e-6 * (zmax - zmin); 
+    coords_rotated = (double *) malloc(nnode * dim * sizeof(double));
+    rotate_to_norm(norm, nnode, coords, coords_rotated);
+
+    norm_rotated[0] = 0.0;
+    norm_rotated[1] = 0.0;
+    norm_rotated[2] = 1.0;
+
+    node_order_for_ds = (int    *) malloc(nnode * sizeof(int));
+    ds_ea_node        = (double *) malloc(nnode * sizeof(double));
+
+    order_nodes_along_norm(dim, norm_rotated, nnode, 
+                           coords_rotated, node_order_for_ds, ds_ea_node);
+
+    cal_distance_z(vf_to_match, volume, nface, nnode, coords_rotated,
+                     nnode_ea_face, nodelist_for_face,
+                     node_order_for_ds, ds_ea_node,
+                     distance, 
+                     &nnode_tot, &coords_tot,
+                     nnode_interface, nodelist_for_interface,
+                     faceindexlow_of_interface, faceindexhgh_of_interface, 
+                     ifintersected_face, nodelist_intersected_face, nodes2_in_between,
+                     nface_lower, nnode_ea_face_lower, nodelist_for_face_lower, face2old_lower,
+                     nface_upper, nnode_ea_face_upper, nodelist_for_face_upper, face2old_upper);
+
+
+// sprintf(name, "file_after_cal_distance_z");
+// mio_open_file(name, mio_file_create, &fid);
+// sprintf(name, "cell");
+// write_poly_3d(fid, name, nface, nnode, coords_rotated, nnode_ea_face, nodelist_for_face);
+// sprintf(name, "lower");
+// write_poly_3d(fid, name, *nface_lower, nnode_tot, coords_tot, *nnode_ea_face_lower, *nodelist_for_face_lower);
+// sprintf(name, "upper");
+// write_poly_3d(fid, name, *nface_upper, nnode_tot, coords_tot, *nnode_ea_face_upper, *nodelist_for_face_upper);
+// llsz = mio_close_file(fid);
+
+
+
+
+
+    *nnode_output = nnode_tot;
+    *coords_output = (double *) malloc(nnode_tot * dim * sizeof(double)); 
+    rotate_back(norm, nnode_tot, coords_tot, *coords_output); 
+
+    if (coords_tot) free(coords_tot);
+
+    if (coords_rotated) free(coords_rotated); 
+    if (node_order_for_ds) free(node_order_for_ds);
+    if (ds_ea_node) free(ds_ea_node);
+
+    return;
+ } 
+
+void cal_distance_z(double vf_to_match, double volume,  
+                 int nface, int nnode,
+                 double *coords,
+                 int *nnode_ea_face, int *nodelist_for_face,
+                 int *node_order_for_ds, double *ds_ea_node,
+                 double *distance, 
+                 int *nnode_output, double **coords_output,
+                 int *nnode_interface, int **nodelist_for_interface, 
+      int *faceindexlow_of_interface, int *faceindexhgh_of_interface,
+      int *ifintersected_face, int *nodelist_intersected_face, int **nodes2_in_between,
+
+      int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower, 
+      int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper)    
+{ 
+//    get the distance defined in the material interface from the rotated
+//    coordinate,
+//
+//    norm[0] * x + norm[1] * y + norm[2] * z = distance
+
+//   In the output, the interface is also a face in both lower and upper polyhedrons.
+//   faceindexlow_of_interface is the face index of the interface in the lower polyhedron, and
+//   faceindexhgh_of_interface is the face index in the upper polyhedron
+//
+//   ifintersected_face[0:nface): output, ifintersected_face[f] = 1 for the case the 
+//                                interface and face f intersected; 0 for the case not intersected.
+//   nodelist_intersected_face[0:2*nface): output, the values at [f+f][f+f+1] are the two nodes
+//                                         where interface and face f intersect. 
+//                                         
+//   *nodes2_in_between[0:nnode_for_interface): output, contains the two original nodes surrounding each
+//                                              interface node.
+//   *nodes2_in_between needs to be freed if not NULL. 
+
+//   face2old_lower[0:nface_lower): output. If face2old_lower[i] >= 0, face2old_lower[i] is the face id of
+//   the original cell, for which the face i is a part or all of the face. face2old_lower[i] = -1 to
+//   indicate that this face is an interface.
+//
+     int i, e; 
+     int if_matched, low_index_for_ds, top_index_for_ds;
+     int n; 
+     int nnode_lower_interface, *nodelist_lower_interface;
+     int nnode_upper_interface, *nodelist_upper_interface; 
+     int *interface_node_to_edge;
+     int nedge, nedge_lower;
+
+     double vol, ds_lower, ds_upper, vf_lower, vf_upper;
+
+     int *edgelist_for_face, *nodelist_for_edge;
+     int *nedge_ea_node, *edgelist_for_node;
+     int *facelist_for_edge;
+     double **norm_ea_face; 
+
+     norm_ea_face    = (double **) malloc(nface * sizeof(double *));
+     norm_ea_face[0] = (double  *) malloc(nface * dim * sizeof(double));
+     for (i = 1; i < nface; i++) {
+         norm_ea_face[i] = norm_ea_face[i-1] + dim;
+     }
+     edgelist_for_face = NULL;
+     nodelist_for_edge = NULL;
+     get_edges(nface, nnode, nnode_ea_face, nodelist_for_face,
+               &nedge, &edgelist_for_face, &nodelist_for_edge);
+
+     facelist_for_edge = (int *) malloc((nedge + nedge) * sizeof(int));
+     nedge_ea_node     = NULL;
+     edgelist_for_node = NULL;
+
+     get_faces_ea_edge(nface, nedge, nnode, nnode_ea_face, nodelist_for_face,
+                       edgelist_for_face, nodelist_for_edge,
+                       facelist_for_edge, &nedge_ea_node, &edgelist_for_node);
+
+     cal_norm_of_face(nface, nnode, coords, nnode_ea_face,
+                      nodelist_for_face, edgelist_for_face,
+                      NULL, norm_ea_face[0]);
+
+     if_matched             = 0;
+     low_index_for_ds       = -1;
+     top_index_for_ds       = -1;
+     nnode_upper_interface  = 0;
+     nnode_lower_interface  = 0;
+     nodelist_lower_interface = NULL;
+     nodelist_upper_interface = NULL;
+
+     bounds_z(vf_to_match, volume, nface, nnode, coords,
+              nnode_ea_face, nodelist_for_face,
+              node_order_for_ds, ds_ea_node,
+
+              nedge, edgelist_for_face, nodelist_for_edge,
+              nedge_ea_node, edgelist_for_node,
+              facelist_for_edge, norm_ea_face, 
+
+              &ds_lower, &ds_upper, &vf_lower, &vf_upper,
+              nnode_output, coords_output, 
+              &if_matched,
+              &nnode_upper_interface, &nodelist_upper_interface, 
+              faceindexlow_of_interface, faceindexhgh_of_interface, 
+              ifintersected_face, nodelist_intersected_face, nodes2_in_between,
+              nface_lower, nnode_ea_face_lower, nodelist_for_face_lower, face2old_lower, 
+              nface_upper, nnode_ea_face_upper, nodelist_for_face_upper, face2old_upper);
+
+     if (if_matched) { 
+         *distance = ds_upper;
+
+         *nnode_interface        = nnode_upper_interface;
+         *nodelist_for_interface = nodelist_upper_interface;
+     }
+     else { 
+
+         if (*coords_output) { 
+             free(*coords_output);
+             *coords_output = NULL;
+         } 
+         interface_node_to_edge = NULL;
+
+         bisection_z(vf_to_match, volume, ds_lower, ds_upper, vf_lower, vf_upper,  
+                     nface, nedge, nnode,  coords,   
+
+                     nnode_ea_face, nodelist_for_face,
+                     edgelist_for_face, nodelist_for_edge,
+                    
+                     distance, nnode_output, coords_output,
+               nnode_interface, nodelist_for_interface, &interface_node_to_edge,
+               faceindexlow_of_interface, faceindexhgh_of_interface,
+               nface_lower, nnode_ea_face_lower, nodelist_for_face_lower, face2old_lower, 
+               nface_upper, nnode_ea_face_upper, nodelist_for_face_upper, face2old_upper);
+
+         if (interface_node_to_edge) free(interface_node_to_edge);
+         interface_node_to_edge = NULL;
+
+     }
+     if (nodelist_lower_interface) free(nodelist_lower_interface);
+     free(norm_ea_face[0]);
+     free(norm_ea_face);
+     free(facelist_for_edge);
+
+     free(edgelist_for_face);
+     free(nodelist_for_edge);
+
+     free(nedge_ea_node);
+     free(edgelist_for_node);
+
+     return;
+  }
+
+void divide_z(int nface, int nnode, double *coords, 
+                 double ds, int *node_loc,
+                 int *nnode_ea_face, int *nodelist_for_face,
+
+                 int nedge, int *edgelist_for_face, int *nodelist_for_edge,
+                 int *nedge_ea_node, int *edgelist_for_node, 
+                 int *facelist_for_edge, double **norm_ea_face,
+                 
+                 int nnode_input, double *coords_input,
+                 int nnode_interface, int *nodes_interface,
+                 int *interface_node_to_edge, 
+                 int *faceindexlow_of_upper_interface, int *faceindexhgh_of_upper_interface,
+
+                 int *nnode_tot, double **coords_tot,
+        int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+        int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper)
+{ 
+//   Given a distance ds, devide the polyhedron into two parts
+
+//   In the output, the upper interface is also a face in both lower and upper polyhedrons.
+//   faceindexlow_of_upper_interface is the face index of the interface in the lower polyhedron, and
+//   faceindexhgh_of_upper_interface is the face index in the upper polyhedron.
+
+//   face2old_lower[0:nface_lower): output. If face2old_lower[i] >= 0, face2old_lower[i] is the face id of
+//   the original cell, for which the face i is a part or all of the face. face2old_lower[i] = -1 to
+//   indicate that this face is an interface.
+
+     int found, done, interface_is_face;
+     int mxnface, mxnnode_new, mxndelist;
+     int i, k, f, e, ne, n, nn, n0, n1, nnode_new, offset;
+     int *edges, *nodes, *edge_loc, *edge_to_node, *node_taken;
+     double point[3], *coords_new, *c, *c0, *c1; 
+
+//   DAI (4/20/2023): need reconside for mxnnode_new, mxnface, and mxndelist 
+    
+     mxnnode_new = nnode + nnode + 1; 
+     mxnface = 4 * nface + 1;
+     
+     coords_new = (double *) malloc(mxnnode_new * dim * sizeof(double));
+
+     node_taken = (int *)malloc((nnode + nedge + nedge) * sizeof(int));
+     edge_loc     = node_taken + nnode;
+     edge_to_node = edge_loc   + nedge;
+
+     for (e = 0; e < nedge; e++) {
+         edge_to_node[e] = -1;
+         edge_loc[e]     = 0;
+     }
+     nnode_new = 0;
+     for (i = 0; i < nnode_interface; i++) {
+         n0 = nodes_interface[i];
+         if (n0 < nnode) continue;
+
+         e  = interface_node_to_edge[i];
+         edge_loc[e] = 2;    // across the interface  
+
+         nodes = nodelist_for_edge + (e + e);
+         n0 = nodes[0];
+         n1 = nodes[1];
+         c0 = coords + (dim * n0);
+         c1 = coords + (dim * n1);
+
+         line_intersect_z(c0, c1, ds, point);
+         memcpy(coords_new + (nnode_new * dim), point, (size_t)(dim * sizeof(double)));
+         edge_to_node[e]    = nnode + nnode_new;
+         nodes_interface[i] = nnode + nnode_new; 
+         nnode_new++;
+
+//       adjust node_loc 
+
+         if (node_loc[n0] == 0) { 
+             if (node_loc[n1] > 0) { 
+                 node_loc[n0] = -1;
+             }
+             else if (node_loc[n1] < 0) { 
+                 node_loc[n0] = 1; 
+             }
+         }
+         else if (node_loc[n1] == 0) {
+             if (node_loc[n0] > 0) {
+                 node_loc[n1] = -1;
+             }
+             else if (node_loc[n0] < 0) {
+                 node_loc[n1] = 1;
+             }
+         }
+     }
+     for (e = 0; e < nedge; e++) {
+         if (edge_loc[e] == 2) continue;
+
+         nodes = nodelist_for_edge + (e + e);
+         n0 = nodes[0];
+         n1 = nodes[1];
+         if ((node_loc[n0] == 0) && (node_loc[n1] == 0)) {
+             edge_loc[e] = 0;   // on the interface
+         }
+         else if ((node_loc[n0] >= 0) && (node_loc[n1] >= 0)) {
+             edge_loc[e] = 1;   // above the interface 
+         }
+         else if ((node_loc[n0] <= 0) && (node_loc[n1] <= 0)) {
+             edge_loc[e] = -1;   // below the interface 
+         }
+     }
+//   check whether the interface is one of the original faces
+
+     interface_is_face = 0;
+     if (!nnode_new) { 
+         offset = 0;
+         for (f = 0; f < nface; f++) { 
+             nn = nnode_ea_face[f];
+             found  = 0;
+             if (nn == nnode_interface) { 
+                 nodes = nodelist_for_face + offset;
+                 for (k = 0; k < nn; k++) { 
+                     node_taken[k] = 0;
+                 } 
+                 for (i = 0; i < nn; i++) { 
+                     found = 0;
+                     n = nodes_interface[i];
+		     for (k = 0; k < nn; k++) { 
+                         if (node_taken[k]) continue;
+                         if (nodes[k] == n) { 
+                             node_taken[k] = 1; 
+                             found = 1;
+                             break;
+                         }  
+                     }
+                     if (!found) break; 
+                 } 
+             }  
+             if (found) { 
+                 interface_is_face = f + 1;  // 1-based here to avoid for the case f = 0;
+                 break;
+             }
+             offset += nn;
+         }
+     } 
+     get_lower_upper_polyhedron(nface, nedge, nnode, 
+                                nnode_ea_face, nodelist_for_face,
+                                edgelist_for_face, nodelist_for_edge, 
+                                nnode_new, edge_to_node, 
+                                nnode_interface, nodes_interface, 
+                                node_loc, edge_loc, interface_is_face, 
+         faceindexlow_of_upper_interface, faceindexhgh_of_upper_interface,     
+         nface_lower, nnode_ea_face_lower, nodelist_for_face_lower, face2old_lower,
+         nface_upper, nnode_ea_face_upper, nodelist_for_face_upper, face2old_upper);
+
+     *nnode_tot  = nnode + nnode_new;
+     *coords_tot = (double *) malloc((*nnode_tot) * dim * sizeof(double)); 
+     memcpy(*coords_tot, coords, (size_t)(nnode * dim * sizeof(double)));
+     memcpy(*coords_tot + (nnode * dim), 
+            coords_new, (size_t)(nnode_new * dim * sizeof(double))); 
+
+     if (*nface_upper < 4) { 
+         *nface_upper = 0;
+     }
+     if (*nface_lower < 4) { 
+         *nface_lower = 0;
+     }
+     free(node_taken);
+     free(coords_new); 
+
+     return;
+  } 
+
+
+void get_lower_upper_polyhedron(int nface, int nedge, int nnode,  
+                             int *nnode_ea_face, int *nodelist_for_face,
+                             int *edgelist_for_face, int *nodelist_for_edge,
+                             int nnode_new, int *edge_to_node, 
+                             int nnode_interface, int *nodes_interface, 
+                             int *node_loc, int *edge_loc, 
+                             int interface_is_face, 
+         int *faceindexlow_of_upper_interface, int *faceindexhgh_of_upper_interface,
+         int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+         int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper)
+{ 
+//   In the output, the upper interface is also a face in both lower and upper polyhedrons.
+//   faceindexlow_of_upper_interface is the face index of the interface in the lower polyhedron, and
+//   faceindexhgh_of_upper_interface is the face index in the upper polyhedron.
+
+//   face2old_lower[0:nface_lower): output. If face2old_lower[i] >= 0, face2old_lower[i] is the face id of
+//   the original cell, for which the face i is a part or all of the face. face2old_lower[i] = -1 to
+//   indicate that this face is an interface.
+
+     int f, e, e1, ne, n, n0, n1, last_n, nn, i, i1, k, offset, offset_t; 
+     int loc0, loc1, some_node_inside, some_node_outside;
+     int *nodes, *nodes_t, *nodes_on_e, *nodes_on_e1, *edges;
+     int *edge_to_include, *face_to_include, *face_all_in;
+
+     edge_to_include = (int *) malloc((nedge + nface + nface) * sizeof(int));
+     face_to_include = edge_to_include + nedge;
+     face_all_in     = face_to_include + nface;  
+
+//   The lower polyhedron
+
+     for (e = 0; e < nedge; e++) {
+         edge_to_include[e] = 0;
+         nodes = nodelist_for_edge + (e + e);
+         n0 = nodes[0]; 
+         n1 = nodes[1]; 
+         loc0 = node_loc[n0];
+         loc1 = node_loc[n1];
+
+         if (((loc0 <= 0) && (loc1 <= 0)) || 
+             ((loc0 <  0) && (loc1 >= 0)) || 
+             ((loc0 >= 0) && (loc1 <  0))) {   
+             edge_to_include[e] = 1;
+         }
+     }
+     offset = 0;
+     for (f = 0; f < nface; f++) {
+         nn = nnode_ea_face[f];
+         nodes = nodelist_for_face + offset;
+         some_node_inside  = 0;
+         some_node_outside = 0;
+         for (i = 0; i < nn; i++) {
+             n = nodes[i];
+             if (node_loc[n] < 0) {
+                 some_node_inside = 1;
+             }
+             else if (node_loc[n] > 0) {
+                 some_node_outside = 1;
+             }
+         }
+         if (!some_node_inside && !some_node_outside) {
+             face_all_in[f]     = 1;
+             face_to_include[f] = 1;
+         }
+         else if (some_node_inside && !some_node_outside) {
+             face_all_in[f] = 1;
+             face_to_include[f] = 1;
+         }
+         else if (!some_node_inside && some_node_outside) {
+             face_to_include[f] = 0;
+             face_all_in[f]     = 0;
+         }
+         else { // some_node_inside and some_node_outside 
+             face_to_include[f] = 1;
+             face_all_in[f]     = 0;
+         }
+         offset += nn;
+     }
+     if (nnode_interface < 3) { 
+         *faceindexlow_of_upper_interface = -1;  // no interface
+         *faceindexhgh_of_upper_interface = -1;
+     } 
+     *nface_lower = 0;
+     offset_t = 0;
+
+     if (!interface_is_face && (nnode_interface >= 3)) {   // interface is not any face
+         nnode_ea_face_lower[*nface_lower] = nnode_interface;
+         memcpy(nodelist_for_face_lower + offset_t, nodes_interface,
+               (size_t)(nnode_interface * sizeof(int)));
+         *faceindexlow_of_upper_interface = *nface_lower; 
+         face2old_lower[*nface_lower] = -1;              // not any part of old faces 
+         offset_t += nnode_interface;
+         (*nface_lower)++;
+     }
+     offset   = 0;
+     for (f = 0; f < nface; f++) { 
+         ne = nnode_ea_face[f];
+         if (face_all_in[f]) { 
+             nnode_ea_face_lower[*nface_lower] = ne;
+             nodes_t = nodelist_for_face_lower + offset_t; 
+             nodes   = nodelist_for_face + offset;
+             memcpy(nodes_t, nodes, (size_t)(ne * sizeof(int)));
+             face2old_lower[*nface_lower] = f; 
+
+             offset_t += ne;
+             (*nface_lower)++;
+         }
+         else if (face_to_include[f]) {  // f cross the interface
+             nn = 0;
+             nodes_t = nodelist_for_face_lower + offset_t;
+
+             edges = edgelist_for_face + offset;
+             nodes = nodelist_for_face + offset;
+     
+             for (i = 0; i < ne; i++) { 
+                 i1 = (i + 1) % ne;
+                 e  = edges[i];
+                 e1 = edges[i1];
+                 nodes_on_e  = nodelist_for_edge + (e  + e); 
+                 nodes_on_e1 = nodelist_for_edge + (e1 + e1);
+                 n0 = nodes_on_e[0];
+                 n1 = nodes_on_e[1]; 
+
+                 if (i == 0) { 
+                     if ((n0 == nodes_on_e1[0]) || (n0 == nodes_on_e1[1])) { 
+                         last_n = n1;
+                     }
+                     else if ((n1 == nodes_on_e1[0]) || (n1 == nodes_on_e1[1])) {  
+                         last_n = n0;
+                     }
+                     else { 
+                         printf("ERROR: last_n"); 
+                         assert(0);
+                     }
+                 }    
+                 if (edge_to_node[e] >= 0) { // the edge has been cut.
+                     if (node_loc[last_n] > 0) {       // last_n is outside  
+                         nodes_t[nn] = edge_to_node[e];
+                         nn++; 
+                         for (k = 0; k < 2; k++) {
+                             n = nodes_on_e[k];
+                             if (node_loc[n] == -1) {
+                                 nodes_t[nn] = n;
+                                 nn++;
+                             }
+                         }
+                     }
+                     else if (node_loc[last_n] < 0) {  // last_in is inside  
+                         for (k = 0; k < 2; k++) {
+                             n = nodes_on_e[k]; 
+                             if (node_loc[n] == -1) {
+                                 nodes_t[nn] = n;
+                                 nn++;
+                             }
+                         }
+                         nodes_t[nn] = edge_to_node[e];
+                         nn++;
+                     }
+                 }
+                 else if (edge_to_include[e]) { 
+                     if (n0 == last_n) { 
+                         if (node_loc[n0] <= 0) { 
+                             nodes_t[nn] = n0;
+                             nn++;
+                         }
+                         if (node_loc[n1] <= 0) { 
+                             nodes_t[nn] = n1; 
+                             nn++;
+                         }
+                     }
+                     else if (n1 == last_n) { 
+                         if (node_loc[n1] <= 0) { 
+                             nodes_t[nn] = n1;
+                             nn++;
+                         }
+                         if (node_loc[n0] <= 0) { 
+                             nodes_t[nn] = n0;
+                             nn++;
+                         }
+                     }   
+                 }
+                 if ((n0 == nodes_on_e1[0]) || (n0 == nodes_on_e1[1])) { 
+                     last_n = n0;
+                 }
+                 else if ((n1 == nodes_on_e1[0]) || (n1 == nodes_on_e1[1])) { 
+                     last_n = n1;
+                 }
+             }             // i  
+//           consolidate the first and last nodes. 
+             if (nn > 1) { 
+                 if (nodes_t[nn-1] == nodes_t[0]) { 
+                     nn--;
+                 }
+             }
+//           remove the possible redundant nodes.
+ 
+             i  = 0;
+             i1 = 1;
+             n  = 1;
+             
+             while (i1 < nn) {
+                 n0 = nodes_t[i];
+                 n1 = nodes_t[i1]; 
+                 if (n0 != n1) { 
+                     nodes_t[n] = nodes_t[i1]; 
+                     i++;
+                     n++;
+                 }
+                 i1++; 
+             } 
+             if (n >= 3) { 
+                 nnode_ea_face_lower[*nface_lower] = n;
+                 face2old_lower[*nface_lower] = f;      // this face is a part of f. 
+                 (*nface_lower)++;
+                 offset_t += n;
+             } 
+         }                // face_to_include[f]    
+         offset += ne; 
+     }
+//   for the polygon above the interface
+
+     for (e = 0; e < nedge; e++) {
+         edge_to_include[e] = 0;
+         nodes = nodelist_for_edge + (e + e);
+         n0 = nodes[0];
+         n1 = nodes[1];
+         loc0 = node_loc[n0];
+         loc1 = node_loc[n1];
+
+         if (((loc0 >= 0) && (loc1 >= 0)) ||
+             ((loc0 >  0) && (loc1 <= 0)) ||
+             ((loc0 <= 0) && (loc1 >  0))) {
+             edge_to_include[e] = 1;
+         }
+     }
+     offset = 0;
+     for (f = 0; f < nface; f++) {
+         nn = nnode_ea_face[f];
+         nodes = nodelist_for_face + offset;
+         some_node_inside  = 0;
+         some_node_outside = 0;
+         for (i = 0; i < nn; i++) {
+             n = nodes[i];
+             if (node_loc[n] > 0) {
+                 some_node_inside = 1;
+             }
+             else if (node_loc[n] < 0) {
+                 some_node_outside = 1;
+             }
+         }
+         if (!some_node_inside && !some_node_outside) {
+             face_all_in[f]     = 1;
+             face_to_include[f] = 1;
+         }
+         else if (some_node_inside && !some_node_outside) {
+             face_all_in[f] = 1;
+             face_to_include[f] = 1;
+         }
+         else if (!some_node_inside && some_node_outside) {
+             face_to_include[f] = 0;
+             face_all_in[f]     = 0;
+         }
+         else { // some_node_inside and some_node_outside 
+             face_to_include[f] = 1;
+             face_all_in[f]     = 0;
+         }
+         offset += nn;
+     }
+     *nface_upper = 0;
+     offset_t     = 0;
+     if (!interface_is_face && (nnode_interface >= 3)) {  // interface is not any of the faces
+         nnode_ea_face_upper[*nface_upper] = nnode_interface;
+         memcpy(nodelist_for_face_upper + offset_t, nodes_interface,
+               (size_t)(nnode_interface * sizeof(int)));
+         *faceindexhgh_of_upper_interface = *nface_upper; 
+         face2old_upper[*nface_upper] = -1;              // this face is not any part of original face 
+
+         offset_t += nnode_interface;
+         (*nface_upper)++;
+     } 
+     offset   = 0;
+     for (f = 0; f < nface; f++) { 
+         ne= nnode_ea_face[f];
+         if (face_all_in[f]) { 
+             nnode_ea_face_upper[*nface_upper] = ne;
+             nodes_t = nodelist_for_face_upper + offset_t; 
+             nodes   = nodelist_for_face + offset;
+             memcpy(nodes_t, nodes, (size_t)(ne * sizeof(int)));
+             face2old_upper[*nface_upper] = f;    // this face is a part of whole of original f. 
+
+             offset_t += ne;
+             (*nface_upper)++;
+         }
+         else if (face_to_include[f]) {  // f cross the interface
+             nn = 0;
+             nodes_t = nodelist_for_face_upper + offset_t;
+
+             edges = edgelist_for_face + offset;
+             nodes = nodelist_for_face + offset;
+     
+             for (i = 0; i < ne; i++) { 
+                 i1 = (i + 1) % ne;
+                 e  = edges[i];
+                 e1 = edges[i1];
+                 nodes_on_e  = nodelist_for_edge + (e  + e); 
+                 nodes_on_e1 = nodelist_for_edge + (e1 + e1);
+                 n0 = nodes_on_e[0];
+                 n1 = nodes_on_e[1]; 
+
+                 if (i == 0) { 
+                     if ((n0 == nodes_on_e1[0]) || (n0 == nodes_on_e1[1])) { 
+                         last_n = n1;
+                     }
+                     else if ((n1 == nodes_on_e1[0]) || (n1 == nodes_on_e1[1])) {  
+                         last_n = n0;
+                     }
+                     else { 
+                         printf("ERROR: last_n"); 
+                         assert(0);
+                     }
+                 }    
+                 if (edge_to_node[e] >= 0) { // the edge has been cut.
+                     if (node_loc[last_n] < 0) {       // last_n is outside  
+                         nodes_t[nn] = edge_to_node[e];
+                         nn++; 
+                         for (k = 0; k < 2; k++) {
+                             n = nodes_on_e[k];
+                             if (node_loc[n] == 1) {
+                                 nodes_t[nn] = n;
+                                 nn++;
+                             }
+                         }
+                     }
+                     else if (node_loc[last_n] > 0) { // last_in is inside  
+                         for (k = 0; k < 2; k++) {
+                             n = nodes_on_e[k]; 
+                             if (node_loc[n] == 1) {
+                                 nodes_t[nn] = n;
+                                 nn++;
+                             }
+                         }
+                         nodes_t[nn] = edge_to_node[e];
+                         nn++;
+                     }
+                 }
+                 else if (edge_to_include[e]) { 
+                     if (n0 == last_n) { 
+                         if (node_loc[n0] >= 0) { 
+                             nodes_t[nn] = n0;
+                             nn++;
+                         }
+                         if (node_loc[n1] >= 0) { 
+                             nodes_t[nn] = n1; 
+                             nn++;
+                         }
+                     }
+                     else if (n1 == last_n) { 
+                         if (node_loc[n1] >= 0) { 
+                             nodes_t[nn] = n1;
+                             nn++;
+                         }
+                         if (node_loc[n0] >= 0) { 
+                             nodes_t[nn] = n0;
+                             nn++;
+                         }
+                     }   
+                 }
+                 if ((n0 == nodes_on_e1[0]) || (n0 == nodes_on_e1[1])) { 
+                     last_n = n0;
+                 }
+                 else if ((n1 == nodes_on_e1[0]) || (n1 == nodes_on_e1[1])) { 
+                     last_n = n1;
+                 }
+             }             // i  
+//           consolidate the first and last nodes. 
+             if (nn > 1) { 
+                 if (nodes_t[nn-1] == nodes_t[0]) { 
+                     nn--;
+                 }
+             }
+//           remove the possible redundant nodes.
+ 
+             i  = 0;
+             i1 = 1;
+             n  = 1;
+             
+             while (i1 < nn) {
+                 n0 = nodes_t[i];
+                 n1 = nodes_t[i1]; 
+                 if (n0 != n1) { 
+                     nodes_t[n] = nodes_t[i1]; 
+                     i++;
+                     n++;
+                 }
+                 i1++; 
+             } 
+             if (n >= 3) { 
+                 nnode_ea_face_upper[*nface_upper] = n;
+                 face2old_upper[*nface_upper] = f;    // this face is a part of whole of original f. 
+                 (*nface_upper)++;
+                 offset_t += n;
+             } 
+         }                // face_to_include[f]    
+         offset += ne; 
+     }
+     if (interface_is_face) {
+         if (*nface_lower > 3) { 
+             *faceindexlow_of_upper_interface = interface_is_face - 1; // interface_is_face is 1-based 
+         }
+         if (*nface_upper > 3) { 
+             *faceindexhgh_of_upper_interface = interface_is_face - 1;
+         } 
+     }
+     free(edge_to_include);
+
+     return;
+ } 
+
+
+void bisection_z(double vf_to_match, double volume, 
+                 double ds_lower, double ds_upper, 
+                 double vf_lower, double vf_upper, 
+                 int nface, int nedge, int nnode, 
+                 double *coords, 
+
+                 int *nnode_ea_face, int *nodelist_for_face, 
+                 int *edgelist_for_face, int *nodelist_for_edge,
+
+                 double *ds, int *nnode_tot, double **coords_tot,
+      int *nnode_for_interface, int **nodelist_for_interface, int **interface_node_to_edge,
+      int *faceindexlow_of_upper_interface, int *faceindexhgh_of_upper_interface, 
+      int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+      int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper)
+{
+//    find the distance so the volume occupied by one material matches the input.  
+
+//   In the output, the upper interface is also a face in both lower and upper polyhedrons.
+//   faceindexlow_of_upper_interface is the face index of the interface in the lower polyhedron, and
+//   faceindexhgh_of_upper_interface is the face index in the upper polyhedron.
+
+     int done, i, n, e, sz, niter;
+     int nnode_new, nnode_all;
+     int *facelist_for_edge, *nedge_ea_node, *edgelist_for_node;
+     int *node_loc;
+
+     int nnode_for_interface_previous, *nodelist_for_interface_previous;  // added 4/13/2023 
+
+     double *c, *coords_all;
+     double err, err_ds, ds0, ds1, ds_previous, vf0, vf1, dvfds, vol, vol_upper, vf; 
+     double **norm_ea_face;
+
+     node_loc = (int *) malloc(nnode * sizeof(int));
+     norm_ea_face    = (double **) malloc(nface * sizeof(double *));
+     norm_ea_face[0] = (double  *) malloc(nface * dim * sizeof(double));
+     for (i = 1; i < nface; i++) { 
+         norm_ea_face[i] = norm_ea_face[i-1] + dim;
+     }
+     facelist_for_edge = (int *) malloc((nedge + nedge) * sizeof(int));
+     nedge_ea_node     = NULL;
+     edgelist_for_node = NULL;
+     get_faces_ea_edge(nface, nedge, nnode, nnode_ea_face, nodelist_for_face,
+                       edgelist_for_face, nodelist_for_edge,
+                       facelist_for_edge, &nedge_ea_node, &edgelist_for_node);
+
+     cal_norm_of_face(nface, nnode, coords, nnode_ea_face,
+                      nodelist_for_face, edgelist_for_face,
+                      NULL, norm_ea_face[0]);
+
+     *nodelist_for_interface = (int *) malloc((nedge + nnode) * sizeof(int));
+     *interface_node_to_edge = (int *) malloc((nedge + nnode) * sizeof(int));
+
+     err = 1.0;
+     *coords_tot              = NULL;
+
+     ds1 = ds_upper;
+     ds0 = ds_lower;
+     vf0 = vf_lower;
+     vf1 = vf_upper;
+     vf  = vf0;
+
+     nnode_for_interface_previous    = 0;
+     nodelist_for_interface_previous = NULL;
+     *ds = 0.5 * (ds0 + ds1);  
+     niter = 0;
+     done = 0;
+     while (!done && (niter < niter_mx)) { 
+
+         for (i = 0; i < nnode; i++) {
+             c = coords + (dim * i);
+             if (fabs(c[2] - *ds) <= dzmin) { 
+                 node_loc[i] = 0;
+             }
+             else if (c[2] > *ds) { 
+                 node_loc[i] = 1;
+             }
+             else { 
+                 node_loc[i] = -1;
+             }
+         } 
+         coords_all = NULL;
+         *nnode_for_interface = 0;
+
+         find_interface_z(nface, nedge, nnode, coords, nnode_ea_face,
+                          nodelist_for_face, edgelist_for_face,
+                          nodelist_for_edge, nedge_ea_node, edgelist_for_node,
+                          facelist_for_edge, node_loc, *ds,
+
+                          &nnode_all, &coords_all,
+                          nnode_for_interface, *nodelist_for_interface,
+                          *interface_node_to_edge);
+
+         if (*nnode_for_interface < 3) { 
+
+             if (niter == 0) { 
+                 *nnode_tot = nnode;
+                 *coords_tot = (double  *) malloc(nnode * dim * sizeof(double));
+                 memcpy(*coords_tot, coords, (size_t)(nnode * dim * sizeof(double)));
+                 sz = 0;
+                 for (i = 0; i < nface; i++) { 
+                     sz += nnode_ea_face[i];
+                 }
+                 if (vf_to_match < 0.5) { 
+                     *nface_lower    = 0; 
+                     *nface_upper    = nface;
+                     for (i = 0; i < nface; i++) {
+                         face2old_upper[i] = i;
+                     }
+                     memcpy(nnode_ea_face_upper, nnode_ea_face, (size_t)(nface * sizeof(int)));
+                     memcpy(nodelist_for_face_upper, nodelist_for_face, (size_t)(sz * sizeof(int)));
+ 
+                 }
+                 else { 
+                     *nface_upper    = 0;
+                     *nface_lower    = nface;
+                     for (i = 0; i < nface; i++) { 
+                         face2old_lower[i] = i;
+                     } 
+                     memcpy(nnode_ea_face_lower, nnode_ea_face, (size_t)(nface * sizeof(int)));
+                     memcpy(nodelist_for_face_lower, nodelist_for_face, (size_t)(sz * sizeof(int)));
+                 } 
+             }
+             else { 
+                 *ds = ds_previous;
+                 *nnode_for_interface    = nnode_for_interface_previous;
+                 *nodelist_for_interface = nodelist_for_interface_previous; 
+             }
+             done = 1;
+         }
+         else { 
+
+             if (*coords_tot) {
+                 free(*coords_tot);
+             }
+             *coords_tot              = NULL;
+
+             divide_z(nface, nnode, coords, *ds, node_loc,
+                  nnode_ea_face, nodelist_for_face,
+    
+                  nedge, edgelist_for_face, nodelist_for_edge,
+                  nedge_ea_node, edgelist_for_node,
+                  facelist_for_edge, norm_ea_face,
+    
+                  nnode_all, coords_all,
+                  *nnode_for_interface, *nodelist_for_interface,
+                  *interface_node_to_edge,
+                  faceindexlow_of_upper_interface, faceindexhgh_of_upper_interface,
+    
+                  nnode_tot,   coords_tot,
+                  nface_lower, nnode_ea_face_lower, nodelist_for_face_lower, face2old_lower,
+                  nface_upper, nnode_ea_face_upper, nodelist_for_face_upper, face2old_upper);
+
+             cal_vol(*nface_lower, *nnode_tot, *coords_tot, nnode_ea_face_lower,
+                         nodelist_for_face_lower, &vol);
+
+             vf = vol/volume;
+    
+             err = fabs(vf - vf_to_match);
+             err_ds = (ds1 - ds0) /(ds_upper - ds_lower);
+    
+             if (err <= accuracy) { 
+                 done = 1; 
+             }  
+             else if (err_ds <= accuracy) { 
+                 done = 1; 
+             } 
+             else { 
+                 if (vf > vf_to_match) { 
+                     vf1 = vf;
+                     ds1 = *ds;
+                 }
+                 else {
+                     vf0 = vf;
+                     ds0 = *ds;
+                 }
+                 ds_previous = *ds;
+
+                 *ds = 0.5 *(ds0 + ds1); 
+                 niter++; 
+             }
+             nnode_for_interface_previous    = *nnode_for_interface;
+             nodelist_for_interface_previous = *nodelist_for_interface; 
+
+         }        // end of (nnode_for_interface >= 3)
+         if (coords_all) { 
+             free(coords_all);
+         } 
+     }    
+     free(node_loc);
+     
+     free(facelist_for_edge);
+     if (nedge_ea_node)     free(nedge_ea_node);
+     if (edgelist_for_node) free(edgelist_for_node);
+ 
+     free(norm_ea_face[0]);
+     free(norm_ea_face);
+
+     return;
+ }  
+
+void bounds_z(double vf_to_match, double volume,  
+              int nface, int nnode, 
+              double *coords, 
+              int *nnode_ea_face, int *nodelist_for_face, 
+              int *node_order_for_ds, double *ds_ea_node,
+
+              int my_nedge, int *my_edgelist_for_face, 
+              int *my_nodelist_for_edge,
+              int *my_nedge_ea_node, int *my_edgelist_for_node,
+              int *my_facelist_for_edge, 
+              double **my_norm_ea_face, 
+
+              double *ds_lower, double *ds_upper, double *vf_lower, double *vf_upper, 
+              int *nnode_tot, double **coords_tot,
+
+              int *vol_matched, 
+              int *nnode_upper_interface, int **nodelist_upper_interface,
+              int *faceindexlow_of_upper_interface, int *faceindexhgh_of_upper_interface,
+              int *ifintersected_face, int *nodelist_intersected_face, int **nodes2_in_between,
+              int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower, 
+              int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper)
+{
+//   Given the input volume fraction, find the bounds for the distance nneded in
+//   material interafce 
+//
+//   In the output, the upper interface is also a face in both lower and upper polyhedrons.
+//   faceindexlow_of_upper_interface is the face index of the interface in the lower polyhedron, and
+//   faceindexhgh_of_upper_interface is the face index in the upper polyhedron.
+//
+//   ifintersected_face[0:nface): output, ifintersected_face[f] = 1 for the case the 
+//                                interface and face f intersected; 0 for the case not intersected.
+//   nodelist_intersected_face[0:2*nface): output, the values at [f+f][f+f+1] are the two nodes
+//                                         where interface and face f intersect. 
+//                                       
+//   *nodes2_in_between[0:nnode_for_interface): output, contains the two original nodes surrounding each
+//                                              interface node.
+//   *nodes2_in_between needs to be freed if not NULL. 
+
+     int i, k, idx, myidx, f, nn, nn_same, nn_low, nn_hgh, n, myn, nedge, e, found;
+     int idx_next, offset, myoffset, ndistance; 
+     int nnode_interface, nnode_all;
+     int *edgelist_for_face, *nodelist_for_edge, *nedge_ea_node;
+     int *edgelist_for_node, *facelist_for_edge;
+
+     int *nodes, *edges; 
+     int *nodelist_for_interface, *interface_node_to_edge;
+     
+     double vf, myvf, vol; 
+     double ds, ds_last, ds_next, *ds_ordered, *c;
+     double **norm_ea_face, *coords_all; 
+
+     int *nnode_ea_ds, *mynnode_ea_ds, *nodelist_ea_ds, *mynodelist_ea_ds, *node_loc; 
+     double *vf_ea_ds; 
+
+
+/////////////
+/***
+int fileid; 
+long long filesize; 
+mio_open_file("file_debug", mio_file_create, &fileid);
+write_poly_3d(fileid, "poly", nface, nnode, coords, nnode_ea_face, nodelist_for_face);
+filesize = mio_close_file(fileid);
+*/
+/////////////////
+
+
+
+     if (my_nedge <= 0) { 
+         nedge = 0;
+         edgelist_for_face = NULL;
+         nodelist_for_edge = NULL;
+         get_edges(nface, nnode, nnode_ea_face, nodelist_for_face,
+                   &nedge, &edgelist_for_face, &nodelist_for_edge);
+
+         norm_ea_face    = (double **) malloc(nface * sizeof(double *));
+         norm_ea_face[0] = (double  *) malloc((nface * dim) * sizeof(double));
+         for (i = 1; i < nface; i++) {
+             norm_ea_face[i] = norm_ea_face[i-1] + dim;
+         }
+
+         facelist_for_edge = (int *) malloc((nedge + nedge) * sizeof(int));  
+         nedge_ea_node     = NULL;
+         edgelist_for_node = NULL;
+
+         get_faces_ea_edge(nface, nedge, nnode, nnode_ea_face, nodelist_for_face,
+                           edgelist_for_face, nodelist_for_edge,
+                           facelist_for_edge, &nedge_ea_node, &edgelist_for_node);
+
+         cal_norm_of_face(nface, nnode, coords, nnode_ea_face,
+                          nodelist_for_face, edgelist_for_face,
+                          NULL, norm_ea_face[0]);
+     }         
+     else {  
+         nedge = my_nedge;
+         edgelist_for_face = my_edgelist_for_face;
+         nodelist_for_edge = my_nodelist_for_edge;
+         norm_ea_face      = my_norm_ea_face;
+         facelist_for_edge = my_facelist_for_edge;
+         nedge_ea_node     = my_nedge_ea_node;
+         edgelist_for_node = my_edgelist_for_node;
+     } 
+     ds_ordered       = (double *) malloc(nnode * sizeof(double));
+     node_loc         = (int    *) malloc(5 * nnode * sizeof(int));
+     nnode_ea_ds      = node_loc    + nnode;
+     mynnode_ea_ds    = nnode_ea_ds + nnode;
+     nodelist_ea_ds   = mynnode_ea_ds + nnode; 
+     mynodelist_ea_ds = nodelist_ea_ds + nnode;
+  
+
+     for (n = 0; n < nnode; n++) {
+         ds_ordered[n]       = ds_ea_node[n]; 
+         mynodelist_ea_ds[n] = n;
+     } 
+     for (n = 0; n < nnode; n++) { 
+         ds = ds_ordered[n]; 
+         myn = n;
+         for (k = n+1; k < nnode; k++) {
+             if (ds > ds_ordered[k]) {
+                 ds = ds_ordered[k];
+                 myn = k;
+             }
+         } 
+         if (myn != n) { 
+             k = mynodelist_ea_ds[n];
+             mynodelist_ea_ds[n] = mynodelist_ea_ds[myn];
+             mynodelist_ea_ds[myn] = k;
+             ds = ds_ordered[myn];
+             ds_ordered[myn] = ds_ordered[n];
+             ds_ordered[n]   = ds;
+         }
+     }  
+     n = mynodelist_ea_ds[0];
+     mynnode_ea_ds[0] = 1; 
+     ds = ds_ordered[0];   
+
+     offset    = 1;
+     ndistance = 1;
+     idx_next  = 1;
+     found     = 1;
+
+     while (found) {
+         found = 0;
+         for (i = idx_next; i < nnode; i++) {
+             n = mynodelist_ea_ds[i]; 
+             if (ds_ordered[i] > ds + dzmin) {
+                 ds = ds_ordered[i]; 
+                 ds_ordered[ndistance] = ds;
+                 mynnode_ea_ds[ndistance] = 1;
+                 mynodelist_ea_ds[offset] = n; 
+                 
+                 ndistance++; 
+                 offset++;
+                 idx_next = i + 1;
+                 found    = 1;
+                 break;
+             }
+             else {
+                 mynnode_ea_ds[ndistance-1]++;
+                 mynodelist_ea_ds[offset] = n;
+                 offset++;
+             }
+         }
+     }
+     nnode_interface = 0;
+     nodelist_for_interface = (int *) malloc((nedge + nnode) * sizeof(int));
+     interface_node_to_edge = (int *) malloc((nedge + nnode) * sizeof(int));
+
+     *coords_tot              = NULL;
+
+
+
+
+
+
+
+
+
+
+/**********
+
+     vf_ea_ds = (double *) malloc((ndistance + 1) * sizeof(double));
+     for (idx = 0; idx < ndistance; idx++) {
+
+          if (*coords_tot) {
+              free(*coords_tot);
+              *coords_tot  = NULL;
+          }
+          ds = ds_ordered[idx];
+          for (i = 0; i < nnode; i++) {
+              node_loc[i] = 0;          // on the plane  
+          }
+          for (n = 0; n < nnode; n++) {
+              c = coords + (n * dim);
+              if (c[2] < ds + dzmin) { 
+                  node_loc[n] = -1;   // lower than ds 
+              }
+              else if (c[2] > ds + dzmin) { 
+                  node_loc[n] = 1;    // higher than ds
+              } 
+          }
+          nnode_interface = 0;
+          for (n = 0; n < nnode; n++) {
+              if (node_loc[n] == 0) {
+                  nodelist_for_interface[nnode_interface] = n; 
+                  interface_node_to_edge[nnode_interface] = -1;
+                  nnode_interface++;
+              }
+          } 
+          offset = 0;
+          for (i = 0; i < idx; i++) {
+              offset += mynnode_ea_ds[i];
+          }
+          nn = mynnode_ea_ds[idx]; 
+          for (i = 0; i < nn; i++) {
+              n = mynodelist_ea_ds[offset+i];
+              nodelist_for_interface[nnode_interface] = n; 
+              interface_node_to_edge[nnode_interface] = -1;
+              nnode_interface++;
+              node_loc[n] = 0; 
+          } 
+          nn_low = 0;
+          nn_hgh = 0;
+          for (i = 0; i < nnode; i++) {
+              if (node_loc[i] < 0) {
+                  nn_low++;
+              }
+              else if (node_loc[i] > 0) {
+                  nn_hgh++;
+              }
+          }
+          coords_all = NULL;
+
+          find_interface_z(nface, nedge, nnode, coords, nnode_ea_face,
+                           nodelist_for_face, edgelist_for_face,
+                           nodelist_for_edge, nedge_ea_node, edgelist_for_node,
+                           facelist_for_edge, node_loc, ds,
+ 
+                           &nnode_all, &coords_all,
+                           &nnode_interface, nodelist_for_interface,
+                           interface_node_to_edge);
+ 
+          divide_z(nface, nnode, coords, ds, node_loc,
+                   nnode_ea_face, nodelist_for_face,
+ 
+                   nedge, edgelist_for_face, nodelist_for_edge,
+                   nedge_ea_node, edgelist_for_node,
+                   facelist_for_edge, norm_ea_face,
+ 
+                   nnode_all, coords_all,
+                   nnode_interface, nodelist_for_interface,
+                   interface_node_to_edge,
+ 
+                   faceindexlow_of_upper_interface, faceindexhgh_of_upper_interface,
+                   nnode_tot,   coords_tot,
+                   nface_lower, nnode_ea_face_lower, nodelist_for_face_lower, face2old_lower,
+                   nface_upper, nnode_ea_face_upper, nodelist_for_face_upper, face2old_upper);
+
+          if (*nface_lower > 0) {
+                cal_vol(*nface_lower, *nnode_tot, *coords_tot, nnode_ea_face_lower,
+                        nodelist_for_face_lower, &vol);
+          }
+          else {
+              vol = 0.0;
+          }
+          if (coords_all) free(coords_all);
+ 
+          vf_ea_ds[idx] = vol/volume;
+     } 
+//   sort according to vf_ea_ds
+
+     offset = 0;
+     for (idx = 0; idx < ndistance; idx++) { 
+         vf = vf_ea_ds[idx];
+         myidx = idx;  
+         for (k = idx+1; k < ndistance; k++) { 
+             if (vf_ea_ds[k] < vf) { 
+                 vf = vf_ea_ds[k];
+                 myidx = k;
+             }
+         }
+         vf              = vf_ea_ds[myidx];
+         vf_ea_ds[myidx] = vf_ea_ds[idx];
+         vf_ea_ds[idx]   = vf;
+
+         nn = mynnode_ea_ds[myidx];
+         myoffset = 0;
+         for (i = 0; i < myidx; i++) { 
+             myoffset += mynnode_ea_ds[i];
+         }
+         for (i = 0; i < nn; i++) { 
+             nodelist_ea_ds[offset+i] = mynodelist_ea_ds[myoffset+i];
+         }
+         nnode_ea_ds[idx] = mynnode_ea_ds[myidx];
+         offset += nn;
+     }
+
+
+     for (idx = 0; idx < ndistance; idx++) {
+         vf = vf_ea_ds[idx];
+         if (vf == vf_to_match) { 
+             ds = ds_ordered[idx]; 
+             *vf_lower = vf_ea_ds[idx];
+             *vf_upper = vf_ea_ds[idx];  
+             *vol_matched = 1;
+             break;
+         } 
+         else if (vf > vf_to_match) {  
+             *ds_upper = ds_ordered[idx];
+             *vf_upper = vf_ea_ds[idx]; 
+             break; 
+         } 
+         else { 
+             *ds_lower = ds_ordered[idx];
+             *vf_lower = vf_ea_ds[idx]; 
+         }
+     } 
+     if (idx == ndistance) { 
+         *ds_upper = ds_ordered[ndistance-1]; 
+         idx = ndistance - 1; 
+     } 
+     if (!(*vol_matched)) { 
+          ds = 0.5 *(*ds_lower + *ds_upper); 
+     } 
+     free(vf_ea_ds); 
+
+*********************/
+
+
+
+
+
+
+
+
+
+     *vol_matched = 0;  
+     *ds_lower = ds_ordered[0];
+     *vf_lower = 0.0;   
+     *ds_upper = ds_ordered[1];
+     idx = 1;
+
+     while (idx < ndistance) { 
+
+         ds = ds_ordered[idx];
+ 
+         if (*coords_tot) { 
+             free(*coords_tot);
+             *coords_tot  = NULL;
+         }
+         for (i = 0; i < nnode; i++) {
+              node_loc[i] = 0;          // on the plane  
+         }
+         for (n = 0; n < nnode; n++) {
+             c = coords + (n * dim);
+             if (c[2] < ds + dzmin) {
+                 node_loc[n] = -1;   // lower than ds 
+             }
+             else if (c[2] > ds + dzmin) {
+                 node_loc[n] = 1;    // higher than ds
+             }
+         }
+         nnode_interface = 0;
+         for (n = 0; n < nnode; n++) {
+             if (node_loc[n] == 0) {
+                 nodelist_for_interface[nnode_interface] = n;
+                 interface_node_to_edge[nnode_interface] = -1;
+                 nnode_interface++;
+             }
+         }
+         if (!(*vol_matched)) {
+             offset = 0;
+             for (i = 0; i < idx; i++) {
+                 offset += mynnode_ea_ds[i];
+             }
+             nn = mynnode_ea_ds[idx];
+             for (i = 0; i < nn; i++) {
+                 n = mynodelist_ea_ds[offset+i];
+                 nodelist_for_interface[nnode_interface] = n;
+                 interface_node_to_edge[nnode_interface] = -1;
+                 nnode_interface++;
+                 node_loc[n] = 0;
+             }
+         } 
+/*****
+         if (nnode_interface > 2) { 
+//           check whether to take the whole plane as the interface  
+             offset = 0;
+             for (f = 0; f < nface; f++) { 
+                 nn = nnode_ea_face[f]; 
+                 nodes = nodelist_for_face + offset;
+                 nn_same = 0;
+                 if (nn > nnode_interface) { 
+                     for (i = 0; i < nn; i++) { 
+                         n = nodes[i];
+                         for (k = 0; k < nnode_interface; k++) { 
+                             if (nodelist_for_interface[k] == n) {  
+                                 nn_same++;
+                                 break;
+                             }
+                         }
+                     }
+                 }
+                 if (nn_same == nnode_interface) { 
+                     nnode_interface = nn;
+                     for (i = 0; i < nn; i++) { 
+                         n = nodes[i];
+                         nodelist_for_interface[i] = n; 
+                         interface_node_to_edge[i] = -1;
+                         node_loc[n] = 0; 
+                     }
+                     break;
+                 }
+                 offset += nn;
+             }
+         } 
+*****/ 
+         nn_low = 0;
+         nn_hgh = 0;
+         for (i = 0; i < nnode; i++) {
+             if (node_loc[i] < 0) {
+                 nn_low++;
+             }
+             else if (node_loc[i] > 0) {
+                 nn_hgh++;
+             }
+         }
+         coords_all = NULL;
+         find_interface_z(nface, nedge, nnode, coords, nnode_ea_face,
+                          nodelist_for_face, edgelist_for_face, 
+                          nodelist_for_edge, nedge_ea_node, edgelist_for_node,
+                          facelist_for_edge, node_loc, ds,
+ 
+                          &nnode_all, &coords_all, 
+                          &nnode_interface, nodelist_for_interface,
+                          interface_node_to_edge);
+
+         divide_z(nface, nnode, coords, ds, node_loc,
+                  nnode_ea_face, nodelist_for_face,
+
+                  nedge, edgelist_for_face, nodelist_for_edge,
+                  nedge_ea_node, edgelist_for_node,
+                  facelist_for_edge, norm_ea_face,
+
+                  nnode_all, coords_all,
+                  nnode_interface, nodelist_for_interface,
+                  interface_node_to_edge,
+                  faceindexlow_of_upper_interface, faceindexhgh_of_upper_interface, 
+
+                  nnode_tot,   coords_tot,
+                  nface_lower, nnode_ea_face_lower, nodelist_for_face_lower, face2old_lower,
+                  nface_upper, nnode_ea_face_upper, nodelist_for_face_upper, face2old_upper);
+
+         if (*nface_lower > 0) { 
+    
+               cal_vol(*nface_lower, *nnode_tot, *coords_tot, nnode_ea_face_lower,
+                       nodelist_for_face_lower, &vol);
+
+         } 
+         if (coords_all) free(coords_all);
+
+         vf = vol/volume;
+
+         *vol_matched = 0;
+         if (fabs(vf - vf_to_match) < accuracy) { 
+             *vol_matched = 1;
+             *ds_lower    = ds;
+             *ds_upper    = ds; 
+ 
+             *vf_lower = vf;
+             *vf_upper = vf;
+             break;
+         } 
+         else if (vf < vf_to_match) {
+             *vf_lower = vf;
+             *ds_lower = ds;
+             idx++;
+         }
+         else { 
+             *ds_upper = ds;
+             *vf_upper = vf;
+
+              break; 
+         }
+     }                               // while  
+     if (idx == ndistance) { 
+         *vol_matched = 1; 
+         *ds_upper = *ds_lower ;
+         *vf_upper = *vf_lower;
+     }  
+     *nnode_upper_interface    = nnode_interface;
+     *nodelist_upper_interface = nodelist_for_interface; 
+
+     interface_face_intersect(nface, nedge, nnode, nnode_ea_face, nodelist_for_face,
+                              edgelist_for_face, nodelist_for_edge, 
+                              facelist_for_edge, nedge_ea_node, edgelist_for_node, 
+                              *nnode_tot, *nnode_upper_interface, *nodelist_upper_interface,
+                              interface_node_to_edge,
+                              ifintersected_face, nodelist_intersected_face, nodes2_in_between);
+
+     free(interface_node_to_edge); 
+     
+     free(ds_ordered); 
+     free(node_loc); 
+   
+     if (my_nedge <= 0) { 
+         free(norm_ea_face[0]);
+         free(norm_ea_face);
+         free(edgelist_for_face);
+         free(nodelist_for_edge);
+         free(facelist_for_edge);
+         free(nedge_ea_node);
+         free(edgelist_for_node);
+     } 
+
+     return;
+ }  
+
+void find_interface_z(int nface, int nedge, int nnode, double *coords,
+                    int *nnode_ea_face, int *nodelist_for_face, 
+                    int *edgelist_for_face, int *nodelist_for_edge,
+                    int *nedge_ea_node, int *edgelist_for_node,
+                    int *facelist_for_edge, int *node_loc, double ds,
+
+                    int *nnode_tot, double **coords_tot, 
+                    int *nnode_interface, int *nodelist_for_interface, 
+                    int *interfacenode_to_edge)
+{ 
+//   Given the distance ds, find the material interface
+
+     int dim, szdim, i, k, e, ne, n, n0, n1, ncoord_new, offset, err;
+     int *edges, *nodes; 
+     int **edges_ea_node, *edge_taken;  
+     double point[3], *c0, *c1, *coords_new;
+
+     int *node_new2old, *nodelist_for_interface_work, *interfacenode_to_edge_work;
+     double *coords_work;
+ 
+//   nnode_interface        :  input and output
+//   nodelist_for_interface :  input and output
+//   interfacenode_to_edge  :  output    
+
+     dim   = 3;
+     szdim = dim * sizeof(double);
+ 
+     edge_taken = (int *) malloc(nedge * sizeof(int));
+
+     edges_ea_node = (int **)malloc(nnode * sizeof(int*));
+     offset = 0;
+     for (i = 0; i < nnode; i++) { 
+         edges_ea_node[i] = edgelist_for_node + offset;
+         offset += nedge_ea_node[i];
+     } 
+
+     coords_new = (double *) malloc(nedge * szdim); 
+ 
+     for (e = 0; e < nedge; e++) {
+         edge_taken[e] = 0;
+     }
+     nodes = nodelist_for_edge;
+     for (e = 0; e < nedge; e++) { 
+         n0 = nodes[0];
+         n1 = nodes[1];
+         c0 = coords + (n0 * dim);
+         c1 = coords + (n1 * dim);
+         if (fabs(c0[2] - c1[2]) < dzmin) { 
+             edge_taken[e] = 1;
+         }
+         nodes += 2;
+     }  
+
+     for (i = 0; i < *nnode_interface; i++) {
+         n = nodelist_for_interface[i];
+         node_loc[n] = 0;
+
+         ne    = nedge_ea_node[n];
+         edges = edges_ea_node[n];
+         for (k = 0; k < ne; k++) {
+             e  = edges[k];
+             edge_taken[e] = 1;
+         }
+         interfacenode_to_edge[i] = -1;
+     } 
+     ncoord_new = 0;
+     for (e = 0; e < nedge; e++) { 
+         if (edge_taken[e]) continue;
+
+         nodes = nodelist_for_edge + (e + e);
+         n0 = nodes[0];
+         n1 = nodes[1];
+         if (node_loc[n0] * node_loc[n1] == 0) { 
+             ne = nedge_ea_node[n0];
+             edges = edges_ea_node[n0];
+             for (i = 0; i < ne; i++) { 
+                 k = edges[i];
+                 edge_taken[k] = 1;
+             }
+             ne = nedge_ea_node[n1];
+             edges = edges_ea_node[n1];
+             for (i = 0; i < ne; i++) {
+                 k = edges[i];
+                 edge_taken[k] = 1;
+             } 
+         } 
+         if (node_loc[n0] * node_loc[n1] > 0) continue; 
+
+         c0 = coords + (n0 * dim);
+         c1 = coords + (n1 * dim);
+         line_intersect_z(c0, c1, ds, point);
+
+         memcpy(coords_new + (ncoord_new * dim), point, (size_t)szdim); 
+         nodelist_for_interface[*nnode_interface] = nnode + ncoord_new;
+         interfacenode_to_edge[ *nnode_interface] = e;
+         (*nnode_interface)++; 
+         ncoord_new++;
+          
+         edge_taken[e] = 1;
+     }
+     *nnode_tot  = nnode + ncoord_new;  
+     *coords_tot = (double *) malloc((*nnode_tot) * szdim);
+     memcpy(*coords_tot, coords, (size_t)(nnode * szdim)); 
+     memcpy(*coords_tot + (dim * nnode), coords_new, (size_t)(ncoord_new * szdim)); 
+
+     if (*nnode_interface > 3) { 
+
+//         err = sort_nodes_old(nface, nedge, nnode, nnode_ea_face, nodelist_for_face,
+//                edgelist_for_face, nodelist_for_edge, nedge_ea_node,
+//                edges_ea_node, facelist_for_edge, 
+//                *nnode_tot, 
+//                *nnode_interface, nodelist_for_interface,
+//                interfacenode_to_edge);
+         
+         node_new2old                = (int *) malloc(3 * (*nnode_interface + 1) * sizeof(int)); 
+         nodelist_for_interface_work = node_new2old + (*nnode_interface + 1);
+         interfacenode_to_edge_work  = nodelist_for_interface_work + (*nnode_interface + 1);
+
+         coords_work  = (double *) malloc((*nnode_interface + 1) * 2 * sizeof(double));
+
+         for (i = 0; i < *nnode_interface; i++) { 
+             n0 = nodelist_for_interface[i];
+             if (n0 < nnode) { 
+                 c0 = coords + (n0 * dim);
+             }
+             else { 
+                 c0 = coords_new + ((n0 - nnode) * dim); 
+             } 
+             c1 = coords_work + (i + i);
+             c1[0] = c0[0];
+             c1[1] = c0[1];
+             node_new2old[i] = n0;
+         } 
+         sort_nodes(*nnode_interface, coords_work, interfacenode_to_edge, 
+                    nodelist_for_interface_work, interfacenode_to_edge_work, &err);
+          
+         for (i = 0; i < *nnode_interface; i++) { 
+             n1 = nodelist_for_interface_work[i];  
+             nodelist_for_interface[i] = node_new2old[n1];
+         }
+         memcpy(interfacenode_to_edge, interfacenode_to_edge_work, 
+                (size_t)(*nnode_interface * sizeof(int)));
+
+         free(node_new2old);
+         free(coords_work); 
+
+         assert(!err);
+     } 
+     free(edges_ea_node);
+     free(edge_taken);
+     free(coords_new);
+
+     return;
+   }
+
+void interface_face_intersect(int nface, int nedge, int nnode, 
+                              int *nnode_for_face, int *nodelist_for_face, int *edgelist_for_face,
+                              int *nodelist_for_edge, int *facelist_for_edge, 
+                              int *nedge_for_node, int *edgelist_for_node, 
+                              int nnode_tot, int nnode_interface, int *nodelist_for_interface, 
+                              int *interface_node_to_edge, int *ifintersected_face,
+                              int *nodelist_intersected_face, int **nodes2_in_between) 
+{ 
+//   nnode_tot is the total number of nodes, including the nodes in the interface.
+//   (*nodes2_in_between)[0:2*nnode_interface), output, contains the two surrounding nodes
+//                                              for each interface node. 
+//   ifintersected_face[0:nface) is the output indicates whether the interface cuts the face. 
+//   nodelist_intersected_face[0:2*nface): output, the list of nodes where the interface 
+//                                         intersect with the face, if the face intersects with 
+//                                         the interface; otherwise, -1 for not intersecting. 
+
+     int i, ii, j, k, offset, n, nn, e, mye, ne, f, nface2, found;
+     int *nnode_intersecred_face, *edges, *faces, *nodes; 
+     int **edges_for_node; 
+  
+     if (nnode_interface < 3) return; 
+
+//   The following logic doesn't work if the interface is one of the face.
+//   Foe example, the interface and this face intersect at nnode_interface nodes, not 2.
+//   Therefore, I treat the special case seperately.
+
+     if (nnode_tot == nnode) {  // the interface is one of the faces.
+//       interface is one of the faces
+/****
+         found = 0; 
+         offset = 0;
+         for (f = 0; f < nface; f++) { 
+             nn = nnode_for_face[f];
+             if (nn == nnode_interface) { 
+                 nodes = nodelist_for_face + offset;
+                 for (k = 0; k < nn; k++) { 
+                     found = 0;
+                     n = nodelist_for_interface[k];
+                     for (i = 0; i < nn; i++) { 
+                         if (n == nodes[i]) { 
+                             found = 1;
+                             break;
+                         }
+                     }
+                     if (!found) break;    
+                 } 
+             }
+             if (found) break;
+             offset += nn;
+         } 
+         assert(found);
+//       face f is the interface 
+***/     
+         return;
+     }
+     *nodes2_in_between = (int *) malloc((nnode_interface + nnode_interface) * sizeof(int));
+  
+     edges_for_node = (int **) malloc(nnode * sizeof(int *));
+     offset = 0;
+     for (i = 0; i < nnode; i++) { 
+         edges_for_node[i] = edgelist_for_node + offset;
+         offset += nedge_for_node[i];
+     }     
+     for (i = 0; i < nface; i++) { 
+         ifintersected_face[i] = 0;
+     }
+     nface2 = nface + nface;
+     for (i = 0; i < nface2; i++) { 
+         nodelist_intersected_face[i] = -1;
+     }
+     nnode_intersecred_face = ifintersected_face;
+
+     for (i = 0; i < nnode_interface; i++) { 
+         n = nodelist_for_interface[i];
+         e = interface_node_to_edge[i];
+         if (e < 0) { //  n is an original node
+             (*nodes2_in_between)[i+i] = n;
+             (*nodes2_in_between)[i+i+1] = n;
+
+             ne    = nedge_for_node[n];
+             edges = edges_for_node[n];
+             for (k = 0; k < ne; k++) { 
+                 mye = edges[k];
+                 faces = facelist_for_edge + (mye + mye);
+                 for (j = 0; j < 2; j++) { 
+                     f  = faces[j];
+                     nn = nnode_intersecred_face[f];
+                     nodes = nodelist_intersected_face + (f + f);
+                     found = 0;
+                     for (ii = 0; ii < nn; ii++) { 
+                         if (nodes[ii] == n) { 
+                             found = 1;
+                             break;
+                         }
+                     }
+                     if (!found) {
+                         assert(nn < 2); 
+                         nodes[nn] = n;
+                         nnode_intersecred_face[f]++;
+                     } 
+                 } 
+             } 
+         } 
+         else { // n is an intersection 
+             nodes = nodelist_for_edge + (e + e);
+             (*nodes2_in_between)[i+i] = nodes[0];
+             (*nodes2_in_between)[i+i+1] = nodes[1];
+
+             faces = facelist_for_edge + (e + e); 
+             for (j = 0; j < 2; j++) { 
+                 f = faces[j];
+                 nn = nnode_intersecred_face[f];
+                 nodes = nodelist_intersected_face + (f + f);
+                 found = 0;
+                 for (ii = 0; ii < nn; ii++) {
+                     if (nodes[ii] == n) {  
+                         found = 1;
+                         break;
+                     }
+                 }
+                 if (!found) {
+                     assert(nn < 2);
+                     nodes[nn] = n;
+                     nnode_intersecred_face[f]++;
+                 }
+             }
+         } 
+     }  
+     for (i = 0; i < nface; i++) { 
+         if (nnode_intersecred_face[i] < 2) { 
+             nnode_intersecred_face[i] = 0;
+             nodelist_intersected_face[i+i] = -1; 
+         }
+         else { 
+             nnode_intersecred_face[i] = 1;
+         } 
+     } 
+     free(edges_for_node);
+
+     return; 
+ }  
+
+void get_planar_poly(int nface, int nnode, double *coords, 
+                     int *nnode_for_face, int *nodelist_for_face, int *ifcoplane_for_face,
+                     int *nface_ext, int *nnode_ext, double **coords_ext, 
+                     int **nnode_for_face_ext, int **nodelist_for_face_ext)
+{
+//  In return, if nnode_ext != nnode, the first nnode in coords_ext will be coords,
+//  then the center of each face. ,
+
+     int ifallcoplane, f, f_ext, lsize, nn, k, k1, nfctr, nn_ea_tri;
+     int *nodes, *nodes_ext;
+     double *fctr; 
+
+     nn_ea_tri = 3; 
+    
+     *nface_ext = nface;
+     *nnode_ext = nnode;
+     *coords_ext = NULL;
+     *nnode_for_face_ext = NULL;
+     *nodelist_for_face_ext = NULL;
+  
+     ifallcoplane = 1; 
+     for (f = 0; f < nface; f++) {
+         if (!ifcoplane_for_face[f]) { 
+             ifallcoplane = 0;
+             break;
+         }
+     }
+     if (ifallcoplane) { 
+         return;
+     }
+     *nnode_ext = nnode;
+     for (f = 0; f < nface; f++) {
+         if (!ifcoplane_for_face[f]) {
+             (*nnode_ext)++;
+         }
+     }
+     *coords_ext = (double *)malloc(*nnode_ext * dim * sizeof(double));
+     memcpy(*coords_ext, coords, (size_t)(nnode * dim * sizeof(double)));
+
+     fctr  = *coords_ext + (nnode * dim);
+     nodes = nodelist_for_face;
+     *nface_ext = 0;
+     lsize     = 0;
+     for (f = 0; f < nface; f++) {
+         nn = nnode_for_face[f];
+         if (!ifcoplane_for_face[f]) {
+             cal_face_ctr(nnode, coords, nn, nodes, fctr);
+             lsize     += (nn * nn_ea_tri);
+             fctr      += dim;
+             (*nface_ext) += nn;
+         }
+         else {
+             (*nface_ext)++;
+             lsize += nn;
+         }
+         nodes += nn;
+     }
+     *nnode_for_face_ext    = (int *) malloc(*nface_ext * sizeof(int));
+     *nodelist_for_face_ext = (int *) malloc(lsize * sizeof(int));
+     f_ext     = 0;
+     nodes_ext = *nodelist_for_face_ext;
+     nodes     = nodelist_for_face;
+     fctr      = *coords_ext + (nnode * dim);
+     nfctr     = 0;
+ 
+     for (f = 0; f < nface; f++) {
+         nn = nnode_for_face[f];
+         if (ifcoplane_for_face[f]) {
+             (*nnode_for_face_ext)[f_ext] = nn;
+             memcpy(nodes_ext, nodes, (size_t)(nn * sizeof(int)));
+             nodes_ext += nn;
+             f_ext++;
+         }
+         else {
+             for (k = 0; k < nn; k++) {
+                 k1 = (k + 1) % nn;
+                 (*nnode_for_face_ext)[f_ext] = nn_ea_tri;
+                 nodes_ext[0] = nnode + nfctr;   // center of face  
+                 nodes_ext[1] = nodes[k];
+                 nodes_ext[2] = nodes[k1];
+ 
+                  f_ext++;
+                 nodes_ext += nn_ea_tri;
+             }
+             fctr += dim;
+             nfctr++;
+         }
+         nodes += nn;
+     }
+ 
+     return;
+ } 
+
+void rotate_to_norm(double *norm, int nnode, double *coords_s, double *coords_t)
+{ 
+//   In the new coordinate system, z-axis alongs the norm.
+
+     int i;
+     double cost, sint, tmp, cosp, sinp, *c, *r;
+//     double g, a[3][3]; 
+
+     if (fabs(norm[2] - 1.0) < small) {   // no change    
+         cost = 1.0;
+         sint = 0.0;
+         sinp = 0.0;
+         cosp = 1.0;  
+     } 
+     else if (fabs(norm[2] + 1.0) < small) {  // -z -> z,  y -> x, x -> y     
+         cost = -1.0;
+         sint =  0.0; 
+         sinp = -1.0;
+         cosp =  0.0;
+     }
+     else if (fabs(norm[0] - 1.0) < small) { //  x -> z, -z -> x, y -> y   
+         cost = 0.0;
+         sint = 1.0;
+         sinp = 0.0;
+         cosp = 1.0;
+     }
+     else if (fabs(norm[0] + 1.0) < small) { // -x -> z,  -y -> y, -z -> x  
+         cost = 0.0;
+         sint = 1.0;
+         sinp = 0.0;
+         cosp = -1.0;
+     }
+     else if (fabs(norm[1] - 1.0) < small) { // y -> z, -z -> x, -x - > y  
+         cost = 0.0;
+         sint = 1.0;
+         sinp = 1.0;
+         cosp = 0.0;
+     }
+     else if (fabs(norm[1] + 1.0) < small) { // -y -> z, -z -> x,  x -> y  
+         cost = 0.0;
+         sint = 1.0;
+         sinp = -1.0;
+         cosp = 0.0;
+     }
+     else { 
+         cost = norm[2];
+         sint = sqrt(norm[0] * norm[0] + norm[1] * norm[1]);
+        
+         if (sint > 0.0) { 
+             tmp  = 1.0/sint;
+             sinp = norm[1] * tmp;
+             cosp = norm[0] * tmp;
+         }
+         else { 
+             sinp = 1.0;
+             cosp = 0.0;
+         }
+     }
+     for (i = 0; i < nnode; i++) {
+         c = coords_s + (i * dim);
+         r = coords_t + (i * dim);
+         r[0] =  cost * cosp * c[0] + cost * sinp * c[1] - sint * c[2];
+         r[1] = -       sinp * c[0] +        cosp * c[1];
+         r[2] =  sint * cosp * c[0] + sint * sinp * c[1] + cost * c[2];
+     } 
+     return;
+  } 
+
+void rotate_back(double *norm, int nnode, double *coords_s, double *coords_t)
+{
+     int i;
+     double cost, sint, tmp, cosp, sinp, *c, *r;
+
+     if (fabs(norm[2] - 1.0) < small) {   // no change    
+         cost = 1.0;
+         sint = 0.0;
+         sinp = 0.0;
+         cosp = 1.0;  
+     } 
+     else if (fabs(norm[2] + 1.0) < small) {  // -z -> z,  y -> x, x -> y     
+         cost = -1.0;
+         sint =  0.0; 
+         sinp = -1.0;
+         cosp =  0.0;
+     }
+     else if (fabs(norm[0] - 1.0) < small) { //  x -> z, -z -> x, y -> y   
+         cost = 0.0;
+         sint = 1.0;
+         sinp = 0.0;
+         cosp = 1.0;
+     }
+     else if (fabs(norm[0] + 1.0) < small) { // -x -> z,  -y -> y, -z -> x  
+         cost = 0.0;
+         sint = 1.0;
+         sinp = 0.0;
+         cosp = -1.0;
+     }
+     else if (fabs(norm[1] - 1.0) < small) { // y -> z, -z -> x, -x - > y  
+         cost = 0.0;
+         sint = 1.0;
+         sinp = 1.0;
+         cosp = 0.0;
+     }
+     else if (fabs(norm[1] + 1.0) < small) { // -y -> z, -z -> x,  x -> y  
+         cost = 0.0;
+         sint = 1.0;
+         sinp = -1.0;
+         cosp = 0.0;
+     }
+     else {  
+         cost = norm[2];
+         sint = sqrt(norm[0] * norm[0] + norm[1] * norm[1]);
+    
+         if (sint > 0.0) {
+             tmp  = 1.0/sint;
+             sinp = norm[1] * tmp;
+             cosp = norm[0] * tmp;
+         }
+         else {
+             sinp = 1.0;
+             cosp = 0.0;
+         } 
+     }
+     for (i = 0; i < nnode; i++) {
+         c = coords_s + (i * dim);
+         r = coords_t + (i * dim);
+
+         r[0] =   cost * cosp * c[0] - sinp * c[1] + sint * cosp * c[2];
+         r[1] =   cost * sinp * c[0] + cosp * c[1] + sint * sinp * c[2];
+         r[2] = - sint        * c[0]               + cost        * c[2];
+     }
+     return;
+ }
+
+
+void get_edges(int nface, int nnode, int *nnode_for_face,
+                int *nodelist_for_face, int *nedge,
+                int **edgelist_for_face, int **nodelist_for_edge)
+{
+     int ne, f, n0, n1, nn, m0, m1, i, i1, k, e;
+     int *nodelist_for_edge_work, *nodelist_exist;
+     int *nodelist_s, *nodelist_t, *edgelist_t;
+ 
+     ne = 0;
+     for (i = 0; i < nface; i++) {
+         nn = nnode_for_face[i];
+         ne += nn;
+     }
+     nodelist_for_edge_work = (int *) malloc((ne + ne) * sizeof(int));
+     *edgelist_for_face     = (int *) malloc(ne * sizeof(int));
+ 
+     nodelist_s = nodelist_for_face;
+     nodelist_t = nodelist_for_edge_work;
+     edgelist_t = *edgelist_for_face;
+ 
+     *nedge = 0;
+     for (f = 0; f < nface; f++) {
+         nn = nnode_for_face[f];
+         for (i = 0; i < nn; i++) {
+             i1 = (i + 1) % nn;
+             n0 = nodelist_s[i];
+             n1 = nodelist_s[i1];
+ 
+//           check whether this edge is already exist
+ 
+             e = -1;
+             for (k = 0; k < *nedge; k++) {
+                 nodelist_exist = nodelist_for_edge_work + (k + k);
+                 m0 = nodelist_exist[0];
+                 m1 = nodelist_exist[1];
+                 if (((m0 == n0)&&(m1 == n1)) || ((m0 == n1)&&(m1 == n0))) {
+                     e = k;
+                     break;
+                 }
+             }
+             if (e >= 0) {
+                 edgelist_t[i] = e;
+             }
+             else {
+                 edgelist_t[i] = *nedge;
+                 nodelist_t[0] = n0;
+                 nodelist_t[1] = n1;
+                 nodelist_t   += 2;
+                 (*nedge)++;
+             }
+         }
+         nodelist_s += nn;
+         edgelist_t += nn;
+     }
+     *nodelist_for_edge = (int *) malloc((*nedge + *nedge) * sizeof(int));
+     memcpy(*nodelist_for_edge, nodelist_for_edge_work, (size_t)((*nedge + *nedge) * sizeof(int)));
+ 
+     free(nodelist_for_edge_work);
+ 
+     return;
+ }
+ 
+
+void get_faces_ea_edge(int nface, int nedge, int nnode, 
+                       int *nnode_ea_face, int *nodelist_for_face,
+                       int *edgelist_for_face, int *nodelist_for_edge,
+                       int *facelist_for_edge, 
+                       int **nedge_ea_node, int **edgelist_for_node) 
+{ 
+     int i, k, e, e2, ne, f, n, sz, offset;
+     int *edges, *nodes, *offset_ea_node; 
+
+     sz = nedge+nedge; 
+     for (i = 0; i < sz; i++) { 
+        facelist_for_edge[i] = -1;
+     }
+     offset = 0;
+     for (f = 0; f < nface; f++) { 
+         ne = nnode_ea_face[f];
+         edges = edgelist_for_face + offset;
+         for (i = 0; i < ne; i++) { 
+             e = edges[i];
+             e2 = e + e; 
+             if (facelist_for_edge[e2] == -1) { 
+                 facelist_for_edge[e2] = f;
+             }
+             else { 
+                 facelist_for_edge[e2+1] = f;
+             }
+         }
+         offset += ne; 
+     }  
+     *nedge_ea_node = (int *) malloc(nnode * sizeof(int));
+     for (i = 0; i < nnode; i++) { 
+         (*nedge_ea_node)[i] = 0;
+     }
+     sz = 0;
+     for (e = 0; e < nedge; e++) { 
+         nodes = nodelist_for_edge + (e + e);
+         for (i = 0; i < 2; i++) { 
+             n = nodes[i];
+
+if (n >= nnode) { 
+    printf("ERROR: n >= nnode\n");
+    assert(n < nnode);
+}
+
+
+             (*nedge_ea_node)[n]++; 
+             sz++;  
+         }
+     }
+     *edgelist_for_node = (int *) malloc(sz * sizeof(int));
+     offset_ea_node     = (int *) malloc(nnode * sizeof(int));
+     offset = 0; 
+     for (n = 0; n < nnode; n++) { 
+         offset_ea_node[n] = offset;
+         offset += (*nedge_ea_node)[n];
+     }
+     for (i = 0; i < nnode; i++) {
+         (*nedge_ea_node)[i] = 0;
+     }
+     for (e = 0; e < nedge; e++) { 
+         nodes = nodelist_for_edge + (e + e);
+         for (i = 0; i < 2; i++) { 
+             n = nodes[i]; 
+             offset = offset_ea_node[n] + (*nedge_ea_node)[n];
+             (*edgelist_for_node)[offset] = e;
+             (*nedge_ea_node)[n]++;
+         }
+     }  
+     free(offset_ea_node);
+
+     return;
+ } 
+
+
+void cal_norm_of_face(int nface, int nnode, double *coords,   
+                      int *nnode_ea_face, int *nodelist_for_face, 
+                      int *edgelist_for_face, double *interior_point,  
+                      double *norm_ea_face)
+{ 
+//   The norm in norm_ea_face is outward. 
+
+     int  f, e, n, n1, nn, h, i, i1, k, offset, nnode_used, found;
+     int  *nodes, *edges;
+     double tmp; 
+     double ctrf[3], r0[3], r1[3], norm[3], *c, *c1, *mynorm, ctr[3];  
+
+     if (!interior_point) { 
+         get_interior_point(dim, nface, nnode, coords,
+                            nnode_ea_face, nodelist_for_face, ctr);
+     }
+     else { 
+         memcpy(ctr, interior_point, (size_t)(dim * sizeof(double)));
+     }
+     offset = 0;
+     for (f = 0; f < nface; f++) { 
+         nn = nnode_ea_face[f];
+         nodes = nodelist_for_face + offset;  
+         for (k = 0; k < dim; k++) { 
+            ctrf[k] = 0.0;
+         }
+         for (i = 0; i < nn; i++) { 
+             n = nodes[i]; 
+             c = coords + (n * dim);
+             for (k = 0; k < dim; k++) { 
+                 ctrf[k] += c[k];
+             }
+         }  
+         tmp = 1.0/(double)nn;
+         for (k = 0; k < dim; k++) {
+             ctrf[k] *= tmp;
+         }
+         c = coords;
+         tmp = fabs(c[0] - ctrf[0]) + fabs(c[1] - ctrf[1]) + fabs(c[2] - ctrf[2]);
+
+         found = 0;
+         for (i = 0; i < nn; i++) { 
+             i1 = (i + 1) % nn; 
+             n  = nodes[i];
+             c  = coords + (n * dim);
+             n1 = nodes[i1];
+             c1 = coords + (n1 * dim);
+             for (k = 0; k < dim; k++) { 
+                 r0[k] = c[ k] - ctrf[k];
+                 r1[k] = c1[k] - ctrf[k]; 
+             } 
+             norm[0] = r0[1] * r1[2] - r0[2] * r1[1]; 
+             norm[1] = r0[2] * r1[0] - r0[0] * r1[2]; 
+             norm[2] = r0[0] * r1[1] - r0[1] * r1[0]; 
+             tmp = 0.0;
+             for (k = 0; k < dim; k++) { 
+                 tmp += (norm[k] * norm[k]);
+             }
+             if (tmp > small) { 
+                 tmp = 1.0/sqrt(tmp);
+                 for (k = 0; k < dim; k++) { 
+                     norm[k] *= tmp;
+                 }
+                 found = 1;
+                 break;
+             }
+         }  
+         if (!found) { 
+            for (k = 0; k < dim; k++) { 
+                norm[k] = 1.0;
+            }
+         }
+         n = *nodes;
+         c = coords + (n * dim);   
+         tmp = 0.0;
+         for (k = 0; k < dim; k++) { 
+             tmp += ((c[k] - ctr[k]) * norm[k]); 
+         }
+         if (tmp < 0.0) { 
+             for (k = 0; k < dim; k++) { 
+                 norm[k] = -norm[k];
+             }
+             edges = edgelist_for_face + offset;
+             h = nn / 2;
+             for (i = 0; i < h; i++) { 
+                 i1 = nn - 1 - i;
+                 n = nodes[i];
+                 nodes[i] = nodes[i1];
+                 nodes[i1] = n;
+                 e = edges[i];
+                 edges[i] = edges[i1];
+                 edges[i1] = e;
+             }
+         } 
+         mynorm = norm_ea_face + (f * dim);
+         for (k = 0; k < dim; k++) { 
+             mynorm[k] = norm[k];
+         }
+         offset += nn;
+     }
+     return; 
+  } 
+
+
+void get_interior_point(int dim, int nface, int nnode, double *coords,
+                        int *nnode_ea_face, int *nodelist_for_face,
+                        double *interior_point)
+{
+     int i, k, f, n, nn, offset;
+     int *to_include, *nodes;
+     double *c, tmp;
+
+     to_include = (int *) malloc(nnode * sizeof(int));
+     for (i = 0; i < nnode; i++) {
+         to_include[i] = 0;
+     }
+     offset = 0;
+     for (f = 0; f < nface; f++) {
+         nn = nnode_ea_face[f];
+         nodes = nodelist_for_face + offset;
+         for (i = 0; i < nn; i++) {
+             n = nodes[i];
+             to_include[n] = 1;
+         }
+         offset += nn;
+     }
+     for (k = 0; k < dim; k++) {
+         interior_point[k] = 0.0;
+     }
+     nn = 0;
+     for (i = 0; i < nnode; i++) {
+         if (!to_include[i]) continue;
+
+         c = coords + (i * dim);
+         for (k = 0; k < dim; k++) {
+             interior_point[k] += c[k];
+         }
+         nn++;
+     }
+     tmp = 1.0/(double)nn;
+     for (k = 0; k < dim; k++) {
+         interior_point[k] *= tmp;
+     }
+     free(to_include);
+
+     return;
+ }
+
+
+void line_intersect_z(double *c0, double *c1, double zint, double *point)
+{
+    int i;
+    double t;
+
+    point[2] = zint;
+    t = (zint - c0[2])/(c1[2] - c0[2]);
+    for (i = 0; i < 2; i++) {
+        point[i] = c0[i] + (c1[i] - c0[i]) * t;
+    }
+    return;
+ }
+
+void cal_zone_ctr(int nface, int nnode, double *coords, int *nnode_for_face, int *nodelist_for_face, double *ctr) 
+{
+     int i, n, nn, f;
+     int *nodelist, *included;
+     double factor, *c;
+ 
+     included = (int *) malloc(nnode * sizeof(int));
+     for (i = 0; i < nnode; i++) {
+         included[i] = 0;
+     }
+     nodelist = nodelist_for_face;
+     for (f = 0; f < nface; f++) {
+         nn = nnode_for_face[f];
+         for (i = 0; i < nn; i++) { 
+             n = nodelist[i];
+             included[n] = 1;
+         }
+         nodelist += nn;
+     }
+     for (i = 0; i < dim; i++) {
+         ctr[i] = 0.0;
+     }
+     nn = 0;
+     for (n = 0; n < nnode; n++) { 
+         if (included[n]) { 
+             c = coords + (n * dim);
+             for (i = 0; i < dim; i++) { 
+                 ctr[i] += c[i];
+             }
+             nn++;
+         }
+     }
+     factor = 1.0/(double)nn;
+     for (i = 0; i < dim; i++) {  
+         ctr[i] *= factor;
+     }
+     free(included);   
+   
+     return;
+  }  
+
+
+void cal_ctr(int nnode, double *coords, double *ctr)  
+{   
+    int i, n; 
+    double *c, factor; 
+ 
+    for (i = 0; i < dim; i++) {
+        ctr[i] = 0.0;
+    }
+    for (n = 0; n < nnode; n++) {
+        c = coords + (n * dim);
+        for (i = 0; i < dim; i++) {
+            ctr[i] += c[i];
+        } 
+    }   
+    factor = 1.0/(double) nnode;
+    for (i = 0; i < dim; i++) {
+        ctr[i] *= factor;
+    }
+    return;
+ }  
+
+void cal_face_ctr(int nnode, double *coords, int nnode_this_face, int *nodelist, double *fctr)
+{ 
+     int k, n, i;  
+     double factor, *c; 
+    
+     for (i = 0; i < dim; i++) { 
+         fctr[i] = 0;
+     }
+     for (k = 0; k < nnode_this_face; k++) { 
+         n = nodelist[k];
+         c = coords + (n * dim);
+         for (i = 0; i < dim; i++) { 
+             fctr[i] += c[i];
+         }
+     } 
+     factor = 1.0/(double)nnode_this_face;
+     for (i = 0; i < dim; i++) {
+         fctr[i] *= factor;
+     }
+     return;
+} 
+ 
+
+void cal_vol(int nface, int nnode, double *coords, 
+             int *nnode_for_face, int *nodelist_for_face,
+             double *vol)
+{ 
+    int i, k, k1, n, nn, n0, n1, f, offset;
+    int  *nodes; 
+    double factor, dvol, ctr[3], fctr[3];
+    double *c, *c0, *c1; 
+
+    if (nnode == 4) { // tet
+        *vol = tet_vol(coords, coords+dim, coords+(dim + dim), coords+(3*dim));  
+    }
+    else { 
+        cal_zone_ctr(nface, nnode, coords, nnode_for_face, nodelist_for_face, ctr);
+
+        *vol = 0.0;
+        
+        offset = 0;
+        for (f = 0; f < nface; f++) { 
+            nn = nnode_for_face[f];
+            nodes = nodelist_for_face + offset;
+    
+            for (i = 0; i < dim; i++) { 
+                fctr[i] = 0.0;
+            }
+            for (k = 0; k < nn; k++) { 
+                n  = nodes[k];
+                c  = coords + (n * dim); 
+                for (i = 0; i < dim; i++) {    
+                    fctr[i] += c[i];
+                }
+            }
+            factor = 1.0/(double)nn;
+            for (i = 0; i < dim; i++) {
+                fctr[i] *= factor;
+            }
+            for (k = 0; k < nn; k++) { 
+                k1 = (k + 1) % nn;  
+                n0 = nodes[k];
+                n1 = nodes[k1];
+                c0 = coords + (n0 * dim);
+                c1 = coords + (n1 * dim);
+//              calculate side volume ctr, fctr, c0, c1
+                dvol = tet_vol(ctr, fctr, c0, c1);
+                *vol += dvol;
+            }
+            offset += nn;
+        }
+    }
+    return; 
+} 
+
+int face_coplane(int nnode, double *coords, int nnode_this_face, int *nodelist)
+{ 
+    int ifcoplane, i, k0, k, n0, n, nvector;
+    double cross, sum, factor, *c0, *c, v3[3][3];  
+
+    nvector = 3;
+
+    ifcoplane = 1;
+    if (nnode_this_face > 3) { 
+       
+       for (k0 = 0; k0 < nnode_this_face - 3; k0++) { 
+           n0 = nodelist[k0];
+           c0 = coords + (dim * n0);
+           for (k = 0; k < nvector; k++) {
+               n = nodelist[k0 + k + 1];
+               c = coords + (dim * n);   
+               sum = 0.0;
+               for (i = 0; i < dim; i++) {
+                   v3[k][i] = c[i] - c0[i];
+                   sum += (v3[k][i] * v3[k][i]);
+               }
+               factor = 1.0/sqrt(sum);
+               for (i = 0; i < dim; i++) { 
+                   v3[k][i] *= factor;
+               }
+           }  
+//         check three vectors v[0], v[1], and v[2] on the same plane 
+           DET3(cross, v3[0][0],v3[0][1],v3[0][2],  v3[1][0],v3[1][1],v3[1][2], v3[2][0],v3[2][1],v3[2][2]);
+           if (fabs(cross) > small) { 
+               ifcoplane = 0;
+               break; 
+           }
+           if (!ifcoplane) break;  
+        } 
+    }
+    return ifcoplane; 
+}  
+
+void least_square(int dim, double v0, double *ctr,  
+                  int nneighb, double *v_neighb, double *ctr_neighb,
+                  double *grad)
+{
+     int i, k, n;
+     double s[3], a33[3][3], det[3], *c, det0, dv, dx, factor;
+ 
+     for (k = 0; k < dim; k++) { 
+         s[k] = 0.0;
+     }
+     for (n = 0; n < nneighb; n++) {
+         dv = v_neighb[n] - v0;
+         c  = ctr_neighb + (n * dim);
+         for (k = 0; k < dim; k++) { 
+             s[k] += (dv * (c[k] - ctr[k])); 
+         } 
+     } 
+     for (k = 0; k < dim; k++) {
+         for (i = 0; i < dim; i++) {
+             a33[k][i] = 0.0;
+         }
+     }
+     for (k = 0; k < dim; k++) { 
+         for (n = 0; n < nneighb; n++) { 
+             c  = ctr_neighb + (n * dim);
+             dx = c[k] - ctr[k]; 
+             for (i = 0; i < dim; i++) { 
+
+
+
+                 a33[k][i] += (dx * (c[i] - ctr[i]));       
+             }
+         }
+     }
+     det0 = 1.0; 
+     for (i = 0; i < dim; i++) {
+         det[i] = 0.0;
+     }
+     if (dim == 3) { 
+         DET3(det0, a33[0][0], a33[0][1], a33[0][2], 
+                    a33[1][0], a33[1][1], a33[1][2],
+                    a33[2][0], a33[2][1], a33[2][2]);
+
+         DET3(det[0], s[0], a33[0][1], a33[0][2],
+                      s[1], a33[1][1], a33[1][2],
+                      s[2], a33[2][1], a33[2][2]);
+
+         DET3(det[1], a33[0][0], s[0], a33[0][2],
+                      a33[1][0], s[1], a33[1][2],
+                      a33[2][0], s[2], a33[2][2]); 
+
+         DET3(det[2], a33[0][0], a33[0][1], s[0],
+                      a33[1][0], a33[1][1], s[1],
+                      a33[2][0], a33[2][1], s[2]); 
+     }
+     factor = 1.0/det0;
+     for (i = 0; i < dim; i++) { 
+         grad[i] = factor * det[i];
+     }
+     return;
+  } 
+
+double tet_vol(double *a, double *b, double *c, double *d)
+{ 
+    int i;
+    double ad[3], bd[3], cd[3], cross[3], vol;
+  
+    for (i = 0; i < dim; i++) { 
+        ad[i] = a[i] - d[i];
+        bd[i] = b[i] - d[i];
+        cd[i] = c[i] - d[i];
+    }
+    cross[0] = bd[1]*cd[2] - bd[2]*cd[1];
+    cross[1] = bd[2]*cd[0] - bd[0]*cd[2];
+    cross[2] = bd[0]*cd[1] - bd[1]*cd[0];
+    vol = 0.0;
+    for (i = 0; i < dim; i++) { 
+        vol += (ad[i] * cross[i]);
+    }
+    vol /= 6.0;
+    vol = fabs(vol); 
+
+    return vol;
+}    
+
+void coords_scale(int ndim, double *x0_scale, double dx_scale, 
+                  int nnode, double *coords, double *coords_scaled)
+{ 
+     int i, n; 
+     double factor, *cs, *ct;
+
+     factor = 1.0/dx_scale;
+     cs = coords;
+     ct = coords_scaled;
+     for (n = 0; n < nnode; n++) {
+         for (i = 0; i < ndim; i++) {
+             ct[i] = (cs[i] - x0_scale[i]) * factor;
+         }
+         cs += ndim;
+         ct += ndim;
+     }
+     return;
+}
+
+void coords_scale_back(int ndim, double *x0_scale, double dx_scale,
+                       int nnode, double *coords)
+{ 
+     int i, n;
+     double *c;
+
+     c = coords;
+     for (n = 0; n < nnode; n++) {
+         for (i = 0; i < ndim; i++) {
+             c[i] = dx_scale * c[i] + x0_scale[i];
+         }
+         c += ndim;
+     }
+     return;
+ } 
+
+
+void sort_nodes_3d(int dim, int nnode, double *coords, int *node2edge, 
+                int *nodelist_new, int *node2edge_new)
+{
+     int i, k, n, n0, n1, nn;
+     double tmp, dot, cost, cosa, sina, sgn, ds; 
+     double ctr[3], norm[3], dc[3], cross[3];
+     int *node_taken;
+     double *rs, *c0, *c, *a, *b, *dis; 
+     
+//   find the "ctr"
+
+     if (nnode < 4) { 
+         for (i = 0; i < nnode; i++) { 
+             nodelist_new[i] = i;
+             node2edge_new[i] = node2edge[i];
+         }
+         return; 
+     } 
+     for (i = 0; i < dim; i++) {
+         ctr[i] = 0.0;
+     }
+     for (n = 0; n < nnode; n++) { 
+         c0 = coords + (n * dim);
+         for (i = 0; i < dim; i++) { 
+             ctr[i] += c0[i];
+         }
+     }
+     tmp = 1.0/(double)nnode;
+     for (i = 0; i < dim; i++) {
+         ctr[i] *= tmp;
+     }
+     rs = (double *) malloc(nnode * dim * sizeof(double));
+     for (n = 0; n < nnode; n++) { 
+         c0 = coords + (n * dim);
+         c  = rs     + (n * dim);
+         for (i = 0; i < dim; i++) { 
+             c[i] = c0[i] - ctr[i];
+         }
+     } 
+     dis = (double *) malloc(nnode * sizeof(double));
+     for (n = 0; n < nnode; n++) { 
+         c0 = rs + (n * dim);
+         dis[n] = 0.0;
+         for (i = 0; i < dim; i++) {
+             dis[n] += (c0[i] * c0[i]);
+         }
+         dis[n] = sqrt(dis[n]);
+     }
+     nodelist_new[0] = 0;
+     nn = 1;
+//   find the next node, which has the smallest -r0 dot (rk - r0) / (|r0| |rk - r0| ) 
+
+     cosa = 1.1;
+     n1 = -1;
+     a = rs;
+     for (k = 1; k < nnode; k++) { 
+         b = rs + (k * dim);
+         dot = 0.0;
+         ds = 0.0;
+         for (i = 0; i < dim; i++) { 
+              dc[i] = b[i] - a[i];
+              dot -= (a[i]  * dc[i]);  
+              ds  += (dc[i] * dc[i]);
+         }
+         ds = sqrt(ds);
+         cost = dot / (ds * dis[0]); 
+         if (cost < cosa) { 
+             cosa = cost; 
+             n1 = k;
+         }
+     } 
+     assert(n1 >= 0);
+     nodelist_new[nn] = n1;
+     nn++;
+     node_taken = (int *) malloc(nnode * sizeof(int));
+     for (i = 0; i < nnode; i++) {
+         node_taken[i] = 0;
+     }
+     node_taken[0]  = 1;
+     node_taken[n1] = 1;
+
+//   find the norm which is the direction r0 x rk1
+     a = rs;
+     b = rs + (n1 * dim);
+     norm[0] =  a[1] * b[2] - a[2] * b[1]; 
+     norm[1] =  a[2] * b[0] - a[0] * b[2];
+     norm[2] =  a[0] * b[1] - a[1] * b[0];
+
+     tmp = 0.0;
+     for (i = 0; i < dim; i++) { 
+         tmp = (norm[i] * norm[i]);
+     }
+     tmp = 1.0/sqrt(tmp);
+     for (i = 0; i < dim; i++) { 
+         norm[i] *= tmp;
+     } 
+     while (nn < nnode - 1) { 
+         n0 = nodelist_new[nn-1]; 
+//       c0 = coords + (n0 * dim);
+         c0 = rs + (n0 * dim); 
+
+         n1   = -1;
+         sina = -1.1;
+
+// find the next node, which has largest   [(Rn - Rn0) x (- Rn0)] . norm  / ( |Rn - Rn0| | Rn0| ) 
+
+         for (n = 0; n < nnode; n++) { 
+             if (node_taken[n]) continue; 
+            
+//           c = coords + (n * dim);
+             c = rs + (n * dim); 
+
+             for (i = 0; i < dim; i++) { 
+                 dc[i] = c[i] - c0[i];
+             }
+             cross[0] = c0[1] * dc[2] - c0[2] * dc[1];
+             cross[1] = c0[2] * dc[0] - c0[0] * dc[2];
+             cross[2] = c0[0] * dc[1] - c0[1] * dc[0];
+             ds  = 0.0;
+             dot = 0.0;
+             for (i = 0; i < dim; i++) { 
+                 dot += (norm[i] * cross[i]);
+                 ds  += (dc[i] * dc[i]); 
+             }
+             ds = sqrt(ds);
+             sgn = dot/(ds * dis[n0]);
+             if (sgn > sina) {
+                 sina = sgn;
+                 n1 = n;
+             }
+         }
+         if (n1 < 0) { 
+             assert(n1 >= 0); 
+         } 
+         nodelist_new[nn] = n1;
+         node_taken[n1] = 1; 
+         nn++;
+     }
+     for (n = 0; n < nnode; n++) {
+         if (!node_taken[n]) {
+             nodelist_new[nn] = n;
+             node_taken[n] = 1;
+             nn++;
+         }
+     }
+     for (k = 0; k < nnode; k++) { 
+         n = nodelist_new[k];    
+         node2edge_new[k] = node2edge[n]; 
+     }
+     free(node_taken);
+     free(dis);
+     free(rs);
+
+     return;
+} 
+
+void poly_overlap(int nnode1, double *coords1, int nnode_poly1, int *nodes_poly1, double *normal_poly1, 
+                  int nnode2, double *coords2, int nnode_poly2, int *nodes_poly2, double *normal_poly2, 
+                  int *nnode_overlap, double **coords_overlap, double *area_overlap,
+                  double *ctr_overlap)
+{ 
+//   check whether nodes are in the same order, ie, closewise or anti-clockwise 
+//   nnode2 and coords2 could be 0 and NULL. In this case, nodes_poly2[i] is referenced to
+//   the node in coords1.  
+
+     int i, i1, n;
+     int *nodes2_tmp; 
+     double vdot, z_av, factor;
+     double *coords_rotated, *coords_rotated2, *coords_result, *c, *c1;
+ 
+     vec_t *v, *v1, *v2; 
+     poly_t p1, p2, *p_intersected; 
+     
+     vdot = 0.0;
+     for (i = 0; i < dim; i++) { 
+         vdot += normal_poly1[i] * normal_poly2[i];
+     }
+     if (vdot > 0.0) { 
+         nodes2_tmp = nodes_poly2;
+     }
+     else { 
+         nodes2_tmp = (int *) malloc(nnode_poly2 * sizeof(int)); 
+         for (i = 0; i < nnode_poly2; i++) { 
+             nodes2_tmp[i] = nodes_poly2[nnode_poly2 - 1 - i];
+         }
+     }   
+     coords_rotated = (double *) malloc(nnode1 * dim * sizeof(double));
+     rotate_to_norm(normal_poly1, nnode1, coords1, coords_rotated);
+
+     if ((nnode2 == 0) || !coords2) { 
+         coords_rotated2 = coords_rotated;
+     } 
+     else { 
+         coords_rotated2 = (double *) malloc(nnode2 * dim * sizeof(double)); 
+         rotate_to_norm(normal_poly1, nnode2, coords2, coords_rotated2);
+     }
+     v1 = (vec_t *) malloc(nnode_poly1 * sizeof(vec_t));
+     v2 = (vec_t *) malloc(nnode_poly2 * sizeof(vec_t)); 
+     z_av = 0.0;
+     for (i = 0; i < nnode_poly1; i++) { 
+         n = nodes_poly1[i];
+         c = coords_rotated + (dim * n); 
+         v = v1 + i;
+         v->x = c[0];
+         v->y = c[1];
+        
+         z_av += c[2]; 
+     }
+     for (i = 0; i < nnode_poly2; i++) {
+         n = nodes2_tmp[i];
+         c = coords_rotated2 + (dim * n);
+         v = v2 + i;
+         v->x = c[0];
+         v->y = c[1];
+
+         z_av += c[2];
+     }
+     z_av /= (double)(nnode_poly2 + nnode_poly1);
+
+     p1.v = v1;
+     p1.len = nnode_poly1;
+     p1.alloc = nnode_poly1;
+     p2.v = v2;
+     p2.len = nnode_poly2;
+     p2.alloc = nnode_poly2;
+
+     p_intersected = poly_clip(&p1, &p2);
+
+     *area_overlap  = 0.0;
+     if (p_intersected->len >= 3) { 
+         *nnode_overlap = p_intersected->len;
+         coords_result  = (double *) malloc((*nnode_overlap) * dim * sizeof(double));
+         for (i = 0; i < *nnode_overlap; i++) { 
+             v = p_intersected->v + i;
+             c = coords_result + (dim * i);
+             c[0] = v->x;
+             c[1] = v->y;
+             c[2] = z_av;
+         }
+//       calculate the area of the overlap 
+         
+         for (i = 0; i < *nnode_overlap; i++) { 
+             i1 = (i + 1) % (*nnode_overlap);
+             c  = coords_result + (dim * i); 
+             c1 = coords_result + (dim * i1);
+             *area_overlap += (c[0] * c1[1] - c[1] * c1[0]); 
+         }
+         *area_overlap *= 0.5;
+         if (*area_overlap) *area_overlap = -(*area_overlap); 
+              
+         *coords_overlap = (double *) malloc((*nnode_overlap) * dim * sizeof(double));
+         rotate_back(normal_poly1, *nnode_overlap, coords_result, *coords_overlap); 
+
+//       calculate the center of the overlap 
+        
+         for (i = 0; i < dim; i++) { 
+             ctr_overlap[i] = 0.0;
+         }
+         for (n = 0; n < *nnode_overlap; n++) { 
+             c = *coords_overlap + (n * dim);
+             for (i = 0; i < dim; i++) { 
+                 ctr_overlap[i] += c[i];
+             }
+         }
+         factor = 1.0/(*nnode_overlap);
+         for (i = 0; i < dim; i++) {
+             ctr_overlap[i] *= factor;
+         }
+         free(coords_result); 
+
+        
+     }  
+     else { 
+         *nnode_overlap = 0;
+     } 
+     poly_free(p_intersected); 
+       
+     if (vdot <= 0.0) { 
+         free(nodes2_tmp);
+     } 
+     free(coords_rotated);
+     if ((nnode2 > 0) && coords2) { 
+         free(coords_rotated2);
+     }
+     free(v1);
+     free(v2);
+
+     return;
+ }  
+
+void sort_nodes(int nnode, double *coords, int *node2edge, 
+                int *nodelist_new, int *node2edge_new, int *err)
+{
+     int  dim, n, n1, s, i;
+     int  *tar_to_src;
+     double pi2, tmp, cosa, a; 
+     double dx[2], ctr[2], *c0, *c1, *a_ea_node;
+
+     *err = 0;
+     dim  = 2; 
+     pi2  = 6.283185307179586;
+
+     tar_to_src = (int  *) malloc(nnode * sizeof(int));
+     a_ea_node  = (double *) malloc(nnode * sizeof(double));
+
+//   find the "ctr"
+
+     ctr[0] = 0.0;
+     ctr[1] = 0.0;
+     for (n = 0; n < nnode; n++) { 
+         c0 = coords + (n * dim);
+         ctr[0] += c0[0];
+         ctr[1] += c0[1];
+     }
+     tmp = 1.0/(double)nnode;
+     ctr[0] *= tmp;
+     ctr[1] *= tmp;
+      
+//   find the angle respect to x-axis of the vector from each node to the center.
+
+     for (n = 0; n < nnode; n++) { 
+         c0 = coords + (n * dim); 
+         dx[0] = ctr[0] - c0[0];
+         dx[1] = ctr[1] - c0[1];
+         cosa  = dx[0] /sqrt(dx[0] * dx[0] + dx[1] * dx[1]);
+         a     = acos(cosa);
+         if (dx[1] < 0.0) {
+            a = pi2 - a;
+         }
+         a_ea_node[n] = a;
+     } 
+     r8sort(a_ea_node, tar_to_src, nnode); 
+
+     for (i = 0; i < nnode; i++) { 
+         s = tar_to_src[i];
+         nodelist_new[i]  = s;
+         node2edge_new[i] = node2edge[s]; 
+     }  
+     free(tar_to_src); 
+     free(a_ea_node);
+    
+     return;
+} 
+

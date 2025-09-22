@@ -1,0 +1,2664 @@
+
+#ifdef MPI
+#include "mpi.h"
+#endif
+
+#include "util.h"
+#include "bdry.h"
+#include "advection.h"
+#include "mat.h"
+#include "vof2d.h"
+#include "vof3d.h"
+#include "eos.h"
+#include "io.h"
+
+// #define ASCII_OUTPUT
+#ifdef H5DUMP_DEBUG
+hid_t debug_gid;
+#endif
+
+static double vfmin = 1.0e-08;
+
+void get_face_velocity(int dim, int *ncell, int nbdry, int dir,
+                       double ***vel_for_2dnode, double ****vel_for_3dnode,
+                       double ***vel_2dface, double ****vel_3dface);
+
+void mapping(int dim, int *ncell, int nbdry, double *xl_prob, double *dx_prob, int dir, double dt,
+             Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+             int nmat, int *is_solid, double *gamma_ea_mat,
+             double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat, double ***pres_2dmat,
+             double **rho_2dcell, double **ei_2dcell, double **pres_2dcell,
+             double ***vel_for_2dnode, double **vel_2dface,
+             //
+             double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, double ****pres_3dmat,
+             double ***rho_3dcell, double ***ei_3dcell, double ***pres_3dcell,
+             double ****vel_for_3dnode, double ***vel_3dface,
+             double *courant_adv, int ncycle);
+
+void mapping2d(int *ncell, int nbdry, double *xl_prob, double *dx, int dir, double dt,
+               Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+               int nmat, int *is_solid, double *gamma_ea_mat,
+               double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat, double ***pres_2dmat,
+               double **rho_2dcell, double **ei_2dcell, double **pres_2dcell,
+               double ***vel_2dnode, double **vel_2dface,
+               double *courant_adv, int ncycle);
+
+void mapping3d(int *ncell, int nbdry, double *xl_prob, double *dx, int dir, double dt,
+               Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+               int nmat, int *is_solid, double *gamma_ea_mat,
+               double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, double ****pres_3dmat,
+               double ***rho_3dcell, double ***ei_3dcell, double ***pres_3dcell,
+               double ****vel_for_3dnode, double ***vel_3dface,
+               double *courant_adv);
+
+void build_mpoly2d(int nbdry, double *xl_prob, double *dx,
+                   int nmat, double ***vf_2dmat,
+                   int *ijk, int nm_this_cell,
+                   int *nnode_tot, double *coords_tot,
+                   int *nnode_for_mpoly, int **nodes_for_mpoly);
+
+void build_mpoly3d(int nbdry, double *xl_prob, double *dx,
+                   int nmat, double ****vf_3dmat,
+                   int *ijk, int nm_this_cell,
+                   int *nnode_tot, double **coords_tot,
+                   int *nface_for_mpoly, int ***nnode_for_face_ea_mpoly,
+                   int ***nodelist_for_face_ea_mpoly);
+
+void advection(int fileid, int dim, int *ncell, int nbdry, double *xl_prob, double *dx_prob,
+               int nmat, int *is_solid, double *gamma_ea_mat,
+               int ncycle, int dir, double dt,
+               Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+               double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat, double ***pres_2dmat,
+               double **rho_2dcell, double **ei_2dcell, double **pres_2dcell,
+               double ***vel_2dnode, double ***vav_for_2dnode,
+               //
+               double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, double ****pres_3dmat,
+               double ***rho_3dcell, double ***ei_3dcell, double ***pres_3dcell,
+               double ****vel_3dnode, double ****vav_for_3dnode,
+               double *courant_adv)
+{
+    int i, j, k, nmixcell, nmixcell_int, nmixcell_mpoly;
+    int ncell_ext[3], nnode_ext[3], ntemp[3];
+    long long lsize, offset;
+    double **vel_2dface, ***vel_3dface;
+
+    char tempfile[256];
+
+    lsize = 1;
+    for (i = 0; i < dim; i++)
+    {
+        ncell_ext[i] = ncell[i] + nbdry + nbdry;
+        nnode_ext[i] = ncell[i] + nbdry + nbdry + 1;
+        lsize *= ncell_ext[i];
+    }
+    //   get face velocity of the cell interface in the direction of dir.
+
+    get_face_velocity(dim, ncell, nbdry, dir, vav_for_2dnode, vav_for_3dnode,
+                      &vel_2dface, &vel_3dface);
+
+#ifdef ASCII_OUTPUT
+    // m Write out vel2d_face
+    sprintf(tempfile, "vel_2dface_%d_%d.txt", ncycle, dir);
+    if (dir == 0)
+    {
+        ntemp[0] = nnode_ext[0];
+        ntemp[1] = ncell_ext[1];
+    }
+    else if (dir == 1)
+    {
+        ntemp[0] = ncell_ext[0];
+        ntemp[1] = nnode_ext[1];
+        printf("%d -%d\n", ntemp[1], ntemp[0]);
+    }
+    write_2Darray_to_ascii(tempfile, vel_2dface, ntemp);
+#endif
+#ifdef H5DUMP_DEBUG
+    if (dim == 2)
+        if (dir == 0)
+        {
+            ntemp[0] = nnode_ext[0];
+            ntemp[1] = ncell_ext[1];
+            h5_write_2d(debug_gid, "vel_2dface(dir=0)", vel_2dface, ntemp);
+        }
+        else
+        {
+            ntemp[0] = ncell_ext[0];
+            ntemp[1] = nnode_ext[1];
+            h5_write_2d(debug_gid, "vel_2dface(dir=1)", vel_2dface, ntemp);
+        }
+    else if (dir == 0)
+    {
+        ntemp[2] = nnode_ext[0];
+        ntemp[1] = ncell_ext[1];
+        ntemp[0] = ncell_ext[2];
+        h5_write_3d(debug_gid, "vel_3dface(dir=0)", vel_3dface, ntemp);
+    }
+    else if (dir == 1)
+    {
+        ntemp[2] = ncell_ext[0];
+        ntemp[1] = nnode_ext[1];
+        ntemp[0] = ncell_ext[2];
+        h5_write_3d(debug_gid, "vel_3dface(dir=1)", vel_3dface, ntemp);
+    }
+    else
+    {
+        ntemp[2] = ncell_ext[0];
+        ntemp[1] = ncell_ext[1];
+        ntemp[0] = nnode_ext[2];
+        h5_write_3d(debug_gid, "vel_3dface(dir=2)", vel_3dface, ntemp);
+    }
+#endif
+
+    // m mapping
+    mapping(dim, ncell, nbdry, xl_prob, dx_prob, dir, dt, btype_lower, btype_upper,
+            nmat, is_solid, gamma_ea_mat,
+            vf_2dmat, rho_2dmat, ei_2dmat, pres_2dmat,
+            rho_2dcell, ei_2dcell, pres_2dcell, vel_2dnode, vel_2dface,
+            vf_3dmat, rho_3dmat, ei_3dmat, pres_3dmat,
+            rho_3dcell, ei_3dcell, pres_3dcell, vel_3dnode, vel_3dface,
+            courant_adv, ncycle);
+
+    if (dim == 2)
+    {
+        free(vel_2dface[0]);
+        free(vel_2dface);
+    }
+    else if (dim == 3)
+    {
+        free(vel_3dface[0][0]);
+        free(vel_3dface[0]);
+        free(vel_3dface);
+    }
+    return;
+}
+
+void mapping(int dim, int *ncell, int nbdry, double *xl_prob, double *dx_prob, int dir, double dt,
+             Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+             int nmat, int *is_solid, double *gamma_ea_mat,
+             double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat, double ***pres_2dmat,
+             double **rho_2dcell, double **ei_2dcell, double **pres_2dcell,
+             double ***vel_2dnode, double **vel_2dface,
+             //
+             double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, double ****pres_3dmat,
+             double ***rho_3dcell, double ***ei_3dcell, double ***pres_3dcell,
+             double ****vel_3dnode, double ***vel_3dface,
+             double *courant_adv, int ncycle)
+{
+    if (dim == 2)
+    {
+        mapping2d(ncell, nbdry, xl_prob, dx_prob, dir, dt,
+                  btype_lower, btype_upper,
+                  nmat, is_solid, gamma_ea_mat,
+                  vf_2dmat, rho_2dmat, ei_2dmat, pres_2dmat,
+                  rho_2dcell, ei_2dcell, pres_2dcell,
+                  vel_2dnode, vel_2dface,
+                  courant_adv, ncycle);
+    }
+    else if (dim == 3)
+    {
+        mapping3d(ncell, nbdry, xl_prob, dx_prob, dir, dt,
+                  btype_lower, btype_upper,
+                  nmat, is_solid, gamma_ea_mat,
+                  vf_3dmat, rho_3dmat, ei_3dmat, pres_3dmat,
+                  rho_3dcell, ei_3dcell, pres_3dcell,
+                  vel_3dnode, vel_3dface,
+                  courant_adv);
+    }
+    return;
+}
+
+void mapping2d(int *ncell, int nbdry, double *xl_prob, double *dx, int dir, double dt,
+               Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+               int nmat, int *is_solid, double *gamma_ea_mat,
+               double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat, double ***pres_2dmat,
+               double **rho_2dcell, double **ei_2dcell, double **pres_2dcell,
+               double ***vel_2dnode, double **vel_2dface,
+               double *courant_adv, int ncycle)
+{
+    int dim, i, j, ip, jp, ic, jc, ic_in, ic_out, jc_in, jc_out, idx, idxe, edge, mixcell;
+    int clower, cupper, m, matid, nmat_adv, slab_faceid;
+    char dataset_name[140];
+
+    int ncell_ext[2], ncell_bdry[2], nnode_ext[2], nnode_bdry[2], sizes_edge[2], sizes_mom[3];
+    int ijk[2], ncell_nmat[4], dims[3];
+    int **nmat_for_edge, *matid_for_edge;
+    long long lsize_cell, lsize_node, lsize_max, loc_edge, lsize_mat, offset;
+
+    double vol_cell;
+    double frac, x_edge, y_edge, dist, adist, dvol, dmass, dener, dmom;
+    double inward_norm[2], xl_cell[2], xl_slab[2], xr_slab[2];
+    double hdx[2], coord_node[2], xl_qtr[2];
+    double *dvol_for_edge, *dmass_for_edge, *dener_for_edge;
+
+    int *matid_adv, *indice_adv;
+    double *vol_adv, *mass_adv, *ener_adv;
+
+    int mx, nm, nm_cross_edge;
+    int edges[2];
+    long long **loc_for_2dedge;
+    double sign[2];
+
+    int *mats;
+    double *vol_list, *mass_list, *ener_list;
+    double ***vol_for_cell, ***mass_for_cell, ***ener_for_cell;
+
+    double rho_average, rho_sum, vol_sum, mass_sum, ener_sum;
+    double *gamma_matid;
+
+    double *mom1d, **mom2d, ***mom_for_node;
+    double *vel1d, **vel2d, ***mom_for_2dnode_new;
+
+    int nnode_per_rec, nnode_per_mpoly;
+    int nnode_tot, *nnode_for_mpoly, **nodes_for_mpoly;
+    double *coords_tot;
+
+    char tempfile[256];
+
+    dim = 2;
+    nnode_per_rec = 4;
+    nnode_per_mpoly = nmat + nnode_per_rec;
+
+    matid_adv = (int *)malloc((3 * nmat) * sizeof(int));
+    indice_adv = matid_adv + nmat;
+    mats = indice_adv + nmat;
+    vol_adv = (double *)malloc(nmat * sizeof(double));
+    mass_adv = (double *)malloc(nmat * sizeof(double));
+    ener_adv = (double *)malloc(nmat * sizeof(double));
+
+    vol_cell = 1.0;
+    lsize_cell = 1;
+    lsize_node = 1;
+    for (i = 0; i < dim; i++)
+    {
+        hdx[i] = 0.5 * dx[i];
+        vol_cell *= dx[i];
+        ncell_ext[i] = ncell[i] + nbdry + nbdry;
+        lsize_cell *= ncell_ext[i];
+        ncell_bdry[i] = ncell_ext[i] - nbdry - 1; // cell at the right boundary
+        nnode_ext[i] = ncell_ext[i] + 1;
+        lsize_node *= nnode_ext[i];
+        nnode_bdry[i] = nnode_ext[i] - nbdry - 1; // node at the right boundary
+        sizes_edge[i] = ncell_ext[i];
+    }
+    sizes_edge[dir] = nnode_ext[dir];
+
+    rho_average = 0.0;
+    for (j = nbdry; j <= ncell_bdry[1]; j++)
+    {
+        for (i = nbdry; i <= ncell_bdry[0]; i++)
+        {
+            rho_average += rho_2dcell[j][i];
+        }
+    }
+    rho_average /= (double)(ncell[0] * ncell[1]);
+
+    //   calculate the vol, mass, and energy advected across the cell interfaces.
+
+    nmat_for_edge = (int **)malloc(sizes_edge[1] * sizeof(int *));
+    nmat_for_edge[0] = (int *)malloc(sizes_edge[1] * sizes_edge[0] * sizeof(int));
+    for (j = 1; j < sizes_edge[1]; j++)
+    {
+        nmat_for_edge[j] = nmat_for_edge[j - 1] + sizes_edge[0];
+    }
+    for (j = 0; j < sizes_edge[1]; j++)
+    {
+        for (i = 0; i < sizes_edge[0]; i++)
+        {
+            nmat_for_edge[j][i] = 0;
+        }
+    }
+    lsize_max = sizes_edge[0] * sizes_edge[1] * 2;
+    dvol_for_edge = (double *)malloc(lsize_max * sizeof(double));
+    dmass_for_edge = (double *)malloc(lsize_max * sizeof(double));
+    dener_for_edge = (double *)malloc(lsize_max * sizeof(double));
+    matid_for_edge = (int *)malloc(lsize_max * sizeof(int));
+    loc_edge = 0; // the current location in dmass_for_edge, etc.
+
+    nnode_for_mpoly = (int *)malloc(nmat * sizeof(int));
+    nodes_for_mpoly = (int **)malloc(nmat * sizeof(int *));
+    nodes_for_mpoly[0] = (int *)malloc(nmat * nnode_per_mpoly * sizeof(int));
+    //     for (m =  1; m < nmat; m++) {
+    //         nodes_for_mpoly[m] = nodes_for_mpoly[m-1] + nnode_per_mpoly;
+    //     }
+    coords_tot = (double *)malloc((nnode_per_rec + nmat + nmat) * dim * sizeof(double));
+
+    *courant_adv = 0.0;
+#pragma region interface_reconstruction
+    if (dir == 0)
+    {
+
+        for (j = nbdry; j <= ncell_bdry[1]; j++)
+        {
+            jc = j;
+            xl_cell[1] = xl_prob[1] + (double)(j - nbdry) * dx[1];
+            xl_slab[1] = xl_cell[1]; // for the slab advected
+            xr_slab[1] = xl_cell[1] + dx[1];
+            inward_norm[1] = 0.0;
+
+            for (edge = nbdry; edge <= nnode_bdry[0]; edge++)
+            {
+                x_edge = xl_prob[dir] + (double)(edge - nbdry) * dx[dir];
+
+                dist = vel_2dface[j][edge] * dt;
+                frac = dist / dx[dir];
+                *courant_adv = MAX(*courant_adv, 2.0 * fabs(frac));
+                if (*courant_adv >= 1)
+                {
+                    printf("WARNING:  courant_adv = %e in mapping2d \n", *courant_adv);
+                }
+                clower = edge - 1;
+                cupper = edge;
+
+                if (frac > small)
+                { // cell clower moves the following mass and energy to cupper
+                    nm = 0;
+                    for (m = 0; m < nmat; m++)
+                    {
+                        if (vf_2dmat[j][clower][m] >= vfmin)
+                        {
+                            mats[nm] = m;
+                            nm++;
+                        }
+                    }
+                    if (nm == 1)
+                    {
+                        if (loc_edge + 1 > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + 8;
+
+                            dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                        }
+                        m = mats[0];
+                        nmat_for_edge[j][edge] = 1;
+                        dvol = dx[1] * dist;
+                        dmass = dvol * rho_2dmat[j][clower][m];
+                        dener = dvol * ei_2dmat[j][clower][m];
+
+                        matid_for_edge[loc_edge] = mats[0];
+                        dvol_for_edge[loc_edge] = dvol;
+                        dmass_for_edge[loc_edge] = dmass;
+                        dener_for_edge[loc_edge] = dener;
+                        loc_edge++;
+                    }
+                    else
+                    {
+                        ic = clower;
+                        xl_slab[dir] = x_edge - fabs(dist);
+                        xr_slab[dir] = x_edge;
+                        xl_cell[dir] = x_edge - dx[0];
+                        inward_norm[dir] = 1.0; // inward norm within the slab
+
+                        slab_faceid = 0; // xl-face of slab
+
+                        ijk[0] = ic;
+                        ijk[1] = jc;
+
+                        nnode_tot = 0;
+
+                        build_mpoly2d(nbdry, xl_prob, dx,
+                                      nmat, vf_2dmat,
+                                      ijk, nm,
+                                      &nnode_tot, coords_tot,
+                                      nnode_for_mpoly, nodes_for_mpoly);
+
+                        advect2d(nmat, ncell, nbdry,
+                                 vf_2dmat, rho_2dmat, ei_2dmat,
+                                 ijk, xl_cell, dx,
+                                 nnode_tot, coords_tot, nm, mats,
+                                 nnode_for_mpoly, nodes_for_mpoly,
+                                 xl_slab, xr_slab, inward_norm, slab_faceid,
+                                 &nmat_adv, matid_adv, vol_adv, mass_adv, ener_adv);
+
+                        if (loc_edge + nmat_adv > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + nmat_adv;
+                            dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                        }
+                        nmat_for_edge[j][edge] = nmat_adv;
+                        memcpy(matid_for_edge + loc_edge, matid_adv, (size_t)(nmat_adv * sizeof(int)));
+                        memcpy(dvol_for_edge + loc_edge, vol_adv, (size_t)(nmat_adv * sizeof(double)));
+                        memcpy(dmass_for_edge + loc_edge, mass_adv, (size_t)(nmat_adv * sizeof(double)));
+                        memcpy(dener_for_edge + loc_edge, ener_adv, (size_t)(nmat_adv * sizeof(double)));
+                        loc_edge += nmat_adv;
+                    }
+                }
+                else if (frac < -small)
+                {
+                    nm = 0;
+                    for (m = 0; m < nmat; m++)
+                    {
+                        if (vf_2dmat[j][cupper][m] >= vfmin)
+                        {
+                            mats[nm] = m;
+                            nm++;
+                        }
+                    }
+                    adist = fabs(dist);
+                    if (nm == 1)
+                    {
+                        if (loc_edge + 1 > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + 8;
+                            dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                        }
+                        m = mats[0];
+                        nmat_for_edge[j][edge] = 1;
+                        dvol = dx[1] * adist;
+                        dmass = dvol * rho_2dmat[j][cupper][m];
+                        dener = dvol * ei_2dmat[j][cupper][m];
+
+                        matid_for_edge[loc_edge] = m;
+                        dvol_for_edge[loc_edge] = -dvol;
+                        dmass_for_edge[loc_edge] = -dmass;
+                        dener_for_edge[loc_edge] = -dener;
+                        loc_edge++;
+                    }
+                    else
+                    {
+                        ic = cupper;
+                        xl_slab[dir] = x_edge;
+                        xr_slab[dir] = x_edge + fabs(dist);
+                        xl_cell[dir] = x_edge;
+                        inward_norm[dir] = -1.0; // inward norm within the slab
+
+                        slab_faceid = 1; // xr-face of slab
+
+                        ijk[0] = ic;
+                        ijk[1] = jc;
+
+                        nnode_tot = 0;
+
+                        build_mpoly2d(nbdry, xl_prob, dx,
+                                      nmat, vf_2dmat,
+                                      ijk, nm,
+                                      &nnode_tot, coords_tot,
+                                      nnode_for_mpoly, nodes_for_mpoly);
+
+                        advect2d(nmat, ncell, nbdry,
+                                 vf_2dmat, rho_2dmat, ei_2dmat,
+                                 ijk, xl_cell, dx,
+                                 nnode_tot, coords_tot, nm, mats,
+                                 nnode_for_mpoly, nodes_for_mpoly,
+                                 xl_slab, xr_slab, inward_norm, slab_faceid,
+                                 &nmat_adv, matid_adv, vol_adv, mass_adv, ener_adv);
+
+                        if (loc_edge + nmat_adv > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + nmat_adv;
+                            dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                        }
+                        nmat_for_edge[j][edge] = nmat_adv;
+                        for (idx = 0; idx < nmat_adv; idx++)
+                        {
+                            matid_for_edge[loc_edge] = matid_adv[idx];
+                            dvol_for_edge[loc_edge] = -vol_adv[idx];
+                            dmass_for_edge[loc_edge] = -mass_adv[idx];
+                            dener_for_edge[loc_edge] = -ener_adv[idx];
+                            loc_edge++;
+                        }
+                    }
+                }
+            } // edge
+        } // j
+    } // dir == 0;
+    else if (dir == 1)
+    {
+        for (edge = nbdry; edge <= nnode_bdry[1]; edge++)
+        {
+            y_edge = xl_prob[dir] + (double)(edge - nbdry) * dx[dir];
+
+            for (i = nbdry; i <= ncell_bdry[0]; i++)
+            {
+                ic = i;
+                xl_cell[0] = xl_prob[0] + (double)(i - nbdry) * dx[0];
+                xl_slab[0] = xl_cell[0]; // for the slab advected
+                xr_slab[0] = xl_cell[0] + dx[0];
+
+                inward_norm[0] = 0.0;
+
+                dist = vel_2dface[edge][i] * dt;
+                frac = dist / dx[dir];
+                *courant_adv = MAX(*courant_adv, 2.0 * fabs(frac));
+                if (*courant_adv >= 1.0)
+                {
+                    printf("WARNING:  courant_adv = %e in mapping2d \n", *courant_adv);
+                }
+                clower = edge - 1;
+                cupper = edge;
+
+                if (frac > small)
+                { // cell clower moves the following mass and energy to cupper
+                    nm = 0;
+                    for (m = 0; m < nmat; m++)
+                    {
+                        if (vf_2dmat[clower][i][m] >= vfmin)
+                        {
+                            mats[nm] = m;
+                            nm++;
+                        }
+                    }
+                    if (nm == 1)
+                    {
+                        if (loc_edge + 1 > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + 8;
+                            dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                        }
+                        m = mats[0];
+                        nmat_for_edge[edge][i] = 1;
+                        dvol = dx[0] * dist;
+                        dmass = dvol * rho_2dmat[clower][i][m];
+                        dener = dvol * ei_2dmat[clower][i][m];
+
+                        matid_for_edge[loc_edge] = m;
+                        dvol_for_edge[loc_edge] = dvol;
+                        dmass_for_edge[loc_edge] = dmass;
+                        dener_for_edge[loc_edge] = dener;
+                        loc_edge++;
+                    }
+                    else
+                    {
+                        jc = clower;
+                        xl_slab[dir] = y_edge - fabs(dist);
+                        xr_slab[dir] = y_edge;
+                        xl_cell[dir] = y_edge - dx[dir];
+                        inward_norm[dir] = 1.0; // inward norm within the slab
+
+                        slab_faceid = 2; // yl-face of slab
+
+                        ijk[0] = ic;
+                        ijk[1] = jc;
+                        nnode_tot = 0;
+
+                        build_mpoly2d(nbdry, xl_prob, dx,
+                                      nmat, vf_2dmat,
+                                      ijk, nm,
+                                      &nnode_tot, coords_tot,
+                                      nnode_for_mpoly, nodes_for_mpoly);
+
+                        advect2d(nmat, ncell, nbdry,
+                                 vf_2dmat, rho_2dmat, ei_2dmat,
+                                 ijk, xl_cell, dx,
+                                 nnode_tot, coords_tot, nm, mats,
+                                 nnode_for_mpoly, nodes_for_mpoly,
+                                 xl_slab, xr_slab, inward_norm, slab_faceid,
+                                 &nmat_adv, matid_adv, vol_adv, mass_adv, ener_adv);
+
+                        if (loc_edge + nmat_adv > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + nmat_adv;
+                            dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                        }
+                        nmat_for_edge[edge][i] = nmat_adv;
+                        memcpy(matid_for_edge + loc_edge, matid_adv, (size_t)(nmat_adv * sizeof(int)));
+                        memcpy(dvol_for_edge + loc_edge, vol_adv, (size_t)(nmat_adv * sizeof(double)));
+                        memcpy(dmass_for_edge + loc_edge, mass_adv, (size_t)(nmat_adv * sizeof(double)));
+                        memcpy(dener_for_edge + loc_edge, ener_adv, (size_t)(nmat_adv * sizeof(double)));
+                        loc_edge += nmat_adv;
+                    }
+                }
+                else if (frac < -small)
+                {
+                    nm = 0;
+                    for (m = 0; m < nmat; m++)
+                    {
+                        if (vf_2dmat[cupper][i][m] >= vfmin)
+                        {
+                            mats[nm] = m;
+                            nm++;
+                        }
+                    }
+                    adist = fabs(dist);
+                    if (nm == 1)
+                    {
+                        if (loc_edge + 1 > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + 8;
+                            dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                        }
+                        m = mats[0];
+                        nmat_for_edge[edge][i] = 1;
+                        dvol = dx[0] * adist;
+                        dmass = dvol * rho_2dmat[cupper][i][m];
+                        dener = dvol * ei_2dmat[cupper][i][m];
+
+                        matid_for_edge[loc_edge] = m;
+                        dvol_for_edge[loc_edge] = -dvol;
+                        dmass_for_edge[loc_edge] = -dmass;
+                        dener_for_edge[loc_edge] = -dener;
+                        loc_edge++;
+                    }
+                    else
+                    {
+                        jc = cupper;
+                        xl_slab[dir] = y_edge;
+                        xr_slab[dir] = y_edge + fabs(dist);
+                        xl_cell[dir] = y_edge;
+                        inward_norm[dir] = -1.0; // inward norm within the slab
+
+                        slab_faceid = 3; // yr-face of slab
+
+                        ijk[0] = ic;
+                        ijk[1] = jc;
+
+                        nnode_tot = 0;
+
+                        build_mpoly2d(nbdry, xl_prob, dx,
+                                      nmat, vf_2dmat,
+                                      ijk, nm,
+                                      &nnode_tot, coords_tot,
+                                      nnode_for_mpoly, nodes_for_mpoly);
+
+                        advect2d(nmat, ncell, nbdry,
+                                 vf_2dmat, rho_2dmat, ei_2dmat,
+                                 ijk, xl_cell, dx,
+                                 nnode_tot, coords_tot, nm, mats,
+                                 nnode_for_mpoly, nodes_for_mpoly,
+                                 xl_slab, xr_slab, inward_norm, slab_faceid,
+                                 &nmat_adv, matid_adv, vol_adv, mass_adv, ener_adv);
+
+                        if (loc_edge + nmat_adv > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + nmat_adv;
+                            dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                        }
+                        nmat_for_edge[edge][i] = nmat_adv;
+                        for (idx = 0; idx < nmat_adv; idx++)
+                        {
+                            matid_for_edge[loc_edge] = matid_adv[idx];
+                            dvol_for_edge[loc_edge] = -vol_adv[idx];
+                            dmass_for_edge[loc_edge] = -mass_adv[idx];
+                            dener_for_edge[loc_edge] = -ener_adv[idx];
+                            loc_edge++;
+                        }
+                    }
+                }
+            } // i
+        } // edge
+    } // dir == 1
+#pragma endregion
+
+#ifdef ASCII_OUTPUT
+    // m write out
+    sprintf(tempfile, "nmat_for_edge_%d_%d.txt", ncycle, dir);
+    write_2Dintarray_to_ascii(tempfile, nmat_for_edge, sizes_edge);
+// m ------------------------------
+#endif
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "nmat_for_edge(dir=%d)", dir);
+    h5_write_2d_int(debug_gid, dataset_name, nmat_for_edge, sizes_edge);
+#endif
+    free(nnode_for_mpoly);
+    free(coords_tot);
+    free(nodes_for_mpoly[0]);
+    free(nodes_for_mpoly);
+
+    loc_for_2dedge = (long long **)malloc(sizes_edge[1] * sizeof(long long *));
+    loc_for_2dedge[0] = (long long *)malloc(sizes_edge[1] * sizes_edge[0] * sizeof(long long));
+    for (j = 1; j < sizes_edge[1]; j++)
+    {
+        loc_for_2dedge[j] = loc_for_2dedge[j - 1] + sizes_edge[0];
+    }
+    loc_edge = 0;
+    for (j = 0; j < sizes_edge[1]; j++)
+    {
+        for (i = 0; i < sizes_edge[0]; i++)
+        {
+            if (nmat_for_edge[j][i] > 0)
+            {
+                loc_for_2dedge[j][i] = loc_edge;
+                loc_edge += nmat_for_edge[j][i];
+            }
+            else
+            {
+                loc_for_2dedge[j][i] = -1;
+            }
+        }
+    }
+#ifdef ASCII_OUTPUT
+    // m write out
+    sprintf(tempfile, "loc_for_2dedge_%d_%d.txt", ncycle, dir);
+    write_2Dllarray_to_ascii(tempfile, loc_for_2dedge, sizes_edge);
+#endif
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "loc_for_2dedge(dir=%d)", dir);
+    h5_write_2d_llong(debug_gid, dataset_name, loc_for_2dedge, sizes_edge);
+#endif
+    lsize_mat = nmat * ncell_ext[1] * ncell_ext[0];
+
+    vol_for_cell = (double ***)malloc(ncell_ext[1] * sizeof(double **));
+    mass_for_cell = (double ***)malloc(ncell_ext[1] * sizeof(double **));
+    ener_for_cell = (double ***)malloc(ncell_ext[1] * sizeof(double **));
+
+    vol_for_cell[0] = (double **)malloc(lsize_cell * sizeof(double *));
+    mass_for_cell[0] = (double **)malloc(lsize_cell * sizeof(double *));
+    ener_for_cell[0] = (double **)malloc(lsize_cell * sizeof(double *));
+
+    for (j = 1; j < ncell_ext[1]; j++)
+    {
+        vol_for_cell[j] = vol_for_cell[j - 1] + ncell_ext[0];
+        mass_for_cell[j] = mass_for_cell[j - 1] + ncell_ext[0];
+        ener_for_cell[j] = ener_for_cell[j - 1] + ncell_ext[0];
+    }
+    vol_list = (double *)malloc(lsize_mat * sizeof(double));
+    mass_list = (double *)malloc(lsize_mat * sizeof(double));
+    ener_list = (double *)malloc(lsize_mat * sizeof(double));
+
+    offset = 0;
+    for (j = 0; j < ncell_ext[1]; j++)
+    {
+        for (i = 0; i < ncell_ext[0]; i++)
+        {
+            vol_for_cell[j][i] = vol_list + offset;
+            mass_for_cell[j][i] = mass_list + offset;
+            ener_for_cell[j][i] = ener_list + offset;
+            offset += nmat;
+        }
+    }
+    for (j = 0; j < ncell_ext[1]; j++)
+    {
+        for (i = 0; i < ncell_ext[0]; i++)
+        {
+            for (m = 0; m < nmat; m++)
+            {
+                vol_for_cell[j][i][m] = vol_cell * vf_2dmat[j][i][m];
+                mass_for_cell[j][i][m] = vol_for_cell[j][i][m] * rho_2dmat[j][i][m];
+                ener_for_cell[j][i][m] = vol_for_cell[j][i][m] * ei_2dmat[j][i][m];
+            }
+        }
+    }
+
+#ifdef ASCII_OUTPUT
+    // m export vol mass and inner for cell
+    sprintf(tempfile, "vol_for_cell_%d_%d.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, vol_for_cell, ncell_ext[1], ncell_ext[0], nmat);
+    sprintf(tempfile, "mass_for_cell_%d_%d.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, mass_for_cell, ncell_ext[1], ncell_ext[0], nmat);
+    sprintf(tempfile, "ener_for_cell_%d_%d.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, ener_for_cell, ncell_ext[1], ncell_ext[0], nmat);
+#endif
+#ifdef H5DUMP_DEBUG
+    ncell_nmat[0] = ncell_ext[1];
+    ncell_nmat[1] = ncell_ext[0];
+    ncell_nmat[2] = nmat;
+    sprintf(dataset_name, "vol_for_cell(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, vol_for_cell, ncell_nmat);
+    sprintf(dataset_name, "mass_for_cell(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, mass_for_cell, ncell_nmat);
+    sprintf(dataset_name, "ener_for_cell(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, ener_for_cell, ncell_nmat);
+#endif
+
+// printf("vol mass ener step \n "); exit(0);
+
+// m -----------------
+#pragma region cal materials after the advection
+
+    if (dir == 0)
+    {
+        for (j = 0; j < sizes_edge[1]; j++)
+        {
+            jc = j;
+            for (i = 0; i < sizes_edge[0]; i++)
+            {
+                nm_cross_edge = nmat_for_edge[j][i];
+                loc_edge = loc_for_2dedge[j][i];
+                if (loc_edge < 0)
+                    continue;
+
+                if (dvol_for_edge[loc_edge] > 0.0)
+                {
+                    ic_out = i - 1; // the cell nm_cross_edge materials to be deducted
+                    ic_in = i;      // the cell nm_cross_edge materials to be added
+                }
+                else
+                {
+                    ic_out = i;    // the cell nm_cross_edge materials to be deducted
+                    ic_in = i - 1; // the cell nm_cross_edge materials to be added
+                }
+                for (idx = 0; idx < nm_cross_edge; idx++)
+                {
+                    m = matid_for_edge[loc_edge];
+                    vol_for_cell[jc][ic_in][m] += fabs(dvol_for_edge[loc_edge]);
+                    mass_for_cell[jc][ic_in][m] += fabs(dmass_for_edge[loc_edge]);
+                    ener_for_cell[jc][ic_in][m] += fabs(dener_for_edge[loc_edge]);
+
+                    loc_edge++;
+                }
+                loc_edge = loc_for_2dedge[j][i];
+
+                for (idx = 0; idx < nm_cross_edge; idx++)
+                {
+                    m = matid_for_edge[loc_edge];
+                    vol_for_cell[jc][ic_out][m] -= fabs(dvol_for_edge[loc_edge]);
+                    mass_for_cell[jc][ic_out][m] -= fabs(dmass_for_edge[loc_edge]);
+                    ener_for_cell[jc][ic_out][m] -= fabs(dener_for_edge[loc_edge]);
+
+                    loc_edge++;
+                }
+            }
+        }
+    }
+    else if (dir == 1)
+    {
+        for (j = 0; j < sizes_edge[1]; j++)
+        {
+            for (i = 0; i < sizes_edge[0]; i++)
+            {
+                ic = i;
+
+                nm_cross_edge = nmat_for_edge[j][i];
+                loc_edge = loc_for_2dedge[j][i];
+                if (loc_edge < 0)
+                    continue;
+
+                if (dvol_for_edge[loc_edge] > 0.0)
+                {
+                    jc_out = j - 1; // the cell nm_cross_edge materials to be deducted
+                    jc_in = j;      // the cell nm_cross_edge materials to be added
+                }
+                else
+                {
+                    jc_out = j;    // the cell nm_cross_edge materials to be deducted
+                    jc_in = j - 1; // the cell nm_cross_edge materials to be added
+                }
+                for (idx = 0; idx < nm_cross_edge; idx++)
+                {
+                    m = matid_for_edge[loc_edge];
+                    vol_for_cell[jc_in][ic][m] += fabs(dvol_for_edge[loc_edge]);
+                    mass_for_cell[jc_in][ic][m] += fabs(dmass_for_edge[loc_edge]);
+                    ener_for_cell[jc_in][ic][m] += fabs(dener_for_edge[loc_edge]);
+
+                    loc_edge++;
+                }
+                loc_edge = loc_for_2dedge[j][i];
+
+                for (idx = 0; idx < nm_cross_edge; idx++)
+                {
+                    m = matid_for_edge[loc_edge];
+                    vol_for_cell[jc_out][ic][m] -= fabs(dvol_for_edge[loc_edge]);
+                    mass_for_cell[jc_out][ic][m] -= fabs(dmass_for_edge[loc_edge]);
+                    ener_for_cell[jc_out][ic][m] -= fabs(dener_for_edge[loc_edge]);
+
+                    loc_edge++;
+                }
+            }
+        }
+    }
+#pragma endregion
+
+#ifdef ASCII_OUTPUT
+    sprintf(tempfile, "vol_for_cell_%d_%d_cal_mat_after_advec.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, vol_for_cell, ncell_ext[1], ncell_ext[0], nmat);
+    sprintf(tempfile, "mass_for_cell_%d_%d_cal_mat_after_advec.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, mass_for_cell, ncell_ext[1], ncell_ext[0], nmat);
+    sprintf(tempfile, "ener_for_cell_%d_%d_cal_mat_after_advec.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, ener_for_cell, ncell_ext[1], ncell_ext[0], nmat);
+#endif
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "vol_for_cell_after_advec(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, vol_for_cell, ncell_nmat);
+    sprintf(dataset_name, "mass_for_cell_after_advec(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, mass_for_cell, ncell_nmat);
+    sprintf(dataset_name, "ener_for_cell_after_advec(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, ener_for_cell, ncell_nmat);
+#endif
+
+// printf("exit after computing materials\n"); exit(0);
+
+// m ---------------  take out small volume fraction ----------------------
+#pragma region remove frac
+    for (j = nbdry; j <= ncell_bdry[1]; j++)
+    {
+        for (i = nbdry; i <= ncell_bdry[0]; i++)
+        {
+            vol_sum = 0.0;
+            for (m = 0; m < nmat; m++)
+            {
+                frac = vol_for_cell[j][i][m] / vol_cell;
+                if (frac < vfmin)
+                {
+                    vol_for_cell[j][i][m] = 0.0;
+                    mass_for_cell[j][i][m] = 0.0;
+                    ener_for_cell[j][i][m] = 0.0;
+                }
+                else
+                {
+                    vol_sum += vol_for_cell[j][i][m];
+                }
+            }
+            frac = vol_cell / vol_sum;
+            for (m = 0; m < nmat; m++)
+            {
+                vol_for_cell[j][i][m] *= frac;
+                //               mass_for_cell[j][i][m] *= frac;
+                //               ener_for_cell[j][i][m] *= frac;
+            }
+        }
+    }
+    //   mapping velocity
+
+#pragma endregion
+
+#ifdef ASCII_OUTPUT
+    sprintf(tempfile, "vol_for_cell_%d_%d_remove_frac.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, vol_for_cell, ncell_ext[1], ncell_ext[0], nmat);
+    sprintf(tempfile, "mass_for_cell_%d_%d_remove_frac.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, mass_for_cell, ncell_ext[1], ncell_ext[0], nmat);
+    sprintf(tempfile, "ener_for_cell_%d_%d_remove_frac.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, ener_for_cell, ncell_ext[1], ncell_ext[0], nmat);
+#endif
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "vol_for_cell_remove_frac(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, vol_for_cell, ncell_nmat);
+    sprintf(dataset_name, "mass_for_cell_remove_frac(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, mass_for_cell, ncell_nmat);
+    sprintf(dataset_name, "ener_for_cell_remove_frac(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, ener_for_cell, ncell_nmat);
+#endif
+
+// printf("exit after remove small fraction\n"); exit(0);
+
+// m -----------------  mapping velocity ---------------------------------
+#pragma region mom_for_node
+    mom_for_2dnode_new = (double ***)malloc(nnode_ext[1] * sizeof(double **));
+    mom_for_node = (double ***)malloc(nnode_ext[1] * sizeof(double **));
+    vel2d = (double **)malloc(lsize_node * sizeof(double *));
+    mom2d = (double **)malloc(lsize_node * sizeof(double *));
+    vel1d = (double *)malloc(lsize_node * dim * sizeof(double));
+    mom1d = (double *)malloc(lsize_node * dim * sizeof(double));
+
+    offset = 0;
+    for (j = 0; j < nnode_ext[1]; j++)
+    {
+        vel2d[0] = vel1d + offset;
+        mom2d[0] = mom1d + offset;
+        for (i = 1; i < nnode_ext[0]; i++)
+        {
+            vel2d[i] = vel2d[i - 1] + dim;
+            mom2d[i] = mom2d[i - 1] + dim;
+        }
+        mom_for_2dnode_new[j] = vel2d;
+        mom_for_node[j] = mom2d;
+
+        offset += (nnode_ext[0] * dim);
+        vel2d += nnode_ext[0];
+        mom2d += nnode_ext[0];
+    }
+    for (j = 0; j < nnode_ext[1]; j++)
+    {
+        for (i = 0; i < nnode_ext[0]; i++)
+        {
+            for (idx = 0; idx < dim; idx++)
+            {
+                mom_for_node[j][i][idx] = 0.0;
+            }
+        }
+    }
+    for (j = 2; j < nnode_ext[1] - 2; j++)
+    {
+        for (i = 2; i < nnode_ext[0] - 2; i++)
+        {
+            dmass = 0.0;
+            for (jc = j - 1; jc <= j; jc++)
+            {
+                for (ic = i - 1; ic <= i; ic++)
+                {
+                    dmass += (0.25 * vol_cell * rho_2dcell[jc][ic]);
+                }
+            }
+            for (idx = 0; idx < dim; idx++)
+            {
+                mom_for_node[j][i][idx] = dmass * vel_2dnode[j][i][idx];
+            }
+        }
+    }
+    //   -----------------
+    //   |       |       |
+    //   |   ....|....   |
+    //   |   .   |   .   |
+    //   ----.---x---.----
+    //   |   .   |   .   |
+    //   |   ....|....   |
+    //   |       |       |
+    //   -----------------
+
+#pragma endregion
+
+#ifdef ASCII_OUTPUT
+    sprintf(tempfile, "mom_for_node_%d_%d.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, mom_for_node, nnode_ext[1], nnode_ext[0], dim);
+#endif
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "mom_for_node(dir=%d)", dir);
+    dims[0] = nnode_ext[1];
+    dims[1] = nnode_ext[0];
+    dims[2] = 2;
+    h5_write_3d(debug_gid, dataset_name, mom_for_node, dims);
+#endif
+
+#pragma region mom_for_2dnode_new
+    memcpy(mom_for_2dnode_new[0][0], mom_for_node[0][0], (size_t)(lsize_node * dim * sizeof(double)));
+
+    if (dir == 0)
+    {
+        for (j = 2; j < nnode_ext[1] - 2; j++)
+        {
+            for (i = 2; i < nnode_ext[0] - 2; i++)
+            {
+                dist = vel_2dnode[j][i][dir] * dt;
+                frac = fabs(dist) / dx[dir];
+                if (frac < small)
+                    continue;
+
+                if (dist > 0.0)
+                {
+                    ip = i + 1; // the node to whcih the momemten to be added
+                }
+                else
+                {
+                    ip = i - 1; // the node to whcih the momemten to be added
+                }
+                for (idx = 0; idx < dim; idx++)
+                {
+                    dmom = frac * mom_for_node[j][i][idx];
+                    mom_for_2dnode_new[j][i][idx] -= dmom;
+                    mom_for_2dnode_new[j][ip][idx] += dmom;
+                }
+            }
+        }
+    }
+    else if (dir == 1)
+    {
+        for (j = 2; j < nnode_ext[1] - 2; j++)
+        {
+            for (i = 2; i < nnode_ext[0] - 2; i++)
+            {
+                dist = vel_2dnode[j][i][dir] * dt;
+                frac = fabs(dist) / dx[dir];
+                if (frac < small)
+                    continue;
+
+                if (dist > 0.0)
+                {
+                    jp = j + 1; // the node to whcih the momemten to be added
+                }
+                else
+                {
+                    jp = j - 1; // the node to whcih the momemten to be added
+                }
+                for (idx = 0; idx < dim; idx++)
+                {
+                    dmom = frac * mom_for_node[j][i][idx];
+                    mom_for_2dnode_new[j][i][idx] -= dmom;
+                    mom_for_2dnode_new[jp][i][idx] += dmom;
+                }
+            }
+        }
+    }
+#pragma endregion
+
+#ifdef ASCII_OUTPUT
+    sprintf(tempfile, "mom_for_2dnode_new_%d_%d.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, mom_for_2dnode_new, nnode_ext[1], nnode_ext[0], dim);
+#endif
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "mom_for_2dnode_new(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, mom_for_2dnode_new, dims);
+
+#endif
+
+#pragma region // m put cell variables back to rho_for_2dcell, etc.
+    for (j = nbdry; j <= ncell_bdry[1]; j++)
+    {
+        for (i = nbdry; i <= ncell_bdry[0]; i++)
+        {
+            for (m = 0; m < nmat; m++)
+            {
+                vf_2dmat[j][i][m] = vol_for_cell[j][i][m] / vol_cell;
+                rho_2dmat[j][i][m] = mass_for_cell[j][i][m] / (tiny + vol_for_cell[j][i][m]);
+                ei_2dmat[j][i][m] = ener_for_cell[j][i][m] / (tiny + vol_for_cell[j][i][m]);
+                if (!is_solid[m])
+                {
+                    pres_2dmat[j][i][m] = (gamma_ea_mat[m] - 1.0) * ei_2dmat[j][i][m];
+                }
+                else
+                {
+                    p_mie_gruneisen(rho_2dmat[j][i][m], ei_2dmat[j][i][m], &(pres_2dmat[j][i][m]));
+                }
+            }
+        }
+    }
+    for (j = nbdry; j <= ncell_bdry[1]; j++)
+    {
+        for (i = nbdry; i <= ncell_bdry[0]; i++)
+        {
+            rho_2dcell[j][i] = 0.0;
+            ei_2dcell[j][i] = 0.0;
+            pres_2dcell[j][i] = 0.0;
+            for (m = 0; m < nmat; m++)
+            {
+                rho_2dcell[j][i] += (vf_2dmat[j][i][m] * rho_2dmat[j][i][m]);
+                ei_2dcell[j][i] += (vf_2dmat[j][i][m] * ei_2dmat[j][i][m]);
+                pres_2dcell[j][i] += (vf_2dmat[j][i][m] * pres_2dmat[j][i][m]);
+            }
+        }
+    }
+#pragma endregion
+
+#ifdef ASCII_OUTPUT
+    sprintf(tempfile, "put_cell_back_dir_%d", dir);
+    write_2Dmat_variables(tempfile, pres_2dmat, ei_2dmat, rho_2dmat, vf_2dmat, ncell_ext[1], ncell_ext[0], nmat, ncycle);
+    write_2Dcell_variables(tempfile, pres_2dcell, ei_2dcell, rho_2dcell, ncell_ext[1], ncell_ext[0], nmat, ncycle);
+#endif
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "put_cell_back:pres_2dmat(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, pres_2dmat, ncell_nmat);
+    sprintf(dataset_name, "put_cell_back:ei_2dmat(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, ei_2dmat, ncell_nmat);
+    sprintf(dataset_name, "put_cell_back:rho_2dmat(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, rho_2dmat, ncell_nmat);
+    sprintf(dataset_name, "put_cell_back:vf_2dmat(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, vf_2dmat, ncell_nmat);
+    sprintf(dataset_name, "put_cell_back:pres_2dcell(dir=%d)", dir);
+    h5_write_2d(debug_gid, dataset_name, pres_2dcell, ncell_ext);
+    sprintf(dataset_name, "put_cell_back:ei_2dcell(dir=%d)", dir);
+    h5_write_2d(debug_gid, dataset_name, ei_2dcell, ncell_ext);
+    sprintf(dataset_name, "put_cell_back:rho_2dcell(dir=%d)", dir);
+    h5_write_2d(debug_gid, dataset_name, rho_2dcell, ncell_ext);
+#endif
+
+#pragma region // m apply bdry condition
+    bdry_cell_2d(nmat, ncell, nbdry, btype_lower, btype_upper,
+                 vf_2dmat, rho_2dmat, ei_2dmat, pres_2dmat,
+                 rho_2dcell, ei_2dcell, pres_2dcell);
+#pragma endregion
+#ifdef ASCII_OUTPUT
+    sprintf(tempfile, "bdry_cell_dir_%d", dir);
+    write_2Dmat_variables(tempfile, pres_2dmat, ei_2dmat, rho_2dmat, vf_2dmat, ncell_ext[1], ncell_ext[0], nmat, ncycle);
+    write_2Dcell_variables(tempfile, pres_2dcell, ei_2dcell, rho_2dcell, ncell_ext[1], ncell_ext[0], nmat, ncycle);
+#endif
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "bdry_cell:pres_2dmat(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, pres_2dmat, ncell_nmat);
+    sprintf(dataset_name, "bdry_cell:ei_2dmat(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, ei_2dmat, ncell_nmat);
+    sprintf(dataset_name, "bdry_cell:rho_2dmat(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, rho_2dmat, ncell_nmat);
+    sprintf(dataset_name, "bdry_cell:vf_2dmat(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, vf_2dmat, ncell_nmat);
+    sprintf(dataset_name, "bdry_cell:pres_2dcell(dir=%d)", dir);
+    h5_write_2d(debug_gid, dataset_name, pres_2dcell, ncell_ext);
+    sprintf(dataset_name, "bdry_cell:ei_2dcell(dir=%d)", dir);
+    h5_write_2d(debug_gid, dataset_name, ei_2dcell, ncell_ext);
+    sprintf(dataset_name, "bdry_cell:rho_2dcell(dir=%d)", dir);
+    h5_write_2d(debug_gid, dataset_name, rho_2dcell, ncell_ext);
+#endif
+
+#pragma region
+    //  update vel_for_2dnde
+    for (j = nbdry; j <= nnode_bdry[1]; j++)
+    {
+        for (i = nbdry; i <= nnode_bdry[0]; i++)
+        {
+            rho_sum = 0.0;
+            for (jc = j - 1; jc <= j; jc++)
+            {
+                for (ic = i - 1; ic <= i; ic++)
+                {
+                    rho_sum += (0.25 * rho_2dcell[jc][ic]);
+                }
+            }
+            if (rho_sum / rho_average < small)
+            {
+                for (idx = 0; idx < dim; idx++)
+                {
+                    vel_2dnode[j][i][idx] = 0.0;
+                }
+            }
+            else
+            {
+                for (idx = 0; idx < dim; idx++)
+                {
+                    vel_2dnode[j][i][idx] = mom_for_2dnode_new[j][i][idx] / (vol_cell * rho_sum);
+                }
+            }
+        }
+    }
+#pragma endregion
+    free(mom_for_2dnode_new[0][0]);
+    free(mom_for_2dnode_new[0]);
+    free(mom_for_2dnode_new);
+    free(mom_for_node[0][0]);
+    free(mom_for_node[0]);
+    free(mom_for_node);
+
+#pragma region
+    //  apply boundry contion for vel_for_2dnode
+    bdry_node_2d(ncell, nbdry, btype_lower, btype_upper, vel_2dnode);
+#pragma endregion
+
+#ifdef ASCII_OUTPUT
+    sprintf(tempfile, "vel_2dnode_%d_%d_update_vel.txt", ncycle, dir);
+    write_3Darray_as_matrix(tempfile, vel_2dnode, nnode_ext[1], nnode_ext[0], dim);
+// printf("exit after rupdate vel_2dnode\n"); exit(0);
+#endif
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "update_vel:vel_2dnode(dir=%d)", dir);
+    dims[0] = nnode_ext[1];
+    dims[1] = nnode_ext[0];
+    dims[2] = 2;
+    h5_write_3d(debug_gid, dataset_name, vel_2dnode, dims);
+#endif
+
+    free(matid_adv);
+    free(vol_adv);
+    free(mass_adv);
+    free(ener_adv);
+
+    free(nmat_for_edge[0]);
+    free(nmat_for_edge);
+
+    free(dvol_for_edge);
+    free(dmass_for_edge);
+    free(dener_for_edge);
+    free(matid_for_edge);
+
+    free(loc_for_2dedge[0]);
+    free(loc_for_2dedge);
+
+    free(vol_for_cell[0][0]);
+    free(vol_for_cell[0]);
+    free(vol_for_cell);
+
+    free(mass_for_cell[0][0]);
+    free(mass_for_cell[0]);
+    free(mass_for_cell);
+
+    free(ener_for_cell[0][0]);
+    free(ener_for_cell[0]);
+    free(ener_for_cell);
+
+    return;
+}
+
+void quantities_crossing_edge_3d(int dir, int *ncell, int nbdry,
+                                 double *xl_prob, double *dx, double dt,
+                                 int nmat, double *courant_adv,
+                                 double ***vel_3dface,
+                                 double ****vf_3dmat,
+                                 double ****rho_3dmat,
+                                 double ****ei_3dmat,
+                                 int ***nmat_for_edge,
+                                 // output
+                                 double **ptr_dvol_for_edge,
+                                 double **ptr_dmass_for_edge,
+                                 double **ptr_dener_for_edge,
+                                 int **ptr_matid_for_edge)
+{
+    double inward_norm[3], xl_cell[3], xl_slab[3], xr_slab[3];
+    double vol_cell, frac, xyz_edge, dist, adist, dvol, dmass, dener, dmom;
+    int i, j, k, m, il, iu, jl, ju, kl, ku, nm, dim, idx;
+    int ncell_ext[3], ncell_bdry[3], nnode_ext[3], nnode_bdry[3], sizes_edge[3], sizes_mom[4];
+    int nnode_tot;
+    int ijk[3], *nface_for_mpoly, **nnode_for_face_ea_mpoly, **nodelist_for_face_ea_mpoly;
+    double *coords_tot;
+    long long lsize_cell, lsize_node, lsize_max, loc_edge, lsize_mat, offset;
+
+    double *dvol_for_edge, *dmass_for_edge, *dener_for_edge;
+    int nmat_adv, *matid_adv, *mats;
+    int *nmat1d, **nmat2d, *matid_for_edge;
+    int slab_faceid;
+    double *vol_adv, *mass_adv, *ener_adv;
+
+    dim = 3;
+
+    matid_adv = (int *)malloc((nmat + nmat) * sizeof(int));
+    mats = matid_adv + nmat;
+    vol_adv = (double *)malloc(nmat * sizeof(double));
+    mass_adv = (double *)malloc(nmat * sizeof(double));
+    ener_adv = (double *)malloc(nmat * sizeof(double));
+
+    vol_cell = 1.0;
+    lsize_cell = 1;
+    lsize_node = 1;
+    for (i = 0; i < dim; i++)
+    {
+        vol_cell *= dx[i];
+        ncell_ext[i] = ncell[i] + nbdry + nbdry;
+        lsize_cell *= ncell_ext[i];
+        ncell_bdry[i] = ncell[i] + nbdry - 1; // cell at the right boundary
+        nnode_ext[i] = ncell_ext[i] + 1;
+        lsize_node *= nnode_ext[i];
+        nnode_bdry[i] = nnode_ext[i] - nbdry - 1; // node at the right boundary
+
+        sizes_edge[i] = ncell_ext[i];
+    }
+    sizes_edge[dir] = nnode_ext[dir];
+
+    lsize_max = sizes_edge[0] * sizes_edge[1] * sizes_edge[2] * 2;
+    (*ptr_dvol_for_edge) = (double *)malloc(lsize_max * sizeof(double));
+    (*ptr_dmass_for_edge) = (double *)malloc(lsize_max * sizeof(double));
+    (*ptr_dener_for_edge) = (double *)malloc(lsize_max * sizeof(double));
+    (*ptr_matid_for_edge) = (int *)malloc(lsize_max * sizeof(int));
+
+    dvol_for_edge = *ptr_dvol_for_edge;
+    dmass_for_edge = *ptr_dmass_for_edge;
+    dener_for_edge = *ptr_dener_for_edge;
+    matid_for_edge = *ptr_matid_for_edge;
+    loc_edge = 0; // the current location in dmass_for_edge, etc.
+
+    nface_for_mpoly = (int *)malloc(nmat * sizeof(int));
+    *courant_adv = 0.0;
+
+    int imx = (dir == 0) ? nnode_bdry[0] : ncell_bdry[0];
+    int jmx = (dir == 1) ? nnode_bdry[1] : ncell_bdry[1];
+    int kmx = (dir == 2) ? nnode_bdry[2] : ncell_bdry[2];
+
+    for (k = nbdry; k <= kmx; k++)
+    {
+        if (dir != 2)
+        {
+            xl_cell[2] = xl_prob[2] + (double)(k - nbdry) * dx[2];
+            xl_slab[2] = xl_cell[2]; // for the slab advected
+            xr_slab[2] = xl_cell[2] + dx[2];
+            inward_norm[2] = 0.0;
+            kl = k;
+        }
+        else
+        {
+            xyz_edge = xl_prob[dir] + (double)(k - nbdry) * dx[dir];
+            kl = k - 1;
+        }
+
+        for (j = nbdry; j <= jmx; j++)
+        {
+            if (dir != 1)
+            {
+                xl_cell[1] = xl_prob[1] + (double)(j - nbdry) * dx[1];
+                xl_slab[1] = xl_cell[1]; // for the slab advected
+                xr_slab[1] = xl_cell[1] + dx[1];
+                inward_norm[1] = 0.0;
+                jl = j;
+            }
+            else
+            {
+                xyz_edge = xl_prob[dir] + (double)(j - nbdry) * dx[dir];
+                jl = j - 1;
+            }
+            for (i = nbdry; i <= imx; i++)
+            {
+                if (dir != 0)
+                {
+                    xl_cell[0] = xl_prob[0] + (double)(i - nbdry) * dx[0];
+                    xl_slab[0] = xl_cell[0]; // for the slab advected
+                    xr_slab[0] = xl_cell[0] + dx[0];
+                    inward_norm[0] = 0.0;
+                    il = i;
+                }
+                else
+                {
+                    xyz_edge = xl_prob[dir] + (double)(i - nbdry) * dx[dir];
+                    il = i - 1;
+                }
+
+                dist = vel_3dface[k][j][i] * dt;
+                frac = dist / dx[dir];
+                *courant_adv = MAX(*courant_adv, 2.0 * fabs(frac));
+                if (*courant_adv >= 1.0)
+                {
+                    printf("WARNING: courant_adv = %e in quantities_for_edge_3d\n", *courant_adv);
+                }
+                if (frac > small)
+                {
+                    nm = 0;
+                    for (m = 0; m < nmat; m++)
+                    {
+                        if (vf_3dmat[kl][jl][il][m] >= vfmin)
+                        {
+                            mats[nm] = m;
+                            nm++;
+                        }
+                    }
+                    if (nm == 1)
+                    {
+                        if (loc_edge + 1 > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + 8;
+                            *ptr_dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            *ptr_dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            *ptr_dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+
+                            dvol_for_edge = *ptr_dvol_for_edge;
+                            dmass_for_edge = *ptr_dmass_for_edge;
+                            dener_for_edge = *ptr_dener_for_edge;
+                        }
+                        m = mats[0];
+                        nmat_for_edge[k][j][i] = 1;
+                        dvol = dx[0] * dx[1] * dx[2] * dist / dx[dir];
+                        dmass = dvol * rho_3dmat[kl][jl][il][m];
+                        dener = dvol * ei_3dmat[kl][jl][il][m];
+
+                        matid_for_edge[loc_edge] = m;
+                        dvol_for_edge[loc_edge] = dvol;
+                        dmass_for_edge[loc_edge] = dmass;
+                        dener_for_edge[loc_edge] = dener;
+                        loc_edge++;
+                    }
+                    else
+                    {
+                        xl_slab[dir] = xyz_edge - fabs(dist);
+                        xr_slab[dir] = xyz_edge;
+                        xl_cell[dir] = xyz_edge - dx[dir];
+                        inward_norm[dir] = 1.0; // inward norm within the slab
+
+                        slab_faceid = 2 * dir;
+                        ijk[0] = il;
+                        ijk[1] = jl;
+                        ijk[2] = kl;
+
+                        coords_tot = NULL;
+                        nnode_for_face_ea_mpoly = NULL;
+                        nodelist_for_face_ea_mpoly = NULL;
+
+                        build_mpoly3d(nbdry, xl_prob, dx,
+                                      nmat, vf_3dmat,
+                                      ijk, nm,
+                                      &nnode_tot, &coords_tot,
+                                      nface_for_mpoly, &nnode_for_face_ea_mpoly,
+                                      &nodelist_for_face_ea_mpoly);
+
+                        advect3d(nmat, ncell, nbdry,
+                                 vf_3dmat, rho_3dmat, ei_3dmat,
+                                 ijk, xl_cell, dx, nm, mats,
+                                 xl_slab, xr_slab, inward_norm, slab_faceid,
+                                 nnode_tot, coords_tot,
+                                 nface_for_mpoly, nnode_for_face_ea_mpoly, nodelist_for_face_ea_mpoly,
+                                 &nmat_adv, matid_adv, vol_adv, mass_adv, ener_adv);
+
+                        free(coords_tot);
+                        free(nnode_for_face_ea_mpoly[0]);
+                        free(nnode_for_face_ea_mpoly);
+                        free(nodelist_for_face_ea_mpoly[0]);
+                        free(nodelist_for_face_ea_mpoly);
+
+                        if (loc_edge + nmat_adv > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + nmat_adv;
+                            dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                        }
+                        nmat_for_edge[k][j][i] = nmat_adv;
+                        memcpy(matid_for_edge + loc_edge, matid_adv, (size_t)(nmat_adv * sizeof(int)));
+                        memcpy(dvol_for_edge + loc_edge, vol_adv, (size_t)(nmat_adv * sizeof(double)));
+                        memcpy(dmass_for_edge + loc_edge, mass_adv, (size_t)(nmat_adv * sizeof(double)));
+                        memcpy(dener_for_edge + loc_edge, ener_adv, (size_t)(nmat_adv * sizeof(double)));
+                        loc_edge += nmat_adv;
+                    }
+                }
+                else if (frac < -small)
+                {
+                    nm = 0;
+                    for (m = 0; m < nmat; m++)
+                    {
+                        if (vf_3dmat[k][j][i][m] >= vfmin)
+                        {
+                            mats[nm] = m;
+                            nm++;
+                        }
+                    }
+                    adist = fabs(dist);
+                    if (nm == 1)
+                    {
+                        if (loc_edge + 1 > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + 8;
+                            dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                        }
+                        m = mats[0];
+                        nmat_for_edge[k][j][i] = 1;
+                        dvol = dx[0] * dx[1] * dx[2] * adist / dx[dir];
+                        dmass = dvol * rho_3dmat[k][j][i][m];
+                        dener = dvol * ei_3dmat[k][j][i][m];
+                        matid_for_edge[loc_edge] = m;
+                        dvol_for_edge[loc_edge] = -dvol;
+                        dmass_for_edge[loc_edge] = -dmass;
+                        dener_for_edge[loc_edge] = -dener;
+                        loc_edge++;
+                    }
+                    else
+                    {
+                        xl_slab[dir] = xyz_edge;
+                        xr_slab[dir] = xyz_edge + fabs(dist);
+                        xl_cell[dir] = xyz_edge;
+                        inward_norm[dir] = -1.0; // inward norm within the slab
+
+                        slab_faceid = 1 + 2 * dir;
+
+                        ijk[0] = i;
+                        ijk[1] = j;
+                        ijk[2] = k;
+
+                        coords_tot = NULL;
+                        nnode_for_face_ea_mpoly = NULL;
+                        nodelist_for_face_ea_mpoly = NULL;
+
+                        build_mpoly3d(nbdry, xl_prob, dx,
+                                      nmat, vf_3dmat,
+                                      ijk, nm,
+                                      &nnode_tot, &coords_tot,
+                                      nface_for_mpoly, &nnode_for_face_ea_mpoly, &nodelist_for_face_ea_mpoly);
+
+                        advect3d(nmat, ncell, nbdry,
+                                 vf_3dmat, rho_3dmat, ei_3dmat,
+                                 ijk, xl_cell, dx, nm, mats,
+                                 xl_slab, xr_slab, inward_norm, slab_faceid,
+                                 nnode_tot, coords_tot,
+                                 nface_for_mpoly, nnode_for_face_ea_mpoly, nodelist_for_face_ea_mpoly,
+                                 &nmat_adv, matid_adv, vol_adv, mass_adv, ener_adv);
+
+                        free(coords_tot);
+                        free(nnode_for_face_ea_mpoly[0]);
+                        free(nnode_for_face_ea_mpoly);
+                        free(nodelist_for_face_ea_mpoly[0]);
+                        free(nodelist_for_face_ea_mpoly);
+
+                        if (loc_edge + nmat_adv > lsize_max)
+                        {
+                            lsize_max = (long long)(1.2 * lsize_max) + nmat_adv;
+                            dvol_for_edge = (double *)realloc(dvol_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dmass_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                            dener_for_edge = (double *)realloc(dmass_for_edge, (size_t)(lsize_max * sizeof(double)));
+                        }
+                        nmat_for_edge[k][j][i] = nmat_adv;
+                        for (idx = 0; idx < nmat_adv; idx++)
+                        {
+                            matid_for_edge[loc_edge] = matid_adv[idx];
+                            dvol_for_edge[loc_edge] = -vol_adv[idx];
+                            dmass_for_edge[loc_edge] = -mass_adv[idx];
+                            dener_for_edge[loc_edge] = -ener_adv[idx];
+                            loc_edge++;
+                        }
+                    }
+                }
+            } // i
+        } // j
+    } // k
+    free(nface_for_mpoly);
+
+    free(matid_adv);
+    free(vol_adv);
+    free(mass_adv);
+    free(ener_adv);
+}
+
+void update_materials_after_advection(int dir, int nmat, long long lsize_cell, int *sizes_edge,
+                                      int nbdry, int *ncell_ext, int *ncell_bdry, int ***nmat_for_edge, double vol_cell,
+                                      double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat,
+                                      double *dvol_for_edge, double *dmass_for_edge, double *dener_for_edge, int *matid_for_edge,
+                                      double *****ptr_vol_for_cell, double *****ptr_mass_for_cell, double *****ptr_ener_for_cell)
+{
+
+    int i, j, k, m, idx;
+    int ic_in, ic_out, jc_in, jc_out, kc_in, kc_out, nm_cross_edge;
+    long long loc_edge, lsize_mat, offset;
+    long long *loc1d, **loc2d, ***loc_for_3dedge;
+    double ****vol_for_cell, ****mass_for_cell, ****ener_for_cell;
+    double ***vol3d, **vol2d, *vol_list, ***mass3d, **mass2d, *mass_list, ***ener3d, **ener2d, *ener_list;
+    double vol_sum, frac;
+    char dataset_name[140];
+    int ncell_nmat[4], dims[3];
+
+    loc_for_3dedge = (long long ***)malloc(sizes_edge[2] * sizeof(long long **));
+    loc2d = (long long **)malloc(sizes_edge[2] * sizes_edge[1] * sizeof(long long *));
+    loc1d = (long long *)malloc(sizes_edge[2] * sizes_edge[1] * sizes_edge[0] * sizeof(long long));
+
+    offset = 0;
+    for (k = 0; k < sizes_edge[2]; k++)
+    {
+        loc2d[0] = loc1d + offset;
+        for (j = 1; j < sizes_edge[1]; j++)
+        {
+            loc2d[j] = loc2d[j - 1] + sizes_edge[0];
+        }
+        loc_for_3dedge[k] = loc2d;
+
+        offset += (sizes_edge[0] * sizes_edge[1]);
+        loc2d += sizes_edge[1];
+    }
+
+    loc_edge = 0;
+    for (k = 0; k < sizes_edge[2]; k++)
+    {
+        for (j = 0; j < sizes_edge[1]; j++)
+        {
+            for (i = 0; i < sizes_edge[0]; i++)
+            {
+                if (nmat_for_edge[k][j][i] > 0)
+                {
+                    loc_for_3dedge[k][j][i] = loc_edge;
+                    loc_edge += nmat_for_edge[k][j][i];
+                }
+                else
+                {
+                    loc_for_3dedge[k][j][i] = -1;
+                }
+            }
+        }
+    }
+    lsize_mat = nmat * lsize_cell;
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "loc_for_3dedge(dir=%d)", dir);
+    dims[0] = sizes_edge[2];
+    dims[1] = sizes_edge[1];
+    dims[2] = sizes_edge[0];
+    h5_write_3d_llong(debug_gid, dataset_name, loc_for_3dedge, dims);
+#endif
+
+    (*ptr_vol_for_cell) = (double ****)malloc(ncell_ext[2] * sizeof(double ***));
+    (*ptr_mass_for_cell) = (double ****)malloc(ncell_ext[2] * sizeof(double ***));
+    (*ptr_ener_for_cell) = (double ****)malloc(ncell_ext[2] * sizeof(double ***));
+
+    vol_for_cell = *ptr_vol_for_cell;
+    mass_for_cell = *ptr_mass_for_cell;
+    ener_for_cell = *ptr_ener_for_cell;
+
+    vol3d = (double ***)malloc(ncell_ext[2] * ncell_ext[1] * sizeof(double **));
+    mass3d = (double ***)malloc(ncell_ext[2] * ncell_ext[1] * sizeof(double **));
+    ener3d = (double ***)malloc(ncell_ext[2] * ncell_ext[1] * sizeof(double **));
+
+    vol2d = (double **)malloc(lsize_cell * sizeof(double *));
+    mass2d = (double **)malloc(lsize_cell * sizeof(double *));
+    ener2d = (double **)malloc(lsize_cell * sizeof(double *));
+
+    vol_list = (double *)malloc(lsize_mat * sizeof(double));
+    mass_list = (double *)malloc(lsize_mat * sizeof(double));
+    ener_list = (double *)malloc(lsize_mat * sizeof(double));
+
+    offset = 0;
+    for (k = 0; k < ncell_ext[2]; k++)
+    {
+        vol3d[0] = vol2d + offset;
+        mass3d[0] = mass2d + offset;
+        ener3d[0] = ener2d + offset;
+        for (j = 1; j < ncell_ext[1]; j++)
+        {
+            vol3d[j] = vol3d[j - 1] + ncell_ext[0];
+            mass3d[j] = mass3d[j - 1] + ncell_ext[0];
+            ener3d[j] = ener3d[j - 1] + ncell_ext[0];
+        }
+        vol_for_cell[k] = vol3d;
+        mass_for_cell[k] = mass3d;
+        ener_for_cell[k] = ener3d;
+
+        vol3d += ncell_ext[1];
+        mass3d += ncell_ext[1];
+        ener3d += ncell_ext[1];
+        offset += (ncell_ext[0] * ncell_ext[1]);
+    }
+    offset = 0;
+    for (k = 0; k < ncell_ext[2]; k++)
+    {
+        for (j = 0; j < ncell_ext[1]; j++)
+        {
+            for (i = 0; i < ncell_ext[0]; i++)
+            {
+                vol_for_cell[k][j][i] = vol_list + offset;
+                mass_for_cell[k][j][i] = mass_list + offset;
+                ener_for_cell[k][j][i] = ener_list + offset;
+                offset += nmat;
+            }
+        }
+    }
+    for (k = 0; k < ncell_ext[2]; k++)
+    {
+        for (j = 0; j < ncell_ext[1]; j++)
+        {
+            for (i = 0; i < ncell_ext[0]; i++)
+            {
+                for (m = 0; m < nmat; m++)
+                {
+                    vol_for_cell[k][j][i][m] = vol_cell * vf_3dmat[k][j][i][m];
+                    mass_for_cell[k][j][i][m] = vol_for_cell[k][j][i][m] * rho_3dmat[k][j][i][m];
+                    ener_for_cell[k][j][i][m] = vol_for_cell[k][j][i][m] * ei_3dmat[k][j][i][m];
+                }
+            }
+        }
+    }
+
+#ifdef H5DUMP_DEBUG
+    ncell_nmat[0] = ncell_ext[2];
+    ncell_nmat[1] = ncell_ext[1];
+    ncell_nmat[2] = ncell_ext[0];
+    ncell_nmat[3] = nmat;
+    sprintf(dataset_name, "vol_for_cell(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, vol_for_cell, ncell_nmat);
+    sprintf(dataset_name, "mass_for_cell(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, mass_for_cell, ncell_nmat);
+    sprintf(dataset_name, "ener_for_cell(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, ener_for_cell, ncell_nmat);
+#endif
+
+    //   calculate materials after the advection
+
+    for (k = 0; k < sizes_edge[2]; k++)
+    {
+        kc_in = kc_out = k;
+        for (j = 0; j < sizes_edge[1]; j++)
+        {
+            jc_in = jc_out = j;
+            for (i = 0; i < sizes_edge[0]; i++)
+            {
+                ic_in = ic_out = i;
+
+                nm_cross_edge = nmat_for_edge[k][j][i];
+                loc_edge = loc_for_3dedge[k][j][i];
+                if (loc_edge < 0)
+                    continue;
+
+                if (dvol_for_edge[loc_edge] > 0.0)
+                {
+                    if (dir == 0)
+                        ic_out = i - 1; // the cell nm_cross_edge materials to be deducted
+                    else if (dir == 1)
+                        jc_out = j - 1;
+                    else
+                        kc_out = k - 1;
+                }
+                else
+                {
+                    if (dir == 0)
+                        ic_in = i - 1; // the cell nm_cross_edge materials to be added
+                    else if (dir == 1)
+                        jc_in = j - 1;
+                    else
+                        kc_in = k - 1;
+                }
+                for (idx = 0; idx < nm_cross_edge; idx++)
+                {
+                    m = matid_for_edge[loc_edge];
+                    vol_for_cell[kc_in][jc_in][ic_in][m] += fabs(dvol_for_edge[loc_edge]);
+                    mass_for_cell[kc_in][jc_in][ic_in][m] += fabs(dmass_for_edge[loc_edge]);
+                    ener_for_cell[kc_in][jc_in][ic_in][m] += fabs(dener_for_edge[loc_edge]);
+
+                    loc_edge++;
+                }
+                loc_edge = loc_for_3dedge[k][j][i];
+
+                for (idx = 0; idx < nm_cross_edge; idx++)
+                {
+                    m = matid_for_edge[loc_edge];
+                    vol_for_cell[kc_out][jc_out][ic_out][m] -= fabs(dvol_for_edge[loc_edge]);
+                    mass_for_cell[kc_out][jc_out][ic_out][m] -= fabs(dmass_for_edge[loc_edge]);
+                    ener_for_cell[kc_out][jc_out][ic_out][m] -= fabs(dener_for_edge[loc_edge]);
+
+                    loc_edge++;
+                }
+            }
+        }
+    }
+
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "vol_for_cell_after_advec(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, vol_for_cell, ncell_nmat);
+    sprintf(dataset_name, "mass_for_cell_after_advec(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, mass_for_cell, ncell_nmat);
+    sprintf(dataset_name, "ener_for_cell_after_advec(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, ener_for_cell, ncell_nmat);
+#endif
+
+    //   take out small volume fraction
+
+    for (k = nbdry; k <= ncell_bdry[2]; k++)
+    {
+        for (j = nbdry; j <= ncell_bdry[1]; j++)
+        {
+            for (i = nbdry; i <= ncell_bdry[0]; i++)
+            {
+                vol_sum = 0.0;
+                for (m = 0; m < nmat; m++)
+                {
+                    frac = vol_for_cell[k][j][i][m] / vol_cell;
+                    if (frac < vfmin)
+                    {
+                        vol_for_cell[k][j][i][m] = 0.0;
+                        mass_for_cell[k][j][i][m] = 0.0;
+                        ener_for_cell[k][j][i][m] = 0.0;
+                    }
+                    else
+                    {
+                        vol_sum += vol_for_cell[k][j][i][m];
+                    }
+                }
+                frac = vol_cell / vol_sum;
+                for (m = 0; m < nmat; m++)
+                {
+                    vol_for_cell[k][j][i][m] *= frac;
+                    //                   mass_for_cell[k][j][i][m] *= frac;
+                    //                   ener_for_cell[k][j][i][m] *= frac;
+                }
+            } // i
+        } // j
+    } // k
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "vol_for_cell_remove_frac(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, vol_for_cell, ncell_nmat);
+    sprintf(dataset_name, "mass_for_cell_remove_frac(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, mass_for_cell, ncell_nmat);
+    sprintf(dataset_name, "ener_for_cell_remove_frac(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, ener_for_cell, ncell_nmat);
+#endif
+
+    free(loc_for_3dedge[0][0]);
+    free(loc_for_3dedge[0]);
+    free(loc_for_3dedge);
+
+} // update_materials_after_advection
+
+void mapping3d(int *ncell, int nbdry, double *xl_prob, double *dx, int dir, double dt,
+               Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+               int nmat, int *is_solid, double *gamma_ea_mat,
+               double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, double ****pres_3dmat,
+               double ***rho_3dcell, double ***ei_3dcell, double ***pres_3dcell,
+               double ****vel_3dnode, double ***vel_3dface,
+               double *courant_adv)
+{
+    int dim, i, j, k, m, nm, ip, jp, kp, ic, jc, kc, idx;
+
+    int ncell_ext[3], ncell_bdry[3], nnode_ext[3], nnode_bdry[3], sizes_edge[3], sizes_mom[4];
+    int *nmat1d, **nmat2d, ***nmat_for_edge, *matid_for_edge;
+    long long lsize_cell, lsize_node, offset;
+    char dataset_name[140];
+    int dims[4], ncell_nmat[4];
+
+    double vol_cell;
+    double frac, dist, dmass, dmom;
+    double *dvol_for_edge, *dmass_for_edge, *dener_for_edge;
+    double ****vol_for_cell, ****mass_for_cell, ****ener_for_cell;
+
+    double rho_average, rho_sum, vol_sum, mass_sum, ener_sum;
+    double *gamma_matid;
+
+    double *mom1d, **mom2d, ***mom3d, ****mom_for_node, ****mom_for_3dnode_new;
+
+    dim = 3;
+
+    vol_cell = 1.0;
+    lsize_cell = 1;
+    lsize_node = 1;
+    for (i = 0; i < dim; i++)
+    {
+        vol_cell *= dx[i];
+        ncell_ext[i] = ncell[i] + nbdry + nbdry;
+        lsize_cell *= ncell_ext[i];
+        ncell_bdry[i] = ncell[i] + nbdry - 1; // cell at the right boundary
+        nnode_ext[i] = ncell_ext[i] + 1;
+        lsize_node *= nnode_ext[i];
+        nnode_bdry[i] = nnode_ext[i] - nbdry - 1; // node at the right boundary
+
+        sizes_edge[i] = ncell_ext[i];
+    }
+    sizes_edge[dir] = nnode_ext[dir];
+
+    rho_average = 0.0;
+    for (k = nbdry; k <= ncell_bdry[2]; k++)
+    {
+        for (j = nbdry; j <= ncell_bdry[1]; j++)
+        {
+            for (i = nbdry; i <= ncell_bdry[0]; i++)
+            {
+                rho_average += rho_3dcell[k][j][i];
+            }
+        }
+    }
+    rho_average /= (double)(ncell[0] * ncell[1] * ncell[2]);
+
+    //   calculate the vol, mass, and energy advected across the cell interfaces.
+
+    nmat_for_edge = (int ***)malloc(sizes_edge[2] * sizeof(int **));
+    nmat2d = (int **)malloc(sizes_edge[2] * sizes_edge[1] * sizeof(int *));
+    nmat1d = (int *)malloc(sizes_edge[2] * sizes_edge[1] * sizes_edge[0] * sizeof(int));
+
+    offset = 0;
+    for (k = 0; k < sizes_edge[2]; k++)
+    {
+        nmat2d[0] = nmat1d + offset;
+        for (j = 1; j < sizes_edge[1]; j++)
+        {
+            nmat2d[j] = nmat2d[j - 1] + sizes_edge[0];
+        }
+        nmat_for_edge[k] = nmat2d;
+
+        offset += (sizes_edge[0] * sizes_edge[1]);
+        nmat2d += sizes_edge[1];
+    }
+    for (k = 0; k < sizes_edge[2]; k++)
+    {
+        for (j = 0; j < sizes_edge[1]; j++)
+        {
+            for (i = 0; i < sizes_edge[0]; i++)
+            {
+                nmat_for_edge[k][j][i] = 0;
+            }
+        }
+    }
+
+    quantities_crossing_edge_3d(dir, ncell, nbdry, xl_prob, dx, dt, nmat, courant_adv,
+                                vel_3dface, vf_3dmat, rho_3dmat, ei_3dmat, nmat_for_edge,
+                                &dvol_for_edge, &dmass_for_edge, &dener_for_edge, &matid_for_edge);
+
+#ifdef H5DUMP_DEBUG
+    dims[0] = sizes_edge[2];
+    dims[1] = sizes_edge[1];
+    dims[2] = sizes_edge[0];
+    sprintf(dataset_name, "nmat_for_edge(dir=%d)", dir);
+    h5_write_3d_int(debug_gid, dataset_name, nmat_for_edge, dims);
+
+    int len = 5000;
+    // Write first 1000 entries of dvol_for_edge
+    sprintf(dataset_name, "dvol_for_edge(dir=%d)", dir);
+    h5_write_1d(debug_gid, dataset_name, dvol_for_edge, len);
+
+    // Write first 1000 entries of dmass_for_edge
+    sprintf(dataset_name, "dmass_for_edge(dir=%d)", dir);
+    h5_write_1d(debug_gid, dataset_name, dmass_for_edge, len);
+
+    // Write first 1000 entries of dener_for_edge
+    sprintf(dataset_name, "dener_for_edge(dir=%d)", dir);
+    h5_write_1d(debug_gid, dataset_name, dener_for_edge, len);
+#endif
+
+    update_materials_after_advection(dir, nmat, lsize_cell, sizes_edge, nbdry,
+                                     ncell_ext, ncell_bdry, nmat_for_edge, vol_cell, vf_3dmat, rho_3dmat, ei_3dmat,
+                                     dvol_for_edge, dmass_for_edge, dener_for_edge, matid_for_edge,
+                                     &vol_for_cell, &mass_for_cell, &ener_for_cell);
+
+    //   mapping velocity
+
+    sizes_mom[0] = dim;
+    sizes_mom[1] = nnode_ext[0];
+    sizes_mom[2] = nnode_ext[1];
+    sizes_mom[3] = nnode_ext[2];
+
+    mom3d = NULL;
+    mom2d = NULL;
+    mom1d = NULL;
+    mom_for_node = (double ****)malloc(sizes_mom[3] * sizeof(double ***));
+    ASSIGN_4D_FORM(double, sizes_mom, mom_for_node, mom3d, mom2d, mom1d);
+
+    mom3d = NULL;
+    mom2d = NULL;
+    mom1d = NULL;
+    mom_for_3dnode_new = (double ****)malloc(sizes_mom[3] * sizeof(double ***));
+    ASSIGN_4D_FORM(double, sizes_mom, mom_for_3dnode_new, mom3d, mom2d, mom1d);
+
+    for (k = 0; k < nnode_ext[2]; k++)
+    {
+        for (j = 0; j < nnode_ext[1]; j++)
+        {
+            for (i = 0; i < nnode_ext[0]; i++)
+            {
+                for (idx = 0; idx < dim; idx++)
+                {
+                    mom_for_node[k][j][i][idx] = 0.0;
+                }
+            }
+        }
+    }
+    for (k = 2; k < nnode_ext[2] - 2; k++)
+    {
+        for (j = 2; j < nnode_ext[1] - 2; j++)
+        {
+            for (i = 2; i < nnode_ext[0] - 2; i++)
+            {
+                dmass = 0.0;
+                for (kc = k - 1; kc <= k; kc++)
+                {
+                    for (jc = j - 1; jc <= j; jc++)
+                    {
+                        for (ic = i - 1; ic <= i; ic++)
+                        {
+                            dmass += (0.125 * vol_cell * rho_3dcell[kc][jc][ic]);
+                        }
+                    }
+                }
+                for (idx = 0; idx < dim; idx++)
+                {
+                    mom_for_node[k][j][i][idx] = dmass * vel_3dnode[k][j][i][idx];
+                }
+            }
+        }
+    }
+//   -----------------
+//   |       |       |
+//   |   ....|....   |
+//   |   .   |   .   |
+//   ----.---x---.----
+//   |   .   |   .   |
+//   |   ....|....   |
+//   |       |       |
+//   -----------------
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "mom_for_node(dir=%d)", dir);
+    dims[0] = nnode_ext[2];
+    dims[1] = nnode_ext[1];
+    dims[2] = nnode_ext[0];
+    dims[3] = 3;
+    h5_write_4d(debug_gid, dataset_name, mom_for_node, dims);
+#endif
+
+    memcpy(mom_for_3dnode_new[0][0][0], mom_for_node[0][0][0], (size_t)(lsize_node * dim * sizeof(double)));
+
+    for (k = 2; k < nnode_ext[2] - 2; k++)
+    {
+        kp = k;
+        for (j = 2; j < nnode_ext[1] - 2; j++)
+        {
+            jp = j;
+            for (i = 2; i < nnode_ext[0] - 2; i++)
+            {
+                ip = i;
+                dist = vel_3dnode[k][j][i][dir] * dt;
+                frac = fabs(dist) / dx[dir];
+                if (frac < small)
+                    continue;
+
+                if (dist > 0.0)
+                {
+                    if (dir == 0)
+                        ip = i + 1; // the node to which the momentum to be added
+                    else if (dir == 1)
+                        jp = j + 1;
+                    else
+                        kp = k + 1;
+                }
+                else
+                {
+                    if (dir == 0)
+                        ip = i - 1;
+                    else if (dir == 1)
+                        jp = j - 1;
+                    else
+                        kp = k - 1;
+                }
+                for (idx = 0; idx < dim; idx++)
+                {
+                    dmom = frac * mom_for_node[k][j][i][idx];
+                    mom_for_3dnode_new[k][j][i][idx] -= dmom;
+                    mom_for_3dnode_new[kp][jp][ip][idx] += dmom;
+                }
+            }
+        }
+    }
+
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "mom_for_3dnode_new(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, mom_for_3dnode_new, dims);
+    ncell_nmat[0] = ncell_ext[2];
+    ncell_nmat[1] = ncell_ext[1];
+    ncell_nmat[2] = ncell_ext[0];
+    ncell_nmat[3] = nmat;
+    sprintf(dataset_name, "debug:pres_3dmat(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, pres_3dmat, ncell_nmat);
+    sprintf(dataset_name, "debug:ei_3dmat(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, ei_3dmat, ncell_nmat);
+#endif
+    //   put cell variables back to rho_for_3dcell, etc.
+
+    for (k = nbdry; k <= ncell_bdry[2]; k++)
+    {
+        for (j = nbdry; j <= ncell_bdry[1]; j++)
+        {
+            for (i = nbdry; i <= ncell_bdry[0]; i++)
+            {
+                for (m = 0; m < nmat; m++)
+                {
+                    vf_3dmat[k][j][i][m] = vol_for_cell[k][j][i][m] / vol_cell;
+                    rho_3dmat[k][j][i][m] = mass_for_cell[k][j][i][m] / (tiny + vol_for_cell[k][j][i][m]);
+                    ei_3dmat[k][j][i][m] = ener_for_cell[k][j][i][m] / (tiny + vol_for_cell[k][j][i][m]);
+                    if (!is_solid[m])
+                    {
+                        pres_3dmat[k][j][i][m] = (gamma_ea_mat[m] - 1.0) * ei_3dmat[k][j][i][m];
+                    }
+                    else
+                    {
+                        p_mie_gruneisen(rho_3dmat[k][j][i][m], ei_3dmat[k][j][i][m], &(pres_3dmat[k][j][i][m]));
+                    }
+                }
+            }
+        }
+    }
+    for (k = nbdry; k <= ncell_bdry[2]; k++)
+    {
+        for (j = nbdry; j <= ncell_bdry[1]; j++)
+        {
+            for (i = nbdry; i <= ncell_bdry[0]; i++)
+            {
+                rho_3dcell[k][j][i] = 0.0;
+                ei_3dcell[k][j][i] = 0.0;
+                pres_3dcell[k][j][i] = 0.0;
+                for (m = 0; m < nmat; m++)
+                {
+                    rho_3dcell[k][j][i] += (vf_3dmat[k][j][i][m] * rho_3dmat[k][j][i][m]);
+                    ei_3dcell[k][j][i] += (vf_3dmat[k][j][i][m] * ei_3dmat[k][j][i][m]);
+                    pres_3dcell[k][j][i] += (vf_3dmat[k][j][i][m] * pres_3dmat[k][j][i][m]);
+                }
+            }
+        }
+    }
+#ifdef H5DUMP_DEBUG
+    ncell_nmat[0] = ncell_ext[2];
+    ncell_nmat[1] = ncell_ext[1];
+    ncell_nmat[2] = ncell_ext[0];
+    ncell_nmat[3] = nmat;
+    dims[0] = ncell_ext[2];
+    dims[1] = ncell_ext[1];
+    dims[2] = ncell_ext[0];
+    sprintf(dataset_name, "put_cell_back:pres_3dmat(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, pres_3dmat, ncell_nmat);
+    sprintf(dataset_name, "put_cell_back:ei_3dmat(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, ei_3dmat, ncell_nmat);
+    sprintf(dataset_name, "put_cell_back:rho_3dmat(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, rho_3dmat, ncell_nmat);
+    sprintf(dataset_name, "put_cell_back:vf_3dmat(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, vf_3dmat, ncell_nmat);
+    sprintf(dataset_name, "put_cell_back:pres_3dcell(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, pres_3dcell, dims);
+    sprintf(dataset_name, "put_cell_back:ei_3dcell(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, ei_3dcell, dims);
+    sprintf(dataset_name, "put_cell_back:rho_3dcell(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, rho_3dcell, dims);
+#endif
+
+    bdry_cell_3d(nmat, ncell, nbdry, btype_lower, btype_upper,
+                 vf_3dmat, rho_3dmat, ei_3dmat, pres_3dmat,
+                 rho_3dcell, ei_3dcell, pres_3dcell);
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "bdry_cell:pres_3dmat(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, pres_3dmat, ncell_nmat);
+    sprintf(dataset_name, "bdry_cell:ei_3dmat(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, ei_3dmat, ncell_nmat);
+    sprintf(dataset_name, "bdry_cell:rho_3dmat(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, rho_3dmat, ncell_nmat);
+    sprintf(dataset_name, "bdry_cell:vf_3dmat(dir=%d)", dir);
+    h5_write_4d(debug_gid, dataset_name, vf_3dmat, ncell_nmat);
+    sprintf(dataset_name, "bdry_cell:pres_3dcell(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, pres_3dcell, dims);
+    sprintf(dataset_name, "bdry_cell:ei_3dcell(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, ei_3dcell, dims);
+    sprintf(dataset_name, "bdry_cell:rho_3dcell(dir=%d)", dir);
+    h5_write_3d(debug_gid, dataset_name, rho_3dcell, dims);
+#endif
+
+    //  update vel_3dnde
+
+    for (k = nbdry; k <= nnode_bdry[2]; k++)
+    {
+        for (j = nbdry; j <= nnode_bdry[1]; j++)
+        {
+            for (i = nbdry; i <= nnode_bdry[0]; i++)
+            {
+                rho_sum = 0.0;
+                for (kc = k - 1; kc <= k; kc++)
+                {
+                    for (jc = j - 1; jc <= j; jc++)
+                    {
+                        for (ic = i - 1; ic <= i; ic++)
+                        {
+                            rho_sum += (0.125 * rho_3dcell[kc][jc][ic]);
+                        }
+                    }
+                }
+                if (rho_sum / rho_average < small)
+                {
+                    for (idx = 0; idx < dim; idx++)
+                    {
+                        vel_3dnode[k][j][i][idx] = 0.0;
+                    }
+                }
+                else
+                {
+                    for (idx = 0; idx < dim; idx++)
+                    {
+                        vel_3dnode[k][j][i][idx] = mom_for_3dnode_new[k][j][i][idx] / (vol_cell * rho_sum);
+                    }
+                }
+            }
+        }
+    }
+    free(mom_for_3dnode_new[0][0][0]);
+    free(mom_for_3dnode_new[0][0]);
+    free(mom_for_3dnode_new[0]);
+    free(mom_for_3dnode_new);
+    free(mom_for_node[0][0][0]);
+    free(mom_for_node[0][0]);
+    free(mom_for_node[0]);
+    free(mom_for_node);
+
+    //  apply boundry contion for vel_for_3dnode
+
+    bdry_node_3d(ncell, nbdry, btype_lower, btype_upper, vel_3dnode);
+#ifdef H5DUMP_DEBUG
+    sprintf(dataset_name, "update_vel:vel_3dnode(dir=%d)", dir);
+    dims[0] = nnode_ext[2];
+    dims[1] = nnode_ext[1];
+    dims[2] = nnode_ext[0];
+    dims[3] = dim;
+    h5_write_4d(debug_gid, dataset_name, vel_3dnode, dims);
+#endif
+
+    free(nmat_for_edge[0][0]);
+    free(nmat_for_edge[0]);
+    free(nmat_for_edge);
+
+    free(dvol_for_edge);
+    free(dmass_for_edge);
+    free(dener_for_edge);
+    free(matid_for_edge);
+
+    free(vol_for_cell[0][0][0]);
+    free(vol_for_cell[0][0]);
+    free(vol_for_cell[0]);
+    free(vol_for_cell);
+
+    free(mass_for_cell[0][0][0]);
+    free(mass_for_cell[0][0]);
+    free(mass_for_cell[0]);
+    free(mass_for_cell);
+
+    free(ener_for_cell[0][0][0]);
+    free(ener_for_cell[0][0]);
+    free(ener_for_cell[0]);
+    free(ener_for_cell);
+
+    return;
+}
+
+void get_face_velocity(int dim, int *ncell, int nbdry, int dir,
+                       double ***vel_for_2dnode, double ****vel_for_3dnode,
+                       double ***vel_2dface, double ****vel_3dface)
+{
+    int i, i1, j, j1, k, k1;
+    int ncell_ext[3], nnode_ext[3], sizes[3];
+    double *v1d, **v2d;
+
+    for (i = 0; i < dim; i++)
+    {
+        ncell_ext[i] = ncell[i] + nbdry + nbdry;
+        nnode_ext[i] = ncell_ext[i] + 1;
+    }
+    if (dim == 2)
+    {
+        if (dir == 0)
+        {
+            sizes[0] = nnode_ext[0];
+            sizes[1] = ncell_ext[1];
+        }
+        else if (dir == 1)
+        {
+            sizes[0] = ncell_ext[0];
+            sizes[1] = nnode_ext[1];
+        }
+        *vel_2dface = (double **)malloc(sizes[1] * sizeof(double *));
+        (*vel_2dface)[0] = (double *)malloc(sizes[1] * sizes[0] * sizeof(double));
+        for (j = 1; j < sizes[1]; j++)
+        {
+            (*vel_2dface)[j] = (*vel_2dface)[j - 1] + sizes[0];
+        }
+        if (dir == 0)
+        {
+            for (j = 0; j < ncell_ext[1]; j++)
+            {
+                j1 = j + 1;
+                for (i = 0; i < nnode_ext[0]; i++)
+                {
+                    (*vel_2dface)[j][i] = 0.5 * (vel_for_2dnode[j][i][dir] + vel_for_2dnode[j1][i][dir]);
+                }
+            }
+        }
+        else if (dir == 1)
+        {
+            for (j = 0; j < nnode_ext[1]; j++)
+            {
+                for (i = 0; i < ncell_ext[0]; i++)
+                {
+                    i1 = i + 1;
+                    (*vel_2dface)[j][i] = 0.5 * (vel_for_2dnode[j][i][dir] + vel_for_2dnode[j][i1][dir]);
+                }
+            }
+        }
+    }
+    else if (dim == 3)
+    {
+        if (dir == 0)
+        {
+            *vel_3dface = (double ***)malloc(ncell_ext[2] * sizeof(double **));
+            sizes[0] = nnode_ext[0];
+            sizes[1] = ncell_ext[1];
+            sizes[2] = ncell_ext[2];
+        }
+        else if (dir == 1)
+        {
+            *vel_3dface = (double ***)malloc(ncell_ext[2] * sizeof(double **));
+            sizes[0] = ncell_ext[0];
+            sizes[1] = nnode_ext[1];
+            sizes[2] = ncell_ext[2];
+        }
+        else if (dir == 2)
+        {
+            *vel_3dface = (double ***)malloc(nnode_ext[2] * sizeof(double **));
+            sizes[0] = ncell_ext[0];
+            sizes[1] = ncell_ext[1];
+            sizes[2] = nnode_ext[2];
+        }
+        v2d = NULL;
+        v1d = NULL;
+        ASSIGN_3D_FORM(double, *vel_3dface, v2d, v1d, sizes);
+        if (dir == 0)
+        {
+            for (k = 0; k < ncell_ext[2]; k++)
+            {
+                k1 = k + 1;
+                for (j = 0; j < ncell_ext[1]; j++)
+                {
+                    j1 = j + 1;
+                    for (i = 0; i < nnode_ext[0]; i++)
+                    {
+                        (*vel_3dface)[k][j][i] = 0.25 * (vel_for_3dnode[k][j][i][dir] +
+                                                         vel_for_3dnode[k][j1][i][dir] +
+                                                         vel_for_3dnode[k1][j][i][dir] +
+                                                         vel_for_3dnode[k1][j1][i][dir]);
+                    }
+                }
+            }
+        }
+        else if (dir == 1)
+        {
+            for (k = 0; k < ncell_ext[2]; k++)
+            {
+                k1 = k + 1;
+                for (j = 0; j < nnode_ext[1]; j++)
+                {
+                    for (i = 0; i < ncell_ext[0]; i++)
+                    {
+                        i1 = i + 1;
+                        (*vel_3dface)[k][j][i] = 0.25 * (vel_for_3dnode[k][j][i][dir] +
+                                                         vel_for_3dnode[k][j][i1][dir] +
+                                                         vel_for_3dnode[k1][j][i][dir] +
+                                                         vel_for_3dnode[k1][j][i1][dir]);
+                    }
+                }
+            }
+        }
+        else if (dir == 2)
+        {
+            for (k = 0; k < nnode_ext[2]; k++)
+            {
+                for (j = 0; j < ncell_ext[1]; j++)
+                {
+                    j1 = j + 1;
+                    for (i = 0; i < ncell_ext[0]; i++)
+                    {
+                        i1 = i + 1;
+                        (*vel_3dface)[k][j][i] = 0.25 * (vel_for_3dnode[k][j][i][dir] +
+                                                         vel_for_3dnode[k][j][i1][dir] +
+                                                         vel_for_3dnode[k][j1][i][dir] +
+                                                         vel_for_3dnode[k][j1][i1][dir]);
+                    }
+                }
+            }
+        }
+    }
+    return;
+}
+
+void build_mpoly2d(int nbdry, double *xl_prob, double *dx,
+                   int nmat, double ***vf_2dmat,
+                   int *ijk, int nm_this_cell,
+                   int *nnode_tot, double *coords_tot,
+                   int *nnode_for_mpoly, int **nodes_for_mpoly)
+{
+    int geop = 1;
+    int dim = 2;
+    int i, j, i0, j0, icell, jcell, nm, m, lsize, offset;
+    int sizes[3];
+    int *ibuffer1d, **ibuffer2d, **nmat_2dsmesh, ***matid_2dsmesh;
+    int *nnode_for_minterface, **nodes_for_minterface;
+    double xl[2], *vfs, *myvfs;
+    double *dbuffer1d, **dbuffer2d, ***vf_2dsmesh;
+
+    sizes[0] = nmat;
+    sizes[1] = 3;
+    sizes[2] = 3;
+    nmat_2dsmesh = (int **)malloc(3 * sizeof(int *));
+    nmat_2dsmesh[0] = (int *)malloc(9 * sizeof(int));
+    for (i = 1; i <= 2; i++)
+    {
+        nmat_2dsmesh[i] = nmat_2dsmesh[i - 1] + 3;
+    }
+    matid_2dsmesh = (int ***)malloc(3 * sizeof(int **));
+    ibuffer2d = (int **)malloc(9 * sizeof(int *));
+    ibuffer1d = (int *)malloc(9 * nmat * sizeof(int));
+    ASSIGN_3D_FORM(int, matid_2dsmesh, ibuffer2d, ibuffer1d, sizes);
+
+    vf_2dsmesh = (double ***)malloc(3 * sizeof(double **));
+    dbuffer2d = (double **)malloc(9 * sizeof(double *));
+    dbuffer1d = (double *)malloc(9 * nmat * sizeof(double));
+    ASSIGN_3D_FORM(double, vf_2dsmesh, dbuffer2d, dbuffer1d, sizes);
+
+    for (i = 0; i < dim; i++)
+    {
+        xl[i] = xl_prob[i] + (double)(ijk[i] - nbdry) * dx[i];
+    }
+    icell = ijk[0];
+    jcell = ijk[1];
+    vfs = vf_2dmat[jcell][icell];
+
+    for (j = 0; j < 3; j++)
+    {
+        for (i = 0; i < 3; i++)
+        {
+            for (m = 0; m < nmat; m++)
+            {
+                vf_2dsmesh[j][i][m] = 0.0;
+                matid_2dsmesh[j][i][m] = -1;
+            }
+            nmat_2dsmesh[j][i] = 0;
+        }
+    }
+    for (j0 = 0; j0 <= 2; j0++)
+    {
+        j = jcell + j0 - 1;
+        for (i0 = 0; i0 <= 2; i0++)
+        {
+            i = icell + i0 - 1;
+            myvfs = vf_2dmat[j][i];
+            nm = 0;
+            for (m = 0; m < nmat; m++)
+            {
+                if (myvfs[m] >= vfmin)
+                {
+                    matid_2dsmesh[j0][i0][nm] = m;
+                    vf_2dsmesh[j0][i0][nm] = myvfs[m];
+                    nm++;
+                }
+            }
+            nmat_2dsmesh[j0][i0] = nm;
+        }
+    }
+    assert(nm_this_cell == nmat_2dsmesh[1][1]);
+    *nnode_tot = 0;
+
+    nnode_for_minterface = (int *)malloc((nmat - 1) * sizeof(int));
+    nodes_for_minterface = (int **)malloc((nmat - 1) * sizeof(int *));
+    nodes_for_minterface[0] = (int *)malloc((nmat - 1) * 2 * sizeof(int));
+    for (m = 1; m < nmat - 1; m++)
+    {
+        nodes_for_minterface[m] = nodes_for_minterface[m - 1] + 2;
+    }
+    reconstruct2d_nmat_pagosa(geop, xl, dx, nmat_2dsmesh, matid_2dsmesh, vf_2dsmesh,
+                              nnode_tot, coords_tot,
+                              nnode_for_minterface, nodes_for_minterface,
+                              nnode_for_mpoly, nodes_for_mpoly);
+    free(nmat_2dsmesh[0]);
+    free(nmat_2dsmesh);
+    free(matid_2dsmesh[0][0]);
+    free(matid_2dsmesh[0]);
+    free(matid_2dsmesh);
+    free(vf_2dsmesh[0][0]);
+    free(vf_2dsmesh[0]);
+    free(vf_2dsmesh);
+
+    free(nnode_for_minterface);
+    free(nodes_for_minterface[0]);
+    free(nodes_for_minterface);
+
+    return;
+}
+
+void build_mpoly3d(int nbdry, double *xl_prob, double *dx,
+                   int nmat, double ****vf_3dmat,
+                   int *ijk, int nm_this_cell,
+                   int *nnode_tot, double **coords_tot,
+                   int *nface_for_mpoly, int ***nnode_for_face_ea_mpoly,
+                   int ***nodelist_for_face_ea_mpoly)
+{
+    int dim, nm, m;
+    int i0, i, j0, j, k0, k, icell, jcell, kcell, sizes[4];
+    int *nnode_for_minterface, **nodes_for_minterface;
+    int ***nmat_3dsmesh, ****matid_3dsmesh;
+    int *ibuffer1d, **ibuffer2d, ***ibuffer3d;
+
+    double xl[3];
+    double *vfs, *myvfs;
+    double ***vf_2dsmesh, *dbuffer1d, **dbuffer2d, ***dbuffer3d;
+    double ****vf_3dsmesh;
+
+    dim = 3;
+
+    sizes[0] = 3;
+    sizes[1] = 3;
+    sizes[2] = 3;
+    nmat_3dsmesh = (int ***)malloc(3 * sizeof(int **));
+    ibuffer2d = (int **)malloc(9 * sizeof(int *));
+    ibuffer1d = (int *)malloc(27 * sizeof(int));
+    ASSIGN_3D_FORM(int, nmat_3dsmesh, ibuffer2d, ibuffer1d, sizes);
+
+    sizes[0] = nmat;
+    sizes[1] = 3;
+    sizes[2] = 3;
+    sizes[3] = 3;
+    matid_3dsmesh = (int ****)malloc(3 * sizeof(int ***));
+    ibuffer3d = (int ***)malloc(9 * sizeof(int **));
+    ibuffer2d = (int **)malloc(27 * sizeof(int *));
+    ibuffer1d = (int *)malloc(27 * nmat * sizeof(int));
+    ASSIGN_4D_FORM(int, sizes, matid_3dsmesh, ibuffer3d, ibuffer2d, ibuffer1d);
+
+    vf_3dsmesh = (double ****)malloc(3 * sizeof(double ***));
+    dbuffer3d = (double ***)malloc(9 * sizeof(double **));
+    dbuffer2d = (double **)malloc(27 * sizeof(double *));
+    dbuffer1d = (double *)malloc(27 * nmat * sizeof(double));
+    ASSIGN_4D_FORM(double, sizes, vf_3dsmesh, dbuffer3d, dbuffer2d, dbuffer1d);
+
+    icell = ijk[0];
+    jcell = ijk[1];
+    kcell = ijk[2];
+    vfs = vf_3dmat[kcell][jcell][icell];
+
+    for (i = 0; i < dim; i++)
+    {
+        xl[i] = xl_prob[i] + (double)(ijk[i] - nbdry) * dx[i];
+    }
+    for (k = 0; k < 3; k++)
+    {
+        for (j = 0; j < 3; j++)
+        {
+            for (i = 0; i < 3; i++)
+            {
+                for (m = 0; m < nmat; m++)
+                {
+                    vf_3dsmesh[k][j][i][m] = 0.0;
+                    matid_3dsmesh[k][j][i][m] = -1;
+                }
+            }
+        }
+    }
+    *nnode_tot = 0;
+
+    nnode_for_minterface = (int *)malloc((nmat - 1) * sizeof(int));
+
+    nodes_for_minterface = NULL;
+    *nnode_for_face_ea_mpoly = NULL;
+    *nodelist_for_face_ea_mpoly = NULL;
+    *coords_tot = NULL;
+
+    for (k0 = 0; k0 <= 2; k0++)
+    {
+        k = kcell + k0 - 1;
+        for (j0 = 0; j0 <= 2; j0++)
+        {
+            j = jcell + j0 - 1;
+            for (i0 = 0; i0 <= 2; i0++)
+            {
+                i = icell + i0 - 1;
+
+                myvfs = vf_3dmat[k][j][i];
+                nm = 0;
+                for (m = 0; m < nmat; m++)
+                {
+                    if (myvfs[m] > 0.0)
+                    {
+                        matid_3dsmesh[k0][j0][i0][nm] = m;
+                        vf_3dsmesh[k0][j0][i0][nm] = myvfs[m];
+                        nm++;
+                    }
+                }
+                nmat_3dsmesh[k0][j0][i0] = nm;
+            }
+        }
+    }
+    reconstruct3d_nmat_pagosa(xl, dx, nmat_3dsmesh, matid_3dsmesh, vf_3dsmesh,
+                              nnode_tot, coords_tot,
+                              nnode_for_minterface, &nodes_for_minterface,
+                              nface_for_mpoly, nnode_for_face_ea_mpoly, nodelist_for_face_ea_mpoly);
+
+    //   nodes_for_minterface is supposed to be continuous in memory
+
+    free(nodes_for_minterface[0]);
+    free(nodes_for_minterface);
+
+    free(nmat_3dsmesh[0][0]);
+    free(nmat_3dsmesh[0]);
+    free(nmat_3dsmesh);
+
+    free(matid_3dsmesh[0][0][0]);
+    free(matid_3dsmesh[0][0]);
+    free(matid_3dsmesh[0]);
+    free(matid_3dsmesh);
+
+    free(vf_3dsmesh[0][0][0]);
+    free(vf_3dsmesh[0][0]);
+    free(vf_3dsmesh[0]);
+    free(vf_3dsmesh);
+
+    return;
+}

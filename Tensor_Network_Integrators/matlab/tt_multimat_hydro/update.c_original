@@ -1,0 +1,506 @@
+
+#ifdef MPI
+#include "mpi.h"
+#endif
+
+#include "update.h" 
+#include "eos.h" 
+
+void compute_divu(int dim, const int *ncell, const int nbdry, double *dx,  
+		   double ***vel_2dnode, double ****vel_3dnode,
+                   double **divu_2dcell, double ***divu_3dcell)
+{  
+    int i, i1, j, j1, k, k1;
+    int  ncell_ext[3]; 
+    long long lsize, lsize2, offset; 
+    double volinv, dvx, dvy, dvz; 
+    double **divu2d, *divu1d; 
+
+    volinv = 1.0;
+    for (i = 0; i < dim; i++) { 
+        volinv *= dx[i];
+    }
+    volinv = 1.0/volinv;
+
+    lsize = 1; 
+    for (i = 0; i < dim; i++) {
+        ncell_ext[i] = ncell[i] + nbdry + nbdry;
+	lsize *= ncell_ext[i]; 
+    }
+    if (dim == 2) { 
+        for (j = 0; j < ncell_ext[1]; j++) {
+            j1 = j + 1;
+	    for (i = 0; i < ncell_ext[0]; i++) { 
+                i1 = i + 1;
+
+		dvx = 0.5 *((vel_2dnode[j][i1][0] + vel_2dnode[j1][i1][0]) -
+		 	    (vel_2dnode[j][i ][0] + vel_2dnode[j1][i ][0]));
+
+		dvy = 0.5 *((vel_2dnode[j1][i][1] + vel_2dnode[j1][i1][1]) -
+                            (vel_2dnode[j ][i][1] + vel_2dnode[j ][i1][1]));
+	        
+	        divu_2dcell[j][i] = volinv * (dx[1] * dvx + dx[0] * dvy);
+	    }
+        }	    
+    }
+    else if (dim == 3) {
+        for (k = 0; k < ncell_ext[2]; k++) { 
+	    k1 = k + 1;
+            for (j = 0; j < ncell_ext[1]; j++) {
+                j1 = j + 1;  
+                for (i = 0; i < ncell_ext[0]; i++) { 
+	            i1 = i + 1; 
+             
+                    dvx = 0.25 *((vel_3dnode[k ][j ][i1][0] + vel_3dnode[k ][j1][i1][0]  + 
+                                  vel_3dnode[k1][j ][i1][0] + vel_3dnode[k1][j ][i1][0]) -
+				 (vel_3dnode[k ][j ][i ][0] + vel_3dnode[k ][j1][i ][0]  +
+                                  vel_3dnode[k1][j ][i ][0] + vel_3dnode[k1][j ][i ][0]));  
+
+		    dvy = 0.25 *((vel_3dnode[k ][j1][i ][1] + vel_3dnode[k ][j1][i1][1]  +
+                                  vel_3dnode[k1][j1][i ][1] + vel_3dnode[k1][j1][i1][1]) -
+                                 (vel_3dnode[k ][j ][i ][1] + vel_3dnode[k ][j ][i1][1]  +
+                                  vel_3dnode[k1][j ][i ][1] + vel_3dnode[k1][j ][i1][1]));    
+                             
+		    dvz = 0.25 *((vel_3dnode[k1][j ][i ][2] + vel_3dnode[k1][j ][i1][2]  + 
+                                  vel_3dnode[k1][j1][i ][2] + vel_3dnode[k1][j1][i1][2]) -
+                                 (vel_3dnode[k ][j ][i ][2] + vel_3dnode[k ][j ][i1][2]  +
+                                  vel_3dnode[k ][j1][i ][2] + vel_3dnode[k ][j1][i1][2]));
+
+		    divu_3dcell[k][j][i] = volinv *(dx[1]*dx[2]*dvx + dx[0]*dx[2]*dvy + dx[0]*dx[1]*dvz); 
+                 }
+             }
+         }
+    } 
+
+    return;
+ }
+
+void compute_qvis(int dim, const int *ncell, const int nbdry, double dx, 
+                  double **rho_2dcell,  double **cs_2dcell,  double **divu_2dcell, double ***vel_2dnode,
+		  double ***rho_3dcell, double ***cs_3dcell, double ***divu_3dcell, double ****vel_3dnode,
+                  double **qvis_2dcell, double ***qvis_3dcell)
+{
+    int i, j, k;
+    int  ncell_ext[3];
+    long long lsize, lsize2, offset;
+    double c1, c2; 
+    double dv;
+
+    c1 = 1.0;
+    c2 = 0.1;
+
+//    c1 = 0.25;
+//    c2 = 1.0;
+
+    lsize = 1;
+    for (i = 0; i < dim; i++) {
+        ncell_ext[i] = ncell[i] + nbdry + nbdry;
+        lsize *= ncell_ext[i];
+    }
+    if (dim == 2) { 
+	for (j = 0; j < ncell_ext[1]; j++) { 
+            for (i = 0; i < ncell_ext[0]; i++) { 
+                qvis_2dcell[j][i] = 0.0;
+            } 
+        }
+	for (j = 0; j < ncell_ext[1]; j++) {
+            for (i = 0; i < ncell_ext[0]; i++) { 
+                if (divu_2dcell[j][i] < 0.0) { 
+                    dv = dx * divu_2dcell[j][i]; 	
+                    qvis_2dcell[j][i] = fabs(dv) * rho_2dcell[j][i] *(c1 * cs_2dcell[j][i] - c2 * dv);
+                }
+            }
+        } 
+    }
+    else if (dim == 3) { 
+	for (k = 0; k < ncell_ext[2]; k++) { 
+            for (j = 0; j < ncell_ext[1]; j++) { 
+                for (i = 0; i < ncell_ext[0]; i++) { 
+                    qvis_3dcell[k][j][i] = 0.0;
+                }
+            }
+        }
+	for (k = 0; k < ncell_ext[2]; k++) { 
+            for (j = 0; j < ncell_ext[1]; j++) {
+                for (i = 0; i < ncell_ext[0]; i++) { 
+                    if (divu_3dcell[k][j][i] < 0.0) { 
+                        dv = dx * divu_3dcell[k][j][i];
+                        qvis_3dcell[k][j][i] = fabs(dv) * rho_3dcell[k][j][i] *(c1 * cs_3dcell[k][j][i] - c2 * dv);
+                    }
+                }
+            }
+        }
+    } 
+    return;
+ }
+
+
+void compute_force(int dim, const int *ncell, const int nbdry, double *dx, int direction,  
+	            double **pres_2dcell,  double ***pres_3dcell,
+		    double **rho_2dcell,   double ***rho_3dcell,
+                    double **qvis_2dcell,   double ***qvis_3dcell,
+                    double **force_2dnode,  double ***force_3dnode)
+{
+    int i, i0, j, j0, k, k0; 
+    int nnode_ext[3]; 
+    long long lsize, lsize2, offset;
+    double tmp, *force1d, **force2d, vol, vol_of_corner, area_of_node, mass;
+
+    lsize = 1; 
+    for (i = 0; i < dim; i++) {
+	nnode_ext[i] = ncell[i] + nbdry + nbdry + 1;
+        lsize *= nnode_ext[i]; 
+    }
+    vol_of_corner = 1.0;
+    area_of_node  = 1.0; 
+    for (i = 0; i < dim; i++) { 
+        vol_of_corner *= (0.5 * dx[i]);  
+        if (direction == i) continue;
+        area_of_node *= dx[i]; 
+    }
+    if (dim == 2) {
+	if (direction == 0) { 
+            for (j = 1; j < nnode_ext[1] - 1; j++) { 
+                j0 = j - 1;
+                for (i = 1; i < nnode_ext[0] - 1; i++) {  
+                    i0 = i - 1; 
+    
+	            mass = vol_of_corner *(rho_2dcell[j0][i0] + rho_2dcell[j0][i] + 
+			                   rho_2dcell[j ][i0] + rho_2dcell[j ][i]) 
+                         + tiny;
+
+                    force_2dnode[j][i]  = (pres_2dcell[j0][i0] + pres_2dcell[j][i0]) 
+    	   	                        - (pres_2dcell[j0][i ] + pres_2dcell[j][i ]); 
+
+    		    force_2dnode[j][i] += ((qvis_2dcell[j0][i0] + qvis_2dcell[j][i0]) - 
+                                           (qvis_2dcell[j0][i ] + qvis_2dcell[j][i ])); 
+                    force_2dnode[j][i] *= 0.5; // presure average 
+                    force_2dnode[j][i] *= (area_of_node/mass);
+                }
+            } 
+        }
+        else if (direction == 1) {
+            for (j = 1; j < nnode_ext[1] - 1; j++) {
+                j0 = j - 1;
+                for (i = 1; i < nnode_ext[0] - 1; i++) {
+                    i0 = i - 1;
+
+                    mass = vol_of_corner *(rho_2dcell[j0][i0] + rho_2dcell[j0][i] +
+                                           rho_2dcell[j ][i0] + rho_2dcell[j ][i])
+                         + tiny;
+
+                    force_2dnode[j][i]  = (pres_2dcell[j0][i0] + pres_2dcell[j0][i]) 
+                                        - (pres_2dcell[j ][i0] + pres_2dcell[j][i ]);
+
+                    force_2dnode[j][i] += ((qvis_2dcell[j0][i0] + qvis_2dcell[j0][i]) -
+                                           (qvis_2dcell[j ][i0] + qvis_2dcell[j][i ]) ); 
+
+                    force_2dnode[j][i] *= 0.5; // presure & qvis average 
+		    force_2dnode[j][i] *= (area_of_node/mass); 
+                }
+            } 
+        }
+    }
+    else if (dim == 3) {
+	if (direction == 0) { 
+            for (k = 1; k < nnode_ext[2] - 1; k++) { 
+                k0 = k - 1;
+                for (j = 1; j < nnode_ext[1] - 1; j++) { 
+                    j0 = j - 1;
+                    for (i = 1; i < nnode_ext[0] - 1; i++) { 
+                        i0 = i - 1;
+                        mass = vol_of_corner*(rho_3dcell[k0][j0][i0] + rho_3dcell[k0][j0][i ] + 
+    			                      rho_3dcell[k0][j ][i0] + rho_3dcell[k ][j0][i0] + 
+    			                      rho_3dcell[k0][j ][i ] + rho_3dcell[k ][j0][i ] + 
+    			                      rho_3dcell[k ][j ][i0] + rho_3dcell[k ][j ][i ]) 
+                             + tiny;
+    
+                        force_3dnode[k][j][i] = (pres_3dcell[k0][j0][i0] + pres_3dcell[k0][j ][i0] +  
+    			                         pres_3dcell[k ][j0][i0] + pres_3dcell[k ][j ][i0])    
+    			     		      - (pres_3dcell[k0][j0][i ] + pres_3dcell[k0][j ][i ] +  
+    						 pres_3dcell[k ][j0][i ] + pres_3dcell[k ][j ][i ]); 
+
+                        tmp                   = (qvis_3dcell[k0][j0][i0] + qvis_3dcell[k0][j ][i0] + 
+                                                 qvis_3dcell[k ][j0][i0] + qvis_3dcell[k ][j ][i0])
+                                              - (qvis_3dcell[k0][j0][i ] + qvis_3dcell[k0][j ][i ] +  
+                                                 qvis_3dcell[k ][j0][i ] + qvis_3dcell[k ][j ][i ]);
+
+    		        force_3dnode[k][j][i] += tmp;
+                        force_3dnode[k][j][i] *= 0.25; // presure & qvis average 
+    		        force_3dnode[k][j][i] *= (area_of_node/mass);
+                    }
+                }
+            }
+        }
+	else if (direction == 1) {
+            for (k = 1; k < nnode_ext[2] - 1; k++) {
+                k0 = k - 1; 
+                for (j = 1; j < nnode_ext[1] - 1; j++) {
+                    j0 = j - 1; 
+                    for (i = 1; i < nnode_ext[0] - 1; i++) {
+                        i0 = i - 1;
+                        mass = vol_of_corner *(rho_3dcell[k0][j0][i0] + rho_3dcell[k0][j0][i ] +
+                                               rho_3dcell[k0][j ][i0] + rho_3dcell[k ][j0][i0] +
+                                               rho_3dcell[k0][j ][i ] + rho_3dcell[k ][j0][i ] +
+                                               rho_3dcell[k ][j ][i0] + rho_3dcell[k ][j ][i ]) 
+                             + tiny; 
+                        
+                        force_3dnode[k][j][i] = (pres_3dcell[k0][j0][i0] + pres_3dcell[k0][j0][i] +   
+                                                 pres_3dcell[k ][j0][i0] + pres_3dcell[k ][j0][i]) 
+                                              - (pres_3dcell[k0][j ][i0] + pres_3dcell[k0][j ][i] + 
+                                                 pres_3dcell[k ][j ][i0] + pres_3dcell[k ][j ][i]);
+
+                        tmp                   = (qvis_3dcell[k0][j0][i0] + qvis_3dcell[k0][j0][i] +  
+                                                 qvis_3dcell[k ][j0][i0] + qvis_3dcell[k ][j0][i])
+                                              - (qvis_3dcell[k0][j ][i0] + qvis_3dcell[k0][j ][i] +
+                                                 qvis_3dcell[k ][j ][i0] + qvis_3dcell[k ][j ][i]);
+                        force_3dnode[k][j][i] += tmp; 
+                        force_3dnode[k][j][i] *= 0.25; // presure & qvis average   
+                        force_3dnode[k][j][i] *= (area_of_node/mass);
+                    }
+                }
+            }
+        }
+	else if (direction == 2) { 
+            for (k = 1; k < nnode_ext[2] - 1; k++) {
+                k0 = k - 1; 
+                for (j = 1; j < nnode_ext[1] - 1; j++) {
+                    j0 = j - 1; 
+                    for (i = 1; i < nnode_ext[0] - 1; i++) {
+                        i0 = i - 1;
+                        mass = vol_of_corner *(rho_3dcell[k0][j0][i0] + rho_3dcell[k0][j0][i ] +
+                                               rho_3dcell[k0][j ][i0] + rho_3dcell[k ][j0][i0] +
+                                               rho_3dcell[k0][j ][i ] + rho_3dcell[k ][j0][i ] +
+                                               rho_3dcell[k ][j ][i0] + rho_3dcell[k ][j ][i ]) 
+                             + tiny;
+                        
+                        force_3dnode[k][j][i] = (pres_3dcell[k0][j0][i0] + pres_3dcell[k0][j0][i] + 
+                                                 pres_3dcell[k0][j ][i0] + pres_3dcell[k0][j ][i])  
+                                              - (pres_3dcell[k ][j0][i0] + pres_3dcell[k ][j0][i] +  
+                                                 pres_3dcell[k ][j ][i0] + pres_3dcell[k ][j ][i]);
+
+                        tmp                   = (qvis_3dcell[k0][j0][i0] + qvis_3dcell[k0][j0][i] + 
+                                                 qvis_3dcell[k0][j ][i0] + qvis_3dcell[k0][j ][i])
+                                              - (qvis_3dcell[k ][j0][i0] + qvis_3dcell[k ][j0][i] + 
+                                                 qvis_3dcell[k ][j ][i0] + qvis_3dcell[k ][j ][i]);
+
+                        force_3dnode[k][j][i] += tmp;
+                        force_3dnode[k][j][i] *= 0.25; // presure & qvis average    
+                        force_3dnode[k][j][i] *= (area_of_node/mass);
+                    }
+                }
+            }
+        }
+    }
+
+    return;
+} 
+
+void update_vel_comp(int dim, int *ncell, int nbdry, double dt, int dir, 
+                     double **force_2dnode, double ***force_3dnode, 
+		     double ***vel_2dnode, double ***vav_2dnode, 
+                     double ****vel_3dnode, double ****vav_3dnode)
+{ 
+
+     int i, j, k;
+     int nnode_ext[3];
+     double hdt, hdv; 
+
+     hdt = 0.5 * dt;
+
+     for (i = 0; i < dim; i++) {
+         nnode_ext[i] = ncell[i] + nbdry + nbdry + 1;
+     }
+     if (dim == 2) { 
+         for (j = 1; j < nnode_ext[1]-1; j++) { 
+             for (i = 1; i < nnode_ext[0]-1; i++) { 
+                 hdv                       = hdt * force_2dnode[j][i]; 
+                 vav_2dnode[j][i][dir] = vel_2dnode[j][i][dir] + hdv;
+                 vel_2dnode[j][i][dir] += (hdv + hdv);
+             }
+         }
+     }
+     else if (dim == 3) { 
+         for (k = 1; k < nnode_ext[2]-1; k++) { 
+             for (j = 1; j < nnode_ext[1]-1; j++) {
+                 for (i = 1; i < nnode_ext[0]-1; i++) {
+                     hdv                          = hdt * force_3dnode[k][j][i]; 
+                     vav_3dnode[k][j][i][dir] = vel_3dnode[k][j][i][dir] + hdv;
+                     vel_3dnode[k][j][i][dir] += (hdv + hdv);
+                 } 
+             }
+         }
+     }
+     return;
+ } 
+
+
+
+
+void update_density(int nmat, int dim,  int *ncell, int nbdry, double dt,
+                    double **rho_2dcell, double **divu_2dcell, double ***vf_2dmat, double ***rho_2dmat, 
+                    double ***rho_3dcell, double ***divu_3dcell, double ****vf_3dmat, double ****rho_3dmat, 
+                    double *cournt)
+{
+     int   i, j, k, mx, nm, m;
+     int   ncell_ext[3];
+     double factor;
+    
+     for (i = 0; i < dim; i++) { 
+	 ncell_ext[i] = ncell[i] + nbdry + nbdry;
+     }
+     *cournt = 0.0; 
+     if (dim == 2) { 
+         for (j = 1; j < ncell_ext[1]-1; j++) { 
+	     for (i = 1; i < ncell_ext[0]-1; i++) { 
+                 rho_2dcell[j][i] = 0.0;
+                 *cournt = MAX(*cournt, -divu_2dcell[j][i] * dt);
+                 factor = 1.0/(1.0 + divu_2dcell[j][i] * dt);
+                 for (m = 0; m < nmat; m++) { 
+                     rho_2dmat[j][i][m] *= factor; 
+                     rho_2dcell[j][i] += (vf_2dmat[j][i][m] * rho_2dmat[j][i][m]);
+                 } 
+             }
+         }
+     }
+     else if (dim == 3) { 
+	 for (k = 1; k < ncell_ext[2]-1; k++) {
+	     for (j = 1; j < ncell_ext[1]-1; j++) { 
+                 for (i = 1; i < ncell_ext[0]-1; i++) { 
+                     rho_3dcell[k][j][i] = 0.0;
+                     *cournt = MAX(*cournt, -divu_3dcell[k][j][i] * dt);
+                     factor = 1.0/(1.0 + divu_3dcell[k][j][i] * dt);
+                     for (m = 0; m < nmat; m++) { 
+                         rho_3dmat[k][j][i][m] *= factor; 
+                         rho_3dcell[k][j][i]   += (vf_3dmat[k][j][i][m] * rho_3dmat[k][j][i][m]);
+                     }
+                 } 
+             }
+         }
+     } 	 
+     return;
+ } 
+
+void update_energy(int nmat, int dim, int *ncell, int nbdry, double dt, 
+                   double **rho_2dcell, double **divu_2dcell,  
+                   double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat, double ***pres_2dmat,
+                   double ***rho_3dcell, double ***divu_3dcell, 
+                   double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, double ****pres_3dmat)
+{ 
+//   ei_2dmat and ei_3dmat: input and output.
+//                          input: internal energy density at t = 0. 
+//                          output: specific internal energy at t = dt. 
+//   de_specific/dt = - (pm/rho) divg 
+//   (e_specific)^n+1 = (e_specific) - (pm/rho) divu  dt 
+
+     int    i, j, k, mx, nm, m;
+     int    ncell_ext[3];
+     double work;
+
+     for (i = 0; i < dim; i++) {
+         ncell_ext[i] = ncell[i] + nbdry + nbdry;
+     }
+     if (dim == 2) { 
+
+         for (j = 0; j < ncell_ext[1]; j++) { 
+             for (i = 0; i < ncell_ext[0]; i++) { 
+                 for (m = 0; m < nmat; m++) { 
+                     ei_2dmat[j][i][m] /= (rho_2dmat[j][i][m] + tiny);   // specific internal energy  
+                 }
+             }
+         }
+         for (j = 1; j < ncell_ext[1]-1; j++) { 
+             for (i = 1; i < ncell_ext[0]-1; i++) {
+                 for (m = 0; m < nmat; m++) { 
+                     work = (pres_2dmat[j][i][m]/(rho_2dcell[j][i] + tiny)) * divu_2dcell[j][i] * dt; 
+                     ei_2dmat[j][i][m] -= work;  // specific internal energy 
+                 }
+             }
+         }   
+     }                      
+     else if (dim == 3) { 
+         for (k = 0; k < ncell_ext[2]; k++) { 
+             for (j = 0; j < ncell_ext[1]; j++) { 
+                 for (i = 0; i < ncell_ext[0]; i++) {
+                     for (m = 0; m < nmat; m++) {
+                         ei_3dmat[k][j][i][m] /= (rho_3dmat[k][j][i][m] + tiny);   // specific internal energy  
+                     }
+                 }
+             }
+         }
+         for (k = 1; k < ncell_ext[2]-1; k++) { 
+             for (j = 1; j < ncell_ext[1]-1; j++) { 
+                 for (i = 1; i < ncell_ext[0]-1; i++) {
+                     for (m = 0; m < nmat; m++) {
+                         work = (pres_3dmat[k][j][i][m]/(rho_3dcell[k][j][i] + tiny)) * divu_3dcell[k][j][i] * dt;
+                         ei_3dmat[k][j][i][m] -= work;  // specific internal energy 
+                     }
+                 }
+             }
+         }
+     } 
+
+     return;
+  } 
+
+void update_pressure(int nmat, int *is_solid_ea_mat, double *gamma_ea_mat,
+                     int dim, int *ncell, int nbdry,  
+                     double **ei_2dcell, double **pres_2dcell, 
+                     double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat, double ***pres_2dmat, 
+                     double ***ei_3dcell, double ***pres_3dcell,
+                     double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, double ****pres_3dmat)
+{ 
+//     ei_2dmat or ei_2dmat: input and output
+//                           input:  specific internal energy density
+//                           output: interal energy density 
+  
+     int    i, j, k, mx, nm, m;
+     int    ncell_ext[3];
+
+     for (i = 0; i < dim; i++) {
+         ncell_ext[i] = ncell[i] + nbdry + nbdry;
+     }
+     if (dim == 2) {
+         for (j = 0; j < ncell_ext[1]; j++) { 
+             for (i = 0; i < ncell_ext[0]; i++) { 
+                 ei_2dcell[j][i] = 0.0;
+                 pres_2dcell[j][i] = 0.0;
+                 for (m = 0; m < nmat; m++) { 
+                     ei_2dmat[j][i][m] *= rho_2dmat[j][i][m];
+                     ei_2dcell[j][i] += (vf_2dmat[j][i][m] * ei_2dmat[j][i][m]); 
+                     if (!is_solid_ea_mat[m]) {  
+                         pres_2dmat[j][i][m] = (gamma_ea_mat[m] - 1.0) * ei_2dmat[j][i][m]; 
+                     }
+                     else { 
+                         p_mie_gruneisen(rho_2dmat[j][i][m], ei_2dmat[j][i][m], &(pres_2dmat[j][i][m]));  
+                     }
+                     pres_2dcell[j][i] += (vf_2dmat[j][i][m] * pres_2dmat[j][i][m]);
+                 }
+             }
+         }
+     }
+     else if (dim == 3) { 
+         for (k = 0; k < ncell_ext[2]; k++) { 
+             for (j = 0; j < ncell_ext[1]; j++) {
+                 for (i = 0; i < ncell_ext[0]; i++) {
+                     ei_3dcell[k][j][i] = 0.0;
+                     pres_3dcell[k][j][i] = 0.0;
+                     for (m = 0; m < nmat; m++) {
+                         ei_3dmat[k][j][i][m] *= rho_3dmat[k][j][i][m];
+                         ei_3dcell[k][j][i] += (vf_3dmat[k][j][i][m] * ei_3dmat[k][j][i][m]);
+                         if (!is_solid_ea_mat[m]) {
+                             pres_3dmat[k][j][i][m] = (gamma_ea_mat[m] - 1.0) * ei_3dmat[k][j][i][m];
+                         }
+                         else {
+                             p_mie_gruneisen(rho_3dmat[k][j][i][m], ei_3dmat[k][j][i][m], &(pres_3dmat[k][j][i][m]));
+                         }
+                         pres_3dcell[k][j][i] += (vf_3dmat[k][j][i][m] * pres_3dmat[k][j][i][m]);
+                     }
+                 }
+             }
+        }
+    }  
+    return;
+ }  
+    
+

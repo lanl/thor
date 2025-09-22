@@ -1,0 +1,7 @@
+addpath(genpath('../example/'))
+addpath(genpath('./Init_data/'))
+addpath(genpath('./utils/'))
+addpath(genpath('./sparse_matlab/'))
+addpath(genpath('./tt_sparse_3d/'))
+addpath(genpath('../../matlab/utils/tt-toolbox/'))
+addpath(genpath('../../matlab/utils/ttfunc/'))

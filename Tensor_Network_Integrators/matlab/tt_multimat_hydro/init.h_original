@@ -1,0 +1,24 @@
+#ifndef _INIT_
+#define _INIT_
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "minip.h"
+#include "globals.h"
+
+  int init(char *inputFileName,
+           int *dims, int *ncells, int *nbdry, Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+           double *xl_prob, double *xr_prob,
+           int *nummat, int **matid_of_mat, int **is_solid_ea_mat, double **gamma_ea_mat,
+           int **if_fixed_state_ea_mat, double **rho_fixed_state_ea_mat,
+           double **ei_fixed_state_ea_mat, double **p_fixed_state_ea_mat,
+           double *tmax, int *ncycle,
+           double *dt_viz, int *ncycle_viz, double *courant, double *dt, char **probname, int mesh_scaling);
+
+#ifdef __cplusplus
+}
+#endif
+#endif
