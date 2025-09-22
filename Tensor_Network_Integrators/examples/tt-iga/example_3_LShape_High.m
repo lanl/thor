@@ -1,0 +1,70 @@
+clear; close all; clc;
+
+addpath(genpath('../../matlab/utils/tt-toolbox/'));
+addpath(genpath('../../matlab/utils/ttfunc/'));
+addpath(genpath('../../matlab/tt-iga/src/'));
+
+
+%% Geometry & solver parameters
+LL = 1.0; HH = 2.0;
+p1 = 1.0; p2 = 1.0; p3 = 1.0;
+bc_type   = "12";
+u_in      = 0.0;
+u_out     = 0.0;
+ffunction = "sinpxsinpysinpz";
+tt_tol    = 1e-10;
+
+%% Refinement list
+nm_list = [2, 4, 8, 16];
+nRun    = numel(nm_list);
+
+%% CSV setup
+outFile = "LShape_High.csv";
+if isfile(outFile)
+    delete(outFile);
+end
+
+%% Loop over refinements
+for idx = 1:nRun
+    fprintf("===========================================================\n");
+    nm = nm_list(idx);
+    fprintf("Row %d/%d: nm = %d\n", idx, nRun, nm);
+
+    % build L-shape geometry
+    [wn, ctpxn, ctpyn, ctpzn, ...
+        knot1n, knot2n, knot3n] = ...
+      LShapeH111(LL, HH, nm, nm, nm);
+    
+    wn = ones(size(wn));  % use B-spline
+
+    % grid size
+    [n1, n2, n3] = size(ctpxn);
+    fprintf("Lshape high %d/%d: ", idx, nRun);
+    fprintf("Size %d x %d x %d: \n", n1, n2, n3);
+    % TT‐solve (includes BC & G⁰ internally)
+    tstart = tic;
+    [~, ~, K_cr, f_cr, u_cr] = LinearSolveLaplaceTTf_3D_cross( ...
+        knot1n, knot2n, knot3n, ...
+        ctpxn, ctpyn, ctpzn, ...
+        u_in, u_out, bc_type,...
+        ffunction, tt_tol);
+    tt_time = toc(tstart);
+    %---- save results ----
+    T = table(n1, n2, n3, tt_time, K_cr, f_cr, u_cr, 'VariableNames',{ ...
+            'n1','n2','n3','TT_solve_time', ...
+            'K_compression','f_compression','u_compression'});
+    if idx == 1
+       % Write header + first row
+       writetable(T, outFile);
+    else
+       % Append just the data row
+       writetable(T, outFile, 'WriteMode','append', 'WriteVariableNames',false);
+    end
+    %---- clear large arrays to free memory ----);
+
+    % clear large vars before next iteration
+    clear wn ctpxn ctpyn ctpzn knot1n knot2n knot3n
+    clear K_cr f_cr u_cr tt_time
+end
+
+fprintf("\nAll done!  Results written to %s\n", outFile);
