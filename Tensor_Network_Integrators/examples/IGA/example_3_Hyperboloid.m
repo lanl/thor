@@ -2,15 +2,15 @@ clear; close all; clc;
 
 addpath(genpath('../../matlab/utils/tt-toolbox/'));
 addpath(genpath('../../matlab/utils/ttfunc/'));
-addpath(genpath('../../matlab/tt-iga/src/'));
+addpath(genpath('../../matlab/IGA/src/'));
 
 
 %% Geometry & solver parameters
-Rin       = 0.5;
-Rout      = 1.0;
-p1 = 2; p2 = 2; p3 = 2;
-bc_type   = "2";             % as in your example
-g_type    = "1";             % G⁰ continuity
+rr = 0.5; RR = 1.0; r0 = 0.3; HH = 2.0;
+p1 = 2; p2 = 2; p3 = 1;
+
+bc_type   = "1";             % as in your example
+g_type    = "2";             % G⁰ continuity
 u_in      = 0.0;
 u_out     = 0.0;
 ffunction = "sinpxsinpysinpz";
@@ -21,7 +21,7 @@ nm_list = [2, 4, 8, 16];
 nRun    = numel(nm_list);
 
 %% CSV setup
-outFile = "Openhemisphere.csv";
+outFile = "Hyperboloid.csv";
 if isfile(outFile)
     delete(outFile);
 end
@@ -30,18 +30,17 @@ end
 for idx = 1:nRun
     fprintf("===========================================================\n");
     nm = nm_list(idx);
-    fprintf("Row %d/%d: nm = %d\n", idx, nRun, nm);
+    fprintf("Row %d/%d: ", idx, nRun);
 
     % build hemisphere geometry
     [wn, ctpxn, ctpyn, ctpzn, ...
         knot1n, knot2n, knot3n] = ...
-      OpenHemiSphereFull222(Rin, Rout, nm, nm, nm);
+      HyperboloidFull221(rr, RR, r0, HH, nm, nm, nm);
     
     wn = ones(size(wn));  % use B-spline
-
     % grid size
     [n1, n2, n3] = size(ctpxn);
-    fprintf("Open hemisphere %d/%d: ", idx, nRun);
+    fprintf("Hyperboloid tt - row %d/%d: \n", idx, nRun);
     fprintf("Size %d x %d x %d: \n", n1, n2, n3);
 
     % TT‐solve (includes BC & G⁰ internally)
@@ -52,8 +51,9 @@ for idx = 1:nRun
         bc_type, g_type, ...
         u_in, u_out, ffunction, ...
         tt_tol);
-    tt_time = toc(tstart);
-    %---- save results ----
+     tt_time = toc(tstart);
+    fprintf("Hyperboloid - TT solve time = %.2e s\n", tt_time);
+     %---- save results ----
     T = table(n1, n2, n3, tt_time, K_cr, f_cr, u_cr, 'VariableNames',{ ...
             'n1','n2','n3','TT_solve_time', ...
             'K_compression','f_compression','u_compression'});

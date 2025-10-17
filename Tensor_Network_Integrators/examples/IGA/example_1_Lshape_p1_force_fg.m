@@ -1,7 +1,7 @@
 close all; clear; clc;
 
 addpath(genpath('../../matlab/utils/tt-toolbox/'));
-addpath(genpath('../../matlab/tt-iga/src/'));
+addpath(genpath('../../matlab/IGA/src/'));
 
 %% 1) Define list of nm values
 nm_list = [4, 8, 16];

@@ -2,7 +2,7 @@ clear; close all; clc;
 
 addpath(genpath('../../matlab/utils/tt-toolbox/'));
 addpath(genpath('../../matlab/utils/ttfunc/'));
-addpath(genpath('../../matlab/tt-iga/src/'));
+addpath(genpath('../../matlab/IGA/src/'));
 
 
 %% Geometry & solver parameters

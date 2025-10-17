@@ -4,7 +4,7 @@ close all; clear; clc;
 
 addpath(genpath('../../matlab/utils/tt-toolbox/'));
 addpath(genpath('../../matlab/utils/ttfunc/'));
-addpath(genpath('../../matlab/tt-iga/src/'));
+addpath(genpath('../../matlab/IGA/src/'));
 
 %% 0) User‐set constants
 r_out      = 1.0;
