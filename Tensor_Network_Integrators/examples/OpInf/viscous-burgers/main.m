@@ -32,7 +32,7 @@ Lx = 4;
 %
 opinflib.datadir = "../../../matlab/data/thor-data-main";
 %
-opinflib.srcdir = "../../../matlab/tt-opinf/src";
+opinflib.srcdir = "../../../matlab/OpInf/src";
 %
 opinflib.tt    = opinflib.srcdir + "/tt";
 opinflib.qtt   = opinflib.srcdir + "/qtt";
