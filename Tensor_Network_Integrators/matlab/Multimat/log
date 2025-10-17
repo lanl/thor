@@ -1,0 +1,1055 @@
+=== Thu Dec 19 22:28:12 MST 2024 ===
+
+Translating advect3d:
+------------------------------------------------------------
+Please provide the function help text for the function advect3d, a method of the `c_mat` class. Please specify all input and output variables in the "Inputs" and "Outputs" sections. Do not make function name "all caps", because Matlab is a case-sensitive language. Make sure the type of each variable is specified (int, double, cell etc, whether it is an array).  Additionally, create sections "Uses" and "Modifies" with the Uses  accounting for the variables from the objects that were used but not modified, and Modifies for the
+variables that were modified into function description called "Modifies", and list there all the variables (from either obj or mesh objects) that are modified. If any of the "uses" and "modifies" sections are empty, omit those sections. The final section in the description should contain the "Original C declaration:" block. Make sure every line is no more than 80 characters long. 
+
+```
+void advect3d(int nmat, int *ncell, int nbdry, 
+              double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, 
+              int *ijk, double *xl_cell, double *dx_cell, int nm_this_cell, int *matids,
+              double *xl_slab, double *xr_slab, double *inward_norm, int plane_of_slab,
+              int nnode_tot, double *coords_tot,
+              int *nface_for_mpoly, int **nnode_for_face_ea_mpoly,
+              int **nodelist_for_face_ea_mpoly, 
+              int *nmat_advected, int *matid_advected, double *vol_advected,
+              double *mass_advected, double *ener_advected)
+```
+The variables nmat, ncell, bndry, vf_3dmat, rho_3dmat, ei_3dmat, xl_cell, dx_cell, matids are fields of the c_mesh class and can be passed through an argument `mesh`.
+------------------------------------------------------------
+|
+------------------------------------------------------------
+Translate the function advect3d to Matlab.  I'm going to feed you the C code of this function, part by part.  The function is the method of c_mat class. Please
+translate this function according to function declaration that you derived above. Do not begin translating until I say "end of the function". Do not comment on
+the parts of the function. Confirm receiving parts by saying "part X received".
+Ready?
+------------------------------------------------------------
+
+
+=== Thu Dec 19 17:41:49 MST 2024 ===
+
+Testing input of interface3d() to check `matlab_interface3d` in libvof3d.so.
+
+Inputs: 
+
+  x0_scale = NULL
+  dx_scale = 0.01
+  nface = 6
+  nnode = 8
+  coords -> { 0.0, 0.0, 0.0,
+              1.0, 0.0, 0.0,
+              1.0, 1.0, 0.0,
+              0.0, 1.0, 0.0,
+              0.0, 0.0, 1.0,
+              1.0, 0.0, 1.0,
+              1.0, 1.0, 1.0,
+              0.0, 1.0, 1.0}
+  nnode_for_face -> {4, 4, 4, 4, 4, 4}
+  nodelist_for_face -> {0, 4, 7, 3,
+                        1, 2, 6, 5,
+                        0, 1, 5, 4,
+                        2, 3, 7, 6,
+                        0, 3, 2, 1,
+                        4, 5, 6, 7}
+  cell_vol = 1.0
+  vf_to_match = 0.96551724137931039
+  normal -> {-1, 0, 0}    
+
+output:
+  *ifinterface -> {0}
+  *nnode_new ->  {12}
+  **coords_new -> {0, 0, 0,
+  1, 0, -0,
+  1, 1, -0,
+  0, 1, 0,
+  0, 0, 1,
+  1, 0, 1,
+  1, 1, 1,
+  0, 1, 1,
+  0.034482717514038086, 1, 1,
+  0.034482717514038086, 1, -0,
+  0.034482717514038086, 0, -0,
+  0.034482717514038086, -0, 1}
+  *nnode_for_interface -> {4}
+  **nodelist_for_interface -> {8, 9, 10, 11}
+  *faceindexlow_of_interface -> 0, 
+  *faceindexhgh_of_interface -> 0,
+
+  // ifintersected_face[0:nface)         is the output indicates whether the interface cuts the face. 
+  *ifintersected_face -> {8079895, 0, 0, 0, 32, 0}
+
+  // nodelist_intersected_face[0:2*nface): output, the list of nodes where the interface 
+  //                                       intersect with the face, if the face intersects with 
+  //                                       the interface; otherwise, -1 for not intersecting. 
+  *nodelist_intersected_face -> {8788705, 0, 0, 0, 8623168, 0, 8623216, 0, 8623264, 0, 8623312, 0}
+
+  **nodes2_in_between -> NULL
+  // (*nodes2_in_between)[0:2*nnode_interface):     output, contains the two surrounding nodes for each interface node. 
+
+
+  //   In the output, the interface is also a face in both lower and upper polyhedrons.
+  //   faceindexlow_of_interface is the face index of the interface in the lower polyhedron, and
+  //   faceindexhgh_of_interface is the face index in the upper polyhedron.
+
+  //   ifintersected_face[0:nface): output, ifintersected_face[f] = 1 for the case the 
+  //                                interface and face f intersected; 0 for the case not intersected.
+  //   nodelist_intersected_face[0:2*nface): output, the values at [f+f][f+f+1] are the two nodes
+  //                                         where interface and face f intersect. 
+  //                                            
+  //   *nodes2_in_between[0:nnode_for_interface): output, contains the two original nodes surrounding each
+  //                                              interface node. 
+  //   *nodes2_in_between needs to be freed if not NULL.
+
+  //   face2old_lower[0:nface_lower): output. If face2old_lower[i] >= 0, face2old_lower[i] is the face id of
+  //   the original cell, for which the face i is a part or all of the face. face2old_lower[i] = -1 to
+  //   indicate that this face is an interface.
+
+  *nface_lower -> {6},
+  *nnode_for_face_lower -> {4,4,4,4,4,4}, 
+  *nodelist_for_face_lower -> {8, 9, 10, 11,
+                               1, 2, 6, 5,
+                              10, 1, 5, 11,
+                               2, 9, 8, 6,
+                               9, 2, 1, 10,
+                              11, 5, 6, 8}, 
+  *face2old_lower -> {-1, 1, 2, 3, 4, 5},
+
+  *nface_upper -> {6}, 
+  *nnode_for_face_upper -> {4,4,4,4,4,4}, 
+  *nodelist_for_face_upper -> {8, 9, 10, 11,
+                               0, 4, 7, 3,
+                               0,10,11, 4,
+                               9, 3, 7, 8,
+                               0, 3, 9, 10,
+                               4,11, 8, 7}
+  *face2old_upper -> {-1, 0, 2, 3, 4, 5}
+                 
+
+
+=== Thu Dec  5 12:13:51 MST 2024 ===
+
+Function calls tree for the new sparse code:
+
++- main
+  [+]- init
+   |  [t]- e_mie_gruneisen
+   |  [t]- p_mie_gruneisen
+   |  [+]- set_mesh
+   |  [+]- set_mesh_mat
+   |      [x]- mesh_pass_mat
+   |      [+]- set_mat
+   |       |  [+]- set_2dmesh_mat
+   |       |   |  [+]- set_cell_mat
+   |       |   |       +-- gsph_rec
+   |       |   |       |   +-- check_intersected_sphere
+   |       |   |       +-- find_min_max 
+   |       |   |       +-- poly2d_rec
+   |       |   |       |   +-- point_in_polygon
+   |       |   |      [+]- rec_rec
+   |       |   |       +-- gconic_rec
+   |       |   |           +-- gconic_rec_rotate
+   |       |   |           |   +-- conic_poly3d
+   |       |   |           |       +-- plane_poly3d
+   |       |   |           |       |   +-- mychull_sort
+   |       |   |           |       +-- sph_poly2d
+   |       |   |           |           +-- cal_vf_cyl_cord
+   |       |   |           +-- gconic_rec_cyl
+   |       |   |               +-- conic_rec0
+   |       |   |               |   +-- gsph_rec
+   |       |   |               |       +-- check_intersected_sphere
+   |       |   |               +-- conic_rec
+   |       |   |                   +-- gsph_rec
+   |       |   |                       +-- check_intersected_sphere
+   |       |  [+]- bdry_cell_2d
+   |       |  [+]- bdry_cell_vel_2d
+   |       |  [+]- set_3dmesh_mat
+   |       |   |  [+]- set_cell_mat
+   |       |   |       +-- gsph_rec
+   |       |   |       |   +-- check_intersected_sphere
+   |       |   |       +-- find_min_max 
+   |       |   |       +-- poly2d_rec
+   |       |   |       |   +-- point_in_polygon
+   |       |   |      [+]- rec_rec
+   |       |   |       +-- gconic_rec
+   |       |   |           +-- gconic_rec_rotate
+   |       |   |           |   +-- conic_poly3d
+   |       |   |           |       +-- plane_poly3d
+   |       |   |           |       |   +-- mychull_sort
+   |       |   |           |       +-- sph_poly2d
+   |       |   |           |           +-- cal_vf_cyl_cord
+   |       |   |           +-- gconic_rec_cyl
+   |       |   |               +-- conic_rec0
+   |       |   |               |   +-- gsph_rec
+   |       |   |               |       +-- check_intersected_sphere
+   |       |   |               +-- conic_rec
+   |       |   |                   +-- gsph_rec
+   |       |   |                       +-- check_intersected_sphere
+   |       |  [+]- bdry_cell_3d
+   |       |  [+]- bdry_cell_vel_3d
+   |       |
+   |      [+]- get_node_vel_2d
+   |      [t]- bdry_node_2d
+   |      [+]- get_node_vel_3d
+   |      [+]- bdry_node_3d
+   |       x-- create_file  
+   |       x-- write_mesh_mat
+   |       x-- close_file
+   |       
+   +-- control
+      [x]- mesh_pass_mesh_data
+      [x]- viz_dump, xdmf_dump
+      [t]- mesh_sound_speed
+       |  [t]- sound_speed_solid
+      [t]- courant_from_cs
+      [+]  courant_from_vel
+      [2]- compute_divu
+      [2]- compute_qvis
+      [2]- compute_force
+      [2]- update_vel_comp
+      [2]- update_energy
+      [2]- update_density
+      [2]- update_pressure
+       |  [+]- p_mie_gruneisen
+      [t]- bdry_cell_2d
+      [t]- bdry_node_2d
+       o-- bdry_cell_3d
+       o-- bdry_node_3d
+      [2]- advection
+          [2]- get_face_velocity
+          [2]- mapping
+              [2]- mapping2d
+               |  [t]- build_mpoly2d
+               |   |  [t]- reconstruct2d_nmat_pagosa
+               |   |      [t]- cal_cell_zgrad2d
+               |   |      [t]- cal_distance2d
+               |   |          [t]- order_nodes_along_norm
+               |   |          [t]- bounds_2d
+               |   |              [t]- find_interface2d
+               |   |              [t]- cal_poly_area
+               |   |
+               |  [t]- advect2d
+               |   |  [t]- find_interface2d
+               |   |  [t]- cal_poly_area
+               |   |
+               |  [t]- p_mie_gruneisen
+               |  [t]- bdry_cell_2d
+               |  [t]- bdry_node_2d
+               |
+              [3]- mapping3d
+                   +-- quantities_crossing_edge_3d
+                   |  [+]- build_mpoly3d
+                   |   |  [+]- reconstruct3d_nmat_pagosa
+                   |   |      [+]- cal_cell_zgrad3d
+                   |   |      [+]=====>> interface3d
+                   |   |                [+]- coords_scale
+                   |   |                [+]- cal_distance
+                   |   |                 |  [+]- rotate_to_norm
+                   |   |                 |  [t]- order_nodes_along_norm
+                   |   |                 |  [+]- cal_distance_z
+                   |   |                 |   |  [+]- get_edges
+                   |   |                 |   |  [+]- get_faces_ea_edge
+                   |   |                 |   |  [+]- cal_norm_of_face
+                   |   |                 |   |   |  [+]- get_interior_point
+                   |   |                 |   |  [+]- bounds_z
+                   |   |                 |   |   |  [+]- get_edges
+                   |   |                 |   |   |  [+]- get_faces_ea_edge
+                   |   |                 |   |   |  [+]- cal_norm_of_face
+                   |   |                 |   |   |   |  [+]- get_interior_point
+                   |   |                 |   |   |  [+]- find_interface_z
+                   |   |                 |   |   |   |  [+]- line_intersect_z
+                   |   |                 |   |   |   |  [+]- sort_nodes
+                   |   |                 |   |   |   |      [+]- r8sort
+                   |   |                 |   |   |  [+]- divide_z
+                   |   |                 |   |   |   |  [+]- line_intersect_z
+                   |   |                 |   |   |   |  [+]- get_lower_upper_polyhedron
+                   |   |                 |   |   |  [+]- cal_vol
+                   |   |                 |   |   |   |  [+]- tet_vol
+                   |   |                 |   |   |   |  [+]- cal_zone_ctr
+                   |   |                 |   |   |  [+]- interface_face_intersect
+                   |   |                 |   |   |
+                   |   |                 |   |  [+]- bisection_z
+                   |   |                 |   |      [+]- get_faces_ea_edge
+                   |   |                 |   |      [+]- cal_norm_of_face
+                   |   |                 |   |      [+]- find_interface_z
+                   |   |                 |   |       |  [+]- line_intersect_z
+                   |   |                 |   |       |  [+]- sort_nodes
+                   |   |                 |   |       |      [+]- r8sort
+                   |   |                 |   |      [+]- divide_z
+                   |   |                 |   |       |  [+]- line_intersect_z
+                   |   |                 |   |       |  [+]- get_lower_upper_polyhedron
+                   |   |                 |   |      [+]- cal_vol
+                   |   |                 |   |          [+]- tet_vol
+                   |   |                 |   |          [+]- cal_zone_ctr
+                   |   |                 |   | 
+                   |   |                 |  [+]- rotate_back
+                   |   |                 |
+                   |   |                [+]- coords_scale_back
+                   |   |
+                   |  [+]- advect3d
+                   |   |   |              
+                   |   |   +==========>> polyhedron_plane
+                   |   |   |             +-- polyhedron_plane1
+                   |   |   |             |  [+]- get_edges
+                   |   |   |             |  [+]- get_faces_ea_edge
+                   |   |   |             |   +-- polyhedron_plane0
+                   |   |   |             |      [+]- get_scaling
+                   |   |   |             |      [+]- rotate_to_norm
+                   |   |   |             |      [t]- order_nodes_along_norm
+                   |   |   |             |      [+]- line_intersect_z
+                   |   |   |             |      [+]- sort_nodes
+                   |   |   |             |       |  [+]- r8sort
+                   |   |   |             |       |
+                   |   |   |             |      [+]- get_lower_upper_polyhedron
+                   |   |   |             |      [+]- rotate_back
+                   |   |   |             +-- get_own_nodes
+                   |   |   |
+                   |   |  [+]- cal_vol
+                   |   |      [+]- tet_vol
+                   |   |      [+]- cal_zone_ctr
+                   |   |
+                   |  [+]- p_mie_gruneisen
+                   |   o-- bdry_cell_3d
+                   |   o-- bdry_node_3d
+                   |
+                   +-- update_materials_after_advection
+
+
+=== Tue Nov 12 18:39:30 MST 2024 ===
+
+------------------------------------------------------------
+Please provide the function help text for the function get_lower_upper_polyhedron, specifying all input and output variables, in the "Inputs" and "Outputs" sections. Do not make function name "all caps", because Matlab is a case-sensitive language. Make sure the type of each variable is specified (int, double, cell etc, whether it is an array).  Additionally, create sections "Uses" and "Modifies" with the Uses  accounting for the variables from the objects that were used but not modified, and Modifies for the
+variables that were modified into function description called "Modifies", and list there all the variables (from either obj or mesh objects) that are modified. If any of the "uses" and "modifies" sections are empty, omit those sections. Omit the function body itself. The final section in the description should contain the "Original C declaration:" block. Make sure every line is no more than 80 characters long. 
+
+void get_lower_upper_polyhedron(int nface, int nedge, int nnode,
+                             int *nnode_ea_face, int *nodelist_for_face,
+                             int *edgelist_for_face, int *nodelist_for_edge,
+                             int nnode_new, int *edge_to_node,
+                             int nnode_interface, int *nodes_interface,
+                             int *node_loc, int *edge_loc,
+                             int interface_is_face,
+         int *faceindexlow_of_upper_interface, int *faceindexhgh_of_upper_interface,
+         int *nface_lower, int *nnode_ea_face_lower, int *nodelist_for_face_lower, int *face2old_lower,
+         int *nface_upper, int *nnode_ea_face_upper, int *nodelist_for_face_upper, int *face2old_upper)
+------------------------------------------------------------
+|
+------------------------------------------------------------
+Translate the function get_lower_upper_polyhedron into Matlab.  I'm going to feed you the C code of this function, part by part.  The function is the method of c_vof3d class. Please
+translate this function according to function declaration that you derived above.
+Do not begin translating until I say "end of the function". Do not comment on
+the parts of the function. Confirm receiving parts by saying "part X received".
+Ready?
+------------------------------------------------------------
+
+ 
+
+
+=== Mon Oct 14 18:15:34 MDT 2024 ===
+
+Debugging a difficult case that popped up after fixing reconstruct2d_nmat_pagosa.
+ - call stack for the function that fails:
+       main (line 57)
+         c_control/run (line 213)
+         +- c_advection/advection (line 224)
+            +- c_advection/mapping (line 292)
+               +- c_advection/mapping2d (line 455)
+                  +- c_mat/advect2d (line 1412)
+                     +--> c_vof2d/find_interface2d (line 78)
+
+To catch it, used a breakpoint in line 455 in c_advectin/mapping2d 
+where advect2d is called;
+Input variables:
+ C                           Matlab
+ -------------------         --------------------------
+ j              =  2         3
+ edge           = 53         54
+ xl_cell = {0.5, 0}         {0.5, 0}
+ dx      = {0.01, 0.01}     {0.01, 0.01}
+ mixcell = 0                 1
+-xl_slab = {0.5097, 0}      {0.5099, 0}
+ xr_slab = {0.51, 0.01}     {0.51, 0.01}
+ inward_norm = {1, 0}       {1, 0}
+ slab_faceid = 0             0
+ nmat_adv, matid_adv, vol_adv, mass_adv, ener_adv: outputs
+
+Inside the function advect2d:
+ xl_slab_scaled = {0.9703, 0} vs Matlab {0.9938, 0}
+ xr_slab_scaled = {1.0, 1}              {1.0000, 1}
+ c0             = {0.9703, 1} vs        {0.9938, 1}
+ c1             = {0.9703, 0}           {0.9938, 0}
+ distance       = 0.97035     vs         0.9938
+ mx_poly        = 0           vs         1
+ nnode          = 6           vs         6
+
+*coords_intersect:
+ 0.5       vs   0.51
+ 0              0.01
+ 0.51           1.51
+ 0              0.01
+ 0.51           1.51
+ 0.01           0.21
+ 0.5            0.51
+ 0.01           0.21
+ 0.50034        0.544482758608647
+ 0              0.01
+ 0.50034        0.544482758608647
+ 0.01           0.21
+
+It then fails here. Basically, the codes diverge at coords_intersect,
+which is in turn initialized from coords_in_mixcell{mx_mpoly} that is
+computed in get_mpoly. So we need to fix get_mpoly() first.
+That's already computed incorrectly at Line 1083 in c_mat.m at the
+very first entry. <<<
+
+
+
+=== Wed Sep 25 21:35:35 MDT 2024 ===
+
+```
+Ok so the first two input parameters define a random polygon. How about we write a function `generate_random_2d_poly (int nnode, double xmax, double ymax, double *coords)` that generates such a polygon? Obviously, you cannot just randomly assign node coordinates, because the polygon contour will have self-intersections. We don't want that. To avoid it, I propose the following algorithm:
+1. generate `nnode` random points with coordinates between (0, xmax) and (0, ymax).
+2. compute their "center of mass"
+3. calculate angle between the line that passes through the center of mass and every point.
+4. sort nodes according to the angle.
+In this case, all the nodes will be counter-clockwise around the center of mass, and we'll have a polygon without self-intersections.
+```
+
+
+
+=== Thu Sep 12 10:28:36 MDT 2024 ===
+------------------------------------------------------------
+Next to translate is the function `mapping2d`:
+```
+void mapping2d(int *ncell, int nbdry, double *xl_prob, double *dx, int dir, double dt,
+               Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+               int nmat_prob, int *matid_ea_mat, int *is_solid, double *gamma_ea_mat, double **vel_face_2d,
+               double **rho_for_2dcell, double **ei_for_2dcell, double **pres_for_2dcell, double ***vel_for_2dnode,
+               int **nmat_for_2dcell, int  **matid_for_2dcell, int **mixcell_for_2dcell,
+               double *courant_adv)
+```
+The target translated function in Matlab will be the member of class `c_advection` with following signature:
+```
+function courant_adv = mapping2d(obj, mesh, mat, ncycle, dir, dt, ...
+                        btype_lower, btype_upper,
+                        is_solid, gamma_ea_mat, vel_face_2d, mixcell_for_2dcell)
+```                        
+The parameters dim, ncell, nbdry, xl_prob, dx should be passed as properties of `mesh` argument.
+The parameters nmat_prob and matid_ea_mat should be passed as properties of the `mat` argument.
+The parameters is_solid, gamma_ea_mat, vel_face_2d, mixcell_for_2dcell should be passed independently.
+The parameter `courant_adv` is the return value, and the rest of the input parameters should be used or modified as the properties of the `mesh`.
+
+Write the function help text, specifying all input and output variables, in the "Inputs" and "Outputs" sections. Make sure the type of each variable is specified (int, double, cell etc, whether it is an array).  Additionally, create sections "Uses" and "Modifies" with the Uses accounting for the variables from the objects that were used but not modified, and Modifies for the variables that were modified into function description called "Modifies", and list there all the variables (from the mesh objects) that are modified. The final section in the description should contain the "Original C declaration:" block.
+
+When translating, make sure the variables that are modified, are modified inside the class mesh. 
+I'm going to feed you the C code of this function, part by part. I want you to translate it into Matlab. Do not begin translating until I say "end of the function". Do not comment on
+the parts of the function. Confirm receiving parts by saying "part X received". Also, the function is too long so I will replace some of the blocks with a comment that looks like this:
+```
+  // <--- BLOCK A --->>
+```
+I will feed you these portions of the function later.
+Ready?
+------------------------------------------------------------
+
+
+
+
+------------------------------------------------------------
+Very good! Relying on this translation, please provide empty stubs for the functions mapping2d and mapping3d. Let both functions return courant_adv = 0.5. Supply help text for each function.
+------------------------------------------------------------
+
+
+
+------------------------------------------------------------
+Please translate mapping function again. Taking into account that this function is essentially a switch between mapping2d and mapping3d, which we are going to translate next, they will have almost the same argument structure as mapping, except mapping2d will only have 2d-related variables (such as vel_for_2dface), and mapping3d will only have 3d-related arguments. Translate mapping one more time but invoke mapping2d and mapping3d with only their respective arguments. Keep arguments of mapping as before:
+
+function courant_adv = mapping(obj, mesh, mat, dir, dt, ...
+                               btype_lower, btype_upper, is_solid, gamma_ea_mat, ...
+                               vel_face_2d, vel_face_3d, mixcell_for_2dcell, mixcell_for_3dcell)
+
+
+Simplify arguments to called functions mapping2d and mapping3d using mesh and mat.
+------------------------------------------------------------
+
+
+
+------------------------------------------------------------
+Next to translate is the function `mapping`:
+```
+void mapping(int dim, int *ncell, int nbdry, double *xl_prob, double *dx_prob, int dir, double dt,
+             Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+             int nmat_prob, int *matid_ea_mat, int *is_solid, double *gamma_ea_mat,
+             double **rho_for_2dcell, double **ei_for_2dcell, double **pres_for_2dcell,
+             double ***vel_for_2dnode, double **vel_face_2d,
+             int  **nmat_for_2dcell, int  **matid_for_2dcell, int  **mixcell_for_2dcell,
+             double ***rho_for_3dcell, double ***ei_for_3dcell, double ***pres_for_3dcell,
+             double ****vel_for_3dnode, double ***vel_face_3d,
+             int ***nmat_for_3dcell, int ***matid_for_3dcell, int ***mixcell_for_3dcell,
+             double *courant_adv)
+```
+The target translated function in Matlab will be the member of class `c_advection` with following signature:
+```
+function courant_adv = mapping(obj, mesh, mat, ncycle, dir, dt, ...
+                        btype_lower, btype_upper,
+                        is_solid, gamma_ea_mat, vel_face_2d, vel_face_3d)
+```                        
+The parameters dim, ncell, nbdry, xl_prob, dx_prob should be passed as properties of `mesh` argument.
+The parameters nmat_prob and matid_ea_mat should be passed as properties of the `mat` argument.
+The parameters is_solid, gamma_ea_mati, vel_face_2d, vel_face_3d, mixcell_for_2dcell, mixcell_for_3dcell should be passed independently.
+The parameter `courant_adv` is the return value, and the rest of the input parameters should be used or modified as the properties of the `mesh`.
+
+Write the function help text, specifying all input and output variables, in the "Inputs" and "Outputs" sections. Make sure the type of each variable is specified (int, double, cell etc, whether it is an array).  Additionally, create sections "Uses" and "Modifies" with the Uses accounting for the variables from the objects that were used but not modified, and Modifies for the variables that were modified into function description called "Modifies", and list there all the variables (from the mesh objects) that are modified. The final section in the description should contain the "Original C declaration:" block.
+
+When translating, make sure the variables that are modified, are modified inside the class mesh. 
+I'm going to feed you the C code of this function, part by part. I want you to translate it into Matlab. Do not begin translating until I say "end of the function". Do not comment on
+the parts of the function. Confirm receiving parts by saying "part X received".
+Ready?
+------------------------------------------------------------
+
+
+
+------------------------------------------------------------
+Hey GPT, I would like you to translate the following function: `advection`. Here's its C declaration:
+```
+void advection(int fileid, int dim, int *ncell, int nbdry, double *xl_prob, double *dx_prob,
+               int nmat_prob, int *matid_ea_mat, int *is_solid, double *gamma_ea_mat,
+               int ncycle, int dir, double dt,
+               Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+               double **rho_for_2dcell, double **ei_for_2dcell, double **pres_for_2dcell,
+               double ***vel_for_2dnode, double ***vav_for_2dnode,
+               int  **nmat_for_2dcell, int  **matid_for_2dcell,
+               double ***rho_for_3dcell, double ***ei_for_3dcell, double ***pres_for_3dcell,
+               double ****vel_for_3dnode, double ****vav_for_3dnode,
+               int ***nmat_for_3dcell, int ***matid_for_3dcell,
+               double *courant_adv)
+```
+The target function in Matlab should have the following signature:
+```
+function courant_adv = advection(obj, mesh, mat, ncycle, dir, dt, ...
+                        btype_lower, btype_upper,
+                        is_solid, gamma_ea_mat)
+```                        
+Please ignore the input parameter `fileid`, and the code associated with it (I/O). 
+The parameters dim, ncell, nbdry, xl_prob, dx_prob should be passed as properties of `mesh` argument.
+The parameters nmat_prob and matid_ea_mat should be passed as properties of the `mat` argument.
+The parameters `is_solid`, `ncycle`, `dir` `gamma_ea_mat` should be passed independently.
+The parameter `courant_adv` is the return value, and the rest of the input parameters should be used or modified as the properties of the `mesh`.
+
+Write the function help text, specifying all input and output variables, in the "Inputs" and "Outputs" sections. Make sure the type of each variable is specified (int, double, cell etc, whether it is an array).  Additionally, create sections "Uses" and "Modifies" with the Uses accounting for the variables from the objects that were used but not modified,
+and Modifies for the variables that were modified into function description called "Modifies", and list there all the variables (from the mesh objects) that are modified. The final section in the description should contain the "Original C declaration:" block.
+
+When translating, make sure the variables that are modified, are modified inside the class mesh. 
+I'm going to feed you the C code of this function, part by part. I want you to translate it into Matlab. Do not begin translating until I say "end of the function". Do not comment on
+the parts of the function. Confirm receiving parts by saying "part X received".
+Ready?
+------------------------------------------------------------
+
+
+
+=== Wed Sep 11 23:14:39 MDT 2024 ===
+GPT prompts:
+
+------------------------------------------------------------
+The Matlab should translate it into a method of class c_bdry with the following declaraion:
+function bdry_cell_vel_3d(~, mesh, btype_lower, btype_upper)
+
+
+Here, all the input arguments except btype_* are properties of the class c_mesh.
+Write the function help text, specifying all input and output variables, in the "Inputs" and "Outputs" sections. Make sure the type of each variable is specified (int, double, cell etc, whether it is an array).  Additionally, create sections "Uses" and "Modifies" with the Uses accounting for the variables from the objects that were used but not modified,
+and Modifies for the variables that were modified into function description called "Modifies", and list there all the variables (from the mesh objects) that are modified. The final section in the description should contain the "Original C declaration:" block.
+
+When translating, make sure the variables that are modified, are modified inside the class mesh. The function copies the data from the inner cells to the boundary cells: nbdry layers on each side of the mesh. Please ensure that when translating the function, the loops run between nbdry+1:ncell(2), and helper indices like i0, j0, and k0 are incremented (because indices in Matlab start with 1 and not 0 like in C).
+
+I'm going to feed you the C code of this function, part by part. I want you to translate it into Matlab. Do not begin translating until I say "end of the function". Do not comment on
+the parts of the function. Confirm receiving parts by saying "part X received".
+Ready?
+------------------------------------------------------------
+|
+|
+------------------------------------------------------------
+In the following code, prepend mesh. on both the right and the left side of the equations. Keep nbdry and ncell variables intact:
+```
+% xl edge without corners
+            if btype_lower(1) == bdry_transmitted
+                n0 = nbdry;
+                for j = nbdry:ncell(2) + nbdry
+                    for i = 1:nbdry
+                        for dir = 1:dim
+                            vel_for_2dnode(j, i, dir) = vel_for_2dnode(j, n0, dir);
+                            velav_for_2dnode(j, i, dir) = velav_for_2dnode(j, n0, dir);
+                        end
+                    end
+                end
+            end
+```
+------------------------------------------------------------
+|
+|
+------------------------------------------------------------
+Hey GPT, I want you to translate the function bdry_node_2d next. It's original signature in C is like this:
+```
+void bdry_node_2d(int *ncell, int nbdry, Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+                  double ***vel_for_2dnode, double ***velav_for_2dnode)
+```
+
+The Matlab should translate it into a method of class c_bdry with the following declaraion:
+```
+function bdry_node_2d(~, mesh, btype_lower, btype_upper)
+```
+
+Here, all the input arguments except btype_* are properties of the class c_mesh.
+Additionally, please supply the function help text, specifying all input and output variables, in the "Inputs" and "Outputs" sections. Make sure the type of each variable is specified (int, double, cell etc, whether it is an array).  Additionally, create sections "Uses" and "Modifies" with the Uses accounting for the variables from the objects that were used but not modified,
+and Modifies for the variables that were modified into function description called "Modifies", and list there all the variables (from the mesh objects) that are modified. The final section in the description should contain the "Original C declaration:" block.
+
+I'm going to feed you the C code of this function, part by part. I want you to translate it into Matlab. Do not begin translating until I say "end of the function". Do not comment on
+the parts of the function. Confirm receiving parts by saying "part X received".
+Ready?
+------------------------------------------------------------
+
+
+=== Tue Sep  3 22:56:56 MDT 2024 ===
+
+GPT prompts:
+------------------------------------------------------------
+Please provide the function help text for the function courant_from_cs,
+specifying all input and output variables, in the "Inputs" and "Outputs"
+sections. Do not make function name "all caps", because Matlab is a
+case-sensitive language. Make sure the type of each variable is specified
+(int, double, cell etc, whether it is an array).  Additionally, create
+sections "Uses" and "Modifies" with the Uses  accounting for the variables
+from the objects that were used but not modified, and Modifies for the
+variables that were modified into function description called "Modifies", and
+list there all the variables (from either obj or mesh objects) that are
+modified. If any of the "uses" and "modifies" sections are empty, omit those
+sections. Omit the function body itself. The final section in the description
+should contain the "Original C declaration:" block. Make sure every line is no
+more than 80 characters long.  There is no property dx_prob in c_mesh. It is
+called just dx.
+-----
+
+=== Tue Aug 27 10:45:16 MDT 2024 ===
+
+List of functions that are called in the `control` function:
+
+  control
+  [x]- mesh_pass_mesh_data
+  [x]- mesh_pass_viz_file_ids
+  [+]- cell_bdry_condition
+   |   [t]- bdry_cell_2d
+   |   [t]- bdry_node_2d
+   |   [+]- bdry_cell_3d
+   |   [+]- bdry_node_3d
+   |
+  [x]- mat_pass_mix_data
+  [x]- viz_dump
+   |   x- create_file
+   |   x- write_mesh_mat
+   |   x- write_scalar
+   |   x- write_vector
+   |
+  [t]- mesh_sound_speed
+   |  [t]- sound_speed_solid
+   |
+  [t]- mat_sound_speed
+   |  [t]- sound_speed_solid
+   |
+  [+]- courant_from_cs
+  [2]- compute_divu
+  [2]- compute_qvis
+  [2]- compute_force
+  [2]- update_vel_comp
+  [2]- update_density
+  [2]- update_energy
+  [+]- advection
+   |  [+]- get_face_velocity
+   |  [x]- mat_pass_mix_data (x)
+   |  [2]- get_mpoly
+   |   |  [+]- set_mpoly_storage 
+   |   |  [t]- cal_mixcell_zgrad2d
+   |   |  [t]- reconstruct2d_nmat_pagosa
+   |   |   |  [t]- cal_cell_zgrad2d
+   |   |   |  [t]- cal_distance2d
+   |   |   |      [t]- order_nodes_along_norm
+   |   |   |      [t]- bounds_2d
+   |   |   |       |  [t]- find_interface2d
+   |   |   |       |  [t]- cal_poly_area
+   |   |   |       |  [t]- rz_area
+   |   |   |      [t]- find_interface2d
+   |   |   |      [t]- cal_poly_area
+   |   |   |      [t]- rz_area
+   |   |   |
+   |   |  [+]- cal_mixcell_zgrad3d
+   |   |   +-- reconstruct3d_nmat_pagosa
+   |   |      [+]- cal_cell_zgrad3d
+   |   |       +-- interface3d
+   |   |          [+]- coords_scale
+   |   |           +-- cal_distance
+   |   |           |  [+]- rotate_to_norm
+   |   |           |  [+]- order_nodes_along_norm
+   |   |           |   +-- cal_distance_z
+   |   |           |   |  [+]- get_edges
+   |   |           |   |  [+]- get_faces_ea_edge
+   |   |           |   |  [+]- cal_norm_of_face
+   |   |           |   |   |  [+]- get_interior_point
+   |   |           |   |   |
+   |   |           |   |   +-- bounds_z
+   |   |           |   |   |  [+]- get_edges
+   |   |           |   |   |  [+]- get_faces_ea_edge
+   |   |           |   |   |  [+]- cal_norm_of_face
+   |   |           |   |   |   |  [+]- get_interior_point
+   |   |           |   |   |   |
+   |   |           |   |   |  [+]- find_interface_z
+   |   |           |   |   |   |  [+]- line_intersect_z
+   |   |           |   |   |   |  [+]- sort_nodes
+   |   |           |   |   |   |
+   |   |           |   |   |   +-- divide_z
+   |   |           |   |   |   |  [+]- line_intersect_z
+   |   |           |   |   |   |  [+]- get_lower_upper_polyhedron
+   |   |           |   |   |   |
+   |   |           |   |   |  [+]- interface_face_intersect
+   |   |           |   |   |
+   |   |           |   |   +-- bisection_z
+   |   |           |   |      [+]- get_faces_ea_edge
+   |   |           |   |       |
+   |   |           |   |      [+]- cal_norm_of_face
+   |   |           |   |       |  [+]- get_interior_point
+   |   |           |   |       |
+   |   |           |   |      [+]- find_interface_z
+   |   |           |   |       |  [+]- line_intersect_z
+   |   |           |   |       |  [+]- sort_nodes
+   |   |           |   |       |
+   |   |           |   |       +-- divide_z
+   |   |           |   |       |  [+]- line_intersect_z
+   |   |           |   |       |  [+]- get_lower_upper_polyhedron
+   |   |           |   |       |
+   |   |           |   |      [+]- cal_vol
+   |   |           |   |          [+]- tet_vol
+   |   |           |   |          [+]- cal_zone_ctr
+   |   |           |   | 
+   |   |           |  [+]- rotate_back
+   |   |           |
+   |   |          [+]  coords_scale_back
+   |   |    
+   |  [x]- mat_write_mat
+   |  [+]- mapping
+   |      [+]- mapping2d
+   |       |  [+]- advect2d
+   |       |   |  [t]- find_interface2d
+   |       |   |  [t]- cal_poly_area
+   |       |  [x]- mat_pass_mix_data
+   |       |  [t]- bdry_cell_1var_2d
+   |       |  [t]- bdry_cell_ragged_2d
+   |       |  [+]- intersect2d
+   |       |   |  [+]- remap2d_scaled
+   |       |   |   |  [+]- remap2d_mat
+   |       |   |   |      [t]- find_interface2d
+   |       |   |  [t]- cal_poly_area
+   |       |  [t]- p_mie_gruneisen
+   |       |  [x]- mat_set_mix_data
+   |       |  [+]- bdry_node_2d
+   |       |
+   |       +-- mapping3d
+   |           +-- advect3d
+   |           |   +-- polyhedron_plane
+   |           |   |   +-- polyhedron_plane1
+   |           |   |   |  [+]- get_edges
+   |           |   |   |  [+]- get_faces_ea_edge
+   |           |   |   |   +-- polyhedron_plane0
+   |           |   |   |      [+]- get_scaling
+   |           |   |   |      [+]- rotate_to_norm
+   |           |   |   |      [t]- order_nodes_along_norm
+   |           |   |   |      [+]- line_intersect_z
+   |           |   |   |      [+]- sort_nodes
+   |           |   |   |      [+]- get_lower_upper_polyhedron
+   |           |   |   |      [+]- rotate_back
+   |           |   |   |
+   |           |   |   +-- get_own_nodes
+   |           |   |
+   |           |  [+]- cal_vol
+   |           |
+   |           +-- mat_pass_mix_data
+   |           +-- bdry_cell_1var_3d
+   |           +-- bdry_cell_ragged_3d
+   |          [+]- p_mie_gruneisen
+   |           +-- mat_set_mix_data
+   |           +-- bdry_node_3d
+   |
+  [x]- close_file
+
+
+
+
+GPT prompts:
+--------------------------------------------------------------------------------
+Please provide the complete description of the funciont set_cell_mat, specifying
+all input and output variables, in the "Inputs" and "Outputs" sections. Make sure 
+the type of each variable is specified (int, double, cell etc, whether it is an 
+array).  Additionally, create sections "Uses" and "Modifies" with the Uses 
+accounting for the variables from the objects that were used but not modified, 
+and Modifies for the variables that were modified into function description 
+called "Modifies", and list there all the variables (from either obj or mesh 
+objects) that are modified. The final section in the description should contain
+the following "Original C declaration:" block:
+```Matlab
+        % Original C declaration:
+        % void set_cell_mat(int dim, double *xl, double *dx,
+        %                   int nmat, int *matids_ea_mat, int *is_solid,
+        %                   double *gamma_ea_mat, int nreg, int *matids_ea_reg,
+        %                   Region_Shape *reg_shape, double *rho_ea_reg,
+        %                   double *pres_ea_reg, double *ei_ea_reg,
+        %                   double **v_ea_reg, int *nmat_cell, int *matids_cell,
+        %                   double *vf_ea_mat, double *rho_ea_mat,
+        %                   double *pres_ea_mat, double *ei_ea_mat,
+        %                   double *rho_cell, double *pres_cell,
+        %                   double *ei_cell, double *v_cell)
+```
+
+Ensure that the total list of variables in the sections Inputs, Outputs, Uses 
+and Modifies provides an accurate account of how all the original variables were 
+mapped.
+
+Here's the intended function signature in Matlab:
+```MatLab
+ function [nmat_cell, matids_cell, rho, pres, ei, vel, ...
+                  vf_ea_mat, rho_ea_mat, pres_ea_mat, ei_ea_mat] = ...
+                  set_cell_mat(obj, dim, xl, dx, nreg, is_solid, ...
+                               gamma_ea_mat, reg_shape, rho_ea_reg, ...
+                               pres_ea_reg, ei_ea_reg, v_ea_reg)
+```
+-----
+|
+--------------------------------------------------------------------------------
+Hey GPT, I want you to translate the set_cell_mat() function next. I'm going
+to feed you the C code of this function, part by part. I want you to translate
+it into Matlab. The function is the method of c_mat class. Please translate
+this function according to the function description you just constructed.
+The original C function assumes that the variables 'vf_ea_mat', 'rho_ea_mat', 
+'pres_ea_mat', 'ei_ea_mat' have been allocated; when translating, allocate
+these variables with `zeros(mesh_nmat, 1)`.
+
+Use the following signature for the translated function:
+```MatLab
+ function [nmat_cell, matids_cell, rho, pres, ei, vel, ...
+                  vf_ea_mat, rho_ea_mat, pres_ea_mat, ei_ea_mat] = ...
+                  set_cell_mat(obj, dim, xl, dx, nreg, is_solid, ...
+                               gamma_ea_mat, reg_shape, rho_ea_reg, ...
+                               pres_ea_reg, ei_ea_reg, v_ea_reg)
+```
+
+Do not begin translating until I say "end of the function". Do not comment on 
+the parts of the function. Confirm receiving parts by saying "part X received". 
+Ready?
+-----
+|
+--------------------------------------------------------------------------------
+Translate the function rec_rec into Matlab.  I'm going to feed you the C code of 
+this function, part by part.  The function is the method of c_geom class. Please 
+translate this function using the following function declaration:
+```Matlab
+function [mixed, vol] = rec_rec(ifinquiry, geop, vcell, dim, xxl, xxr, xl, dx)
+```
+Do not begin translating until I say "end of the function". Do not comment on 
+the parts of the function. Confirm receiving parts by saying "part X received". 
+Ready?
+
+
+=== Mon Aug 26 10:38:46 MDT 2024 ===
+
+GPT prompts:
+--------------------------------------------------------------------------------
+Give me the complete description of the function `set_2dmesh_mat`, specifying all 
+input and output variables, in the "Inputs" and "Outputs" sections.  Make sure 
+the type of each variable is specified (int, double, cell etc, whether it is an 
+array).  Additionally, create sections "Uses" and "Modifies" with the Uses 
+accounting for the variables from the objects that were used but not modified, 
+and Modifies for the variables that were modified into function description 
+called "Modifies", and list there all the variables (from either obj or mesh 
+objects) that are modified. The final section in the description should contain
+the following "Original C declaration:" block:
+```MatLab
+        % Original C declaration:
+        % void set_2dmesh_mat(int *ncell, double *xl_prob, double *dx,
+        %                     int nbdry, int nmat, int *matids_ea_mat,
+        %                     int *is_solid, double *gamma_ea_mat, int nreg,
+        %                     int *matids_ea_reg, Region_Shape *reg_shape,
+        %                     double *rho_ea_reg, double *pres_ea_reg,
+        %                     double *ei_ea_reg, double **v_ea_reg,
+        %                     int **nmat_for_2dcell, int **matid_for_2dcell,
+        %                     int **mixcell_for_2dcell, double **rho_for_2dcell,
+        %                     double **ei_for_2dcell, double **pres_for_2dcell,
+        %                     double ***vel_for_2dcell)
+```
+
+Ensure that the total list of variables in the sections Inputs, Outputs, Uses 
+and Modifies provides an accurate account of how all the original variables were 
+mapped.
+
+Here's the intended function signature in Matlab:
+```MatLab
+        function set_2dmesh_mat(obj, mesh, dx, nreg, is_solid, gamma_ea_mat, ...
+                                reg_shape, rho_ea_reg, pres_ea_reg, ...
+                                ei_ea_reg, v_ea_reg)
+```
+-----
+|
+--------------------------------------------------------------------------------
+Hey GPT, I want you to translate the set_2dmesh_mat() function next. I'm going
+to feed you the C code of this function, part by part. I want you to translate
+it into Matlab. The function is the method of c_mat class. Please translate
+this function according to the function description you just constructed.
+Use the following signature for the translated function:
+```MatLab
+        function set_2dmesh_mat(obj, mesh, dx, nreg, is_solid, gamma_ea_mat, ...
+                                reg_shape, rho_ea_reg, pres_ea_reg, ...
+                                ei_ea_reg, v_ea_reg)
+```
+
+Do not begin translating until I say "end of the function". Do not comment on 
+the parts of the function. Confirm receiving parts by saying "part X received". 
+Ready?
+-----
+
+=== Sun Aug 25 18:16:07 MDT 2024 ===
+Saved GPT prompts:
+
+--------------------------------------------------------------------------------
+Could you give me a commented-out, properly formatted (<80 chars) original function signature for the function set_mat? I would like to append it to the function description. I.e.
+
+% Original C declaraion:
+% void set_mat(...)
+---
+Returns:
+% Original C declaration:
+% void set_mat(int dim, int *ncell, double *xl_prob, double *dx, int nbdry,
+%              Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+%              int nmat, int *matids_ea_mat, int *is_solid, double *gamma_ea_mat,
+%              int nreg, int *reg2matids, Region_Shape *reg_shape,
+%              double *rho_ea_reg, double *pres_ea_reg, double *ei_ea_reg,
+%              double **v_ea_reg, int *nmix_cell,
+%              int **nmat_for_2dcell, int **matid_for_2dcell,
+%              int **mixcell_for_2dcell, double **rho_for_2dcell,
+%              double **ei_for_2dcell, double **pres_for_2dcell,
+%              double ***vel_for_2dcell, int ***nmat_for_3dcell,
+%              int ***matid_for_3dcell, int ***mixcell_for_3dcell,
+%              double ***rho_for_3dcell, double ***ei_for_3dcell,
+%              double ***pres_for_3dcell, double ****vel_for_3dcell)
+---
+-
+
+=== Tue Aug 13 15:11:50 MDT 2024 ===
+
+Output: binary file; the "Ensight" software.
+
+nmat_prob: number of materials in the problem
+nmat_for_2dcell[j][i]: number of materials in 2D cell
+matid_for_2dcell[j][i]: 
+
+mixed cells:
+  nmixcell: number of mixed cells
+  ijk_in_mixcell[mix][0:dim)
+  nmat_in_mixcell[mix]
+  matids_in_mixcell[mix][0:nmat)
+  {vf,rho,pres,ei}_in_mixcell[mix][0:nmat) : volume fraction, density, pressure, internal energy
+
+>> Lagrangian step:
+1. compute div(U): divergence of the velocity
+2. compute_qvis: add artificial viscosity, qvis =|dv|*rho*(c1*cs - c2*dv))
+3. for each dimension:
+   3.1 compute force = 0.25*(p_TL + p_BL - p_TR - p_TL)
+   3.2 update velocity components:
+       mass = 0.25 * cell_vol*(rho_TL + BL + ...)
+       accel = force/mass
+       vel = vel_0 + accel*dt
+
+4. update density
+   rho^(n+1) = rho^(n)/(1 = Dt del*v)
+   rho_in_mixell = rho_in_mixcell / (1 + divu*dt)
+   de_spec /dt = -(pm/rho) divu
+   (e/rho)^n+1 = (e_spc)^n - (pm/rho)*divu*dt
+
+5. advection of cell variables: (in advection.c)
+   For each direction:
+   5.1 based on volume fractions, reconstruct material interface
+   5.2 calculate face velocity:
+       ux = 0.5*(ux_upper + ux_lower)
+   5.3 determine the advected slab ux*Dt
+   5.4 calculate the advected volumes, masses, energies, to cell (i+1, j)
+       dv1, dv2, dm1, dm2, de1, de2
+   5.5 update the number of materials in each cell
+   5.6 update variables in clean cells and mixed cells
+
+6. Advection of node momentum (velocity) (in advection.c)
+   For each direction:
+   6.1 for each node(i,j), calculate:
+       a. the old (befor advection) mass associated with the node - quarter of the mass;
+       b. the old momentum is mass*vel[j][i]
+   6.2 determine the advected slab ux[j][i]
+   6.3 calculate the advected momentum assuming uniformly distributed
+   6.4 get new momentum: mom_new
+   6.5 get updated density of each cell, and new moass associated with each node, mass_new
+   6.6 get the updated velocity of each node, vel_new = mom_new / mass_new
+
+
+=== Tue May 21 15:09:42 MDT 2024 ===
+
+PAGOSA meeting
+
+Functional call tree:
+
+main
+[+]- Initial data conditions:
+ |  [+]- init
+ |   |
+ |  [+]- set_mesh
+ |  [+]- set_mesh_mat
+ |       |
+ |      [+]- set_mat
+ |       |   [+]- set_2dmesh_mat
+ |       |    |   [+]- set_cell_mat
+ |       |    |        +-- gsph_rec
+ |       |    |        +-- poly2d_rec
+ |       |    |       [+]- rec_rec
+ |       |    |        +-- gconic_rec
+ |       |    |       [+]- p_mie_gruneisen
+ |       |    |
+ |       |   [+]- set_3dmesh_mat
+ |       |    |   [+]- set_cell_mat
+ |       |    |        +-- gsph_rec
+ |       |    |        +-- poly2d_rec
+ |       |    |       [+]- rec_rec
+ |       |    |        +-- gconic_rec
+ |       |    |       [+]- p_mie_gruneisen
+ |       |    |
+ |       |   [+]- mixcell_bdry_condition
+ |       |   [+]- bdry_cell_2d
+ |       |   [+]- bdry_cell_vel_2d
+ |       |   [+]- bdry_cell_3d
+ |       |   [+]- bdry_cell_vel_3d
+ |       |  
+ |      [+]- get_node_vel_2d
+ |      [+]- get_node_vel_3d
+ |      [+]- get_mpoly
+ |       |  [+]- set_mpoly_storage
+ |       |  [t]- cal_mixcell_zgrad2d
+ |       |   |
+ |       |  [t]-reconstruct2d_nmat_pagosa
+ |       |      |
+ |       |     [t]- cal_distance2d
+ |       |          |
+ |       |         [t]- order_nodes_along_norm
+ |       |         [t]- bounds_2d
+ |       |         [t]- find_interface2d(nnode, coords, nodelist, norm,
+ |       |         [t]- cal_poly_area
+ |       |         [t]- rz_area
+ |       |
+ |      [x]- create_file
+ |      [x]- write_mesh_mat
+ |      [x]- write_mesh_vars
+ |      [x]- mat_write_mat
+ |      [x]- close_file
+ |
+ +-- The main evolution loop:
+     [+]- control
+
+
+
+

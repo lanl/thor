@@ -1,0 +1,15 @@
+        Tpod: 14.6731
+          j1: 5
+          j2: 501
+          xp: [3280x4 tt_tensor]
+       ranks: [6x1 double]
+        dims: 7
+           A: [14-D tt_tensor]
+           F: [21-D tt_tensor]
+           B: []
+           D: [16-D tt_tensor]
+           R: [9-D tt_tensor]
+      Tlearn: 1.9813
+    Tpredict: 1.3828
+       xp_ft: [3280x4 double]
+

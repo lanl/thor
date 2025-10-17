@@ -1,0 +1,214 @@
+#include "eos.h"
+
+// Polynomial equation of state
+static const double rho0_polynominal = 4.510;   // 8.96 for copper, 4.510 g/cm^3 for titanium
+static const double k_in_mbar        = 1.0;    
+static const double mbar             = 1.0e+12; // 1 Mbar = 1.0e+12 Ba
+
+
+
+//
+// Mie–Grüneisen equation of state (from Wikipedia and xRAGE)  
+//
+//    p = { rho0 * c0^2 (eta - 1) [ eta - (Gamma0/2) (eta - 1)] } /
+//        { eta - s (eta -1) }^2 
+//      + Gamma0 *(e - e0)  for rho >= rho0        // from Wikipedia    
+//
+//    P = rho0 * c0^2 (eta - 1) + Gamma0 (e - e0)  for rho < rho0   from xRAGE  
+//
+//    E = rho0 * cv (T - T0) = (e - e0)
+//    e0: reference internal enery density = rho0 * cv * T0   
+//
+//    For copper 
+//    rho0 = 8.96 g/cc 
+//    cv   = 3.9e+06 erg /(g-K)
+//    c0   = 3.933e+05 cm/sec      bulk speed of sound  
+//    s    = 1.5
+//    Gamma0 = 1.99 (for T < T1)
+//	     = 2.12 (for T >= T1)
+//
+//    T1 = 700 K  
+//    eta = rho /rho0   
+//
+//    solid sound speed 
+//        cp = sqrt( E (1-nu)/[ rho (1 + nu)(1 - 2 nu)] ) 
+//        cs = sqrt (G/rho) 
+//        E: Young's modulus
+//        nu: Poisson's ratio  
+//        G: shear modules of elastic material 
+//
+//   for copper: 
+//       E = 110 Gpa = 1.1e12 dyne/cm^2  
+//       nu = 0.33  
+
+//static const double rho0_copper = 8.96;       // g/cc 
+static const double rho0_copper = 4.510;   // g/cc for titanium 
+static const double c0_copper   = 3.933e+05;  // cm/sec  
+static const double cv_copper   = 3.9e+06;    //erg/(g-K)  
+static const double s_copper    = 1.5;
+static const double T1_copper   = 700.0;
+static const double T0_copper   = 290.0;   // room temperature, reference  
+					 
+static const double gamma0_less = 1.99;
+static const double gamma0_more = 2.12;    
+
+static const double E_copper  = 1.1e+12; 
+static const double nu_copper = 0.33;
+
+// static static double e_T1_copper = rho0_copper * cv_copper * T1_copper;   
+// static static double e_T0_copper = rho0_copper * cv_copper * T0_copper;
+
+
+void sspd_mie_gruneisen(double rho, double *cs);
+void p_mie_gruneisen(double rho, double ei, double *p);
+void e_mie_gruneisen(double rho, double p, double *ei);
+void p_polynominal(double rho, double *p);
+void sspd_polynominal(double rho, double *cs);
+void e_polynominal( double *ei);
+//////////////////////////////////////////////////////////////////
+
+void sspd_solid(int which_solid, double rho, double *cs)
+{ 
+     if (which_solid == 1) { 
+         sspd_mie_gruneisen(rho, cs);
+     }
+     else if (which_solid == 2) { 
+         sspd_polynominal(rho, cs);
+     }
+     else { 
+         *cs = 0.0;
+     }
+     return;
+ }
+
+void p_solid(   int which_solid, double rho, double ei, double *p)
+{ 
+     if (which_solid == 1) { 
+         p_mie_gruneisen(rho, ei, p); 
+     }
+     else if (which_solid == 2) { 
+         p_polynominal(rho, p);
+     }
+     else { 
+         *p = 0.0;
+     }
+     return;
+ } 
+
+void e_solid(int which_solid, double rho, double p, double *e)
+{
+//   internal energy density, NOT specific internal energy density
+
+     if (which_solid == 1) { 
+         e_mie_gruneisen(rho, p, e);  
+     }
+     else if (which_solid == 2) { 
+         e_polynominal(e);
+     }
+     else { 
+         *e = 0.0; 
+     }  
+     return;
+ } 
+
+void sspd_mie_gruneisen(double rho, double *cs) 
+{
+     *cs = E_copper * (1.0 - nu_copper)/
+          (rho * (1 + nu_copper)*(1.0 - nu_copper - nu_copper));
+     *cs = sqrt(*cs);
+
+     return;
+ } 
+
+
+void p_mie_gruneisen(double rho, double ei, double *p)
+{ 
+     double eta, eta1, gamma0, denom; 
+     double e_T1_copper, e_T0_copper;
+
+     e_T1_copper = rho0_copper * cv_copper * T1_copper;   
+     e_T0_copper = rho0_copper * cv_copper * T0_copper; 
+
+     eta = rho / rho0_copper;
+     eta1 = eta - 1.0; 
+
+//     if (ei < e_T1_copper) { 
+//         gamma0 = gamma0_less;
+//     }
+//     else { 
+//         gamma0 = gamma0_more;
+//     }
+
+     gamma0 = gamma0_less;
+
+     denom = eta - s_copper * eta1, 
+     denom *= denom; 
+     *p = rho0_copper * c0_copper * c0_copper * eta1 * (eta - 0.5 * gamma0 * eta1)/denom  
+        + gamma0 * (ei - e_T0_copper);
+
+     return;
+} 
+void e_mie_gruneisen(double rho, double p, double *ei)
+{
+     double eta, eta1, gamma0, denom, rhoc02eta1, eiless, eimore;
+
+     double e_T1_copper, e_T0_copper;
+      
+     e_T1_copper = rho0_copper * cv_copper * T1_copper;
+     e_T0_copper = rho0_copper * cv_copper * T0_copper;        
+
+     eta = rho / rho0_copper;
+     eta1 = eta - 1.0;
+     
+     denom = eta - s_copper * eta1,
+     denom *= denom; 
+     rhoc02eta1 = rho0_copper * c0_copper * c0_copper * eta1;
+
+     eiless = (p - rhoc02eta1 * (eta - 0.5 * gamma0_less * eta1)/denom)/gamma0_less + e_T0_copper;  
+     eimore = (p - rhoc02eta1 * (eta - 0.5 * gamma0_more * eta1)/denom)/gamma0_more + e_T0_copper;
+    
+//     if (eiless < e_T1_copper) { 
+//         *ei = eiless;
+//     }
+//     else if (eimore >= e_T1_copper) { 
+//         *ei = eimore;
+//     }
+//     else {
+//         printf("ERROR: e_mie_gruneisen\n");
+//     }
+
+     *ei = eiless; 
+
+     return;
+ } 
+
+
+void p_polynominal(double rho, double *p)
+{ 
+     *p = k_in_mbar * mbar *(rho/rho0_polynominal - 1.0);
+
+     return;
+ }
+
+void sspd_polynominal(double rho, double *cs)
+{ 
+//   cs = sqrt (dp/drho) 
+
+     *cs = sqrt(k_in_mbar  * mbar / rho0_polynominal);
+       
+     return; 
+} 
+
+void e_polynominal( double *ei) 
+{    
+     *ei = 0.0;
+     return;
+ }  
+
+
+void rho_polynominal(double p, double *rho)
+{ 
+     *rho = rho0_polynominal * ( p /(k_in_mbar * mbar) + 1.0);
+     return;
+  }
+

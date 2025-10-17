@@ -1,0 +1,18 @@
+#ifndef _EOS_
+#define _EOS_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "globals.h"
+#include "minip.h" 
+
+void sound_speed_solid(double rho, double *cs);
+void p_mie_gruneisen(double rho, double ei, double *p);
+void e_mie_gruneisen(double rho, double p, double *e);
+
+#ifdef __cplusplus
+}
+#endif
+#endif

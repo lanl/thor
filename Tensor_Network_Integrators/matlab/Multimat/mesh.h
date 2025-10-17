@@ -1,0 +1,54 @@
+#ifndef _MESH_
+#define _MESH_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "globals.h"
+#include "minip.h" 
+#include "bdry.h" 
+
+void mesh_pass_mat(double **xl, double **xr, int **ncell, int *nbdry);
+
+void set_mesh(int dim, const double *xl, const double *xr, const int *ncell, const int nbdry,
+          const int nmat);
+
+void set_mesh_mat(int dim, Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+                  int nmat, int *is_solid, double *gamma_ea_mat,
+                  int nreg, int *reg2matids,
+                  Region_Shape *reg_shape,
+                  double *rho_ea_reg, double *pres_ea_reg, double *ei_ea_reg, double **v_ea_reg);
+
+void cal_cell_zgrad3d(double *dx, double var[3][3][3], double *gradv);
+
+
+void cal_cell_zgrad2d(double *dx, double var[3][3], double *gradv);
+
+void mesh_sound_speed(int dim, int *ncell, int nbdry, int nmat,
+                      int *is_solid, double *gamma_ea_mat,
+                      double **cs_2dcell,  double ***cs_3dcell);
+
+void get_node_vel_2d(int *ncell, int nbdry, double **rho_for_cell, double ***vel_for_cell, double ***vel_for_node);
+
+void get_node_vel_3d(int *ncell, int nbdry, double ***rho_for_cell, double ****vel_for_cell, double ****vel_for_node);
+
+void mesh_pass_mesh_data(double ***rho_ea_2dcell,  double ***ei_ea_2dcell,   double ***pres_ea_2dcell,
+                         double ***divu_ea_2dcell, double ***qvis_ea_2dcell,
+                         double ***force_ea_2dnode, double ****vel_ea_2dnode, double ****vav_ea_2dnode,
+                         double ****vf_ea_2dmat, double ****rho_ea_2dmat,
+                         double ****ei_ea_2dmat, double ****pres_ea_2dmat,
+                         double ****rho_ea_3dcell, double ****ei_ea_3dcell,   double ****pres_ea_3dcell,
+                         double ****divu_ea_3dcell, double ****qvis_ea_3dcell,
+                         double ****force_ea_3dnode, double *****vel_ea_3dnode, double *****vav_ea_3dnode,
+                         double *****vf_ea_3dmat, double *****rho_ea_3dmat,
+                         double *****ei_ea_3dmat, double *****pres_ea_3dmat);
+
+void xdmf_dump(const int ncycle, const double timestamp);
+
+void xdmf_dump_basic(const char *basename, const int ncycle, const double timestamp);
+
+#ifdef __cplusplus
+}
+#endif
+#endif

@@ -1,0 +1,71 @@
+#ifndef _MAT_
+#define _MAT_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "globals.h"
+#include "minip.h" 
+#include "bdry.h" 
+
+void set_mat(int dim, int *ncell, double *xl_prob, double *dx, int nbdry,
+             Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+             int nmat, int *is_solid, double *gamma_ea_mat,
+             int nreg, int *reg2matids, Region_Shape *reg_shape,
+             double *rho_ea_reg, double *pres_ea_reg, double *ei_ea_reg, double **v_ea_reg,
+      double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat, double ***pres_2dmat,
+      double **rho_2dcell, double **ei_2dcell, double **pres_2dcell, double ***vel_2dcell,
+      double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, double ****pres_3dmat,
+      double ***rho_3dcell, double ***ei_3dcell, double ***pres_3dcell, double ****vel_3dcell);
+
+void set_3dmesh_mat(int *ncell, double *xl_prob, double *dx, int nbdry,
+                    int nmat, int *is_solid, double *gamma_ea_mat,
+                    int nreg, int *matids_ea_reg, Region_Shape *reg_shape,
+                    double *rho_ea_reg, double *pres_ea_reg, double *ei_ea_reg, double **v_ea_reg,
+                    double ****vf_3dmat, double ****rho_3dmat, 
+                    double ****ei_3dmat, double ****pres_3dmat,
+                    double ****vel_3dcell);
+
+void set_2dmesh_mat(int *ncell, double *xl_prob, double *dx, int nbdry,
+            int nmat, int *is_solid, double *gamma_ea_mat,
+                    int nreg, int *matids_ea_reg, Region_Shape *reg_shape,
+                    double *rho_ea_reg, double *pres_ea_reg, double *ei_ea_reg, double **v_ea_reg,
+                    double ***vf_2dmat, double ***rho_2dmat, 
+                    double ***ei_2dmat, double ***pres_2dmat,
+                    double ***vel_2dcell);
+
+void set_cell_mat(int dim, double *xl, double *dx,
+                  int nmat, int *is_solid, double *gamma_ea_mat,
+                  int nreg, int *matids_ea_reg, Region_Shape *reg_shape,
+                  double *rho_ea_reg, double *pres_ea_reg, double *ei_ea_reg, double **v_ea_reg,
+                  int *nmat_cell, int *matids_cell,
+                  double *vf_ea_mat, double *rho_ea_mat, double *pres_ea_mat, double *ei_ea_mat,
+                  double *rho_cell, double *pres_cell, double *ei_cell, double *v_cell);
+
+void advect2d(int nmat, int *ncell, int nbdry,
+              double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat,
+              int *ijk, double *xl_cell, double *dx_cell, 
+              int nnode, double *coords,
+              int nm_this_cell, int *matids, int *nnode_for_mpoly, int **nodes_for_mpoly,
+              double *xl_slab, double *xr_slab, double *inward_norm, int plane_of_slab,
+              int *nmat_advected, int *matid_advected, double *vol_advected,
+              double *mass_advected, double *ener_advected);
+
+void advect3d(int nmat, int *ncell, int nbdry, 
+              double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, 
+              int *ijk, double *xl_cell, double *dx_cell, int nm_this_cell, int *matids,
+              double *xl_slab, double *xr_slab, double *inward_norm, int plane_of_slab,
+              int nnode_tot, double *coords_tot,
+              int *nface_for_mpoly, int **nnode_for_face_ea_mpoly,
+              int **nodelist_for_face_ea_mpoly, 
+              int *nmat_advected, int *matid_advected, double *vol_advected,
+              double *mass_advected, double *ener_advected);
+
+void clean_mpoly();
+
+
+#ifdef __cplusplus
+}
+#endif
+#endif

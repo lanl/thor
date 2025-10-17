@@ -1,0 +1,976 @@
+#ifdef MPI
+#include <mpi.h>
+#endif
+
+#include "minip.h"
+#include "geom.h"
+#include "util.h"
+#include "mesh.h"
+#include "vof2d.h"
+#include "vof3d.h"
+#include "mat.h"
+#include "io.h"
+#include "eos.h"
+
+
+double   vfmin   = 1.0e-08;   // smallest volume fraction, otherwise, considered zero.
+
+int      nmat_prob    = 0;      // the numeber of the materials in the problem.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void set_mat(int dim, int *ncell, double *xl_prob, double *dx, int nbdry,
+             Bdry_Type *btype_lower, Bdry_Type *btype_upper,
+             int nmat, int *solid_num_ea_mat, double *gamma_ea_mat,
+             int nreg, int *reg2matids, Region_Shape *reg_shape,
+             double *rho_ea_reg, double *pres_ea_reg, double *ei_ea_reg, double **v_ea_reg,
+      double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat, double ***pres_2dmat, 
+      double **rho_2dcell, double **ei_2dcell, double **pres_2dcell, double ***vel_2dcell,
+      double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, double ****pres_3dmat, 
+      double ***rho_3dcell, double ***ei_3dcell, double ***pres_3dcell, double ****vel_3dcell)
+{
+     int i, j, k, m;
+     int ncell_ext[3];
+
+     for (i = 0; i < dim; i++) { 
+         ncell_ext[i] = ncell[i] + nbdry + nbdry;
+     }
+     nmat_prob = nmat;
+
+     if (dim == 2) {
+         set_2dmesh_mat(ncell, xl_prob, dx, nbdry,
+                        nmat, solid_num_ea_mat, gamma_ea_mat,
+                        nreg, reg2matids, reg_shape,
+                        rho_ea_reg, pres_ea_reg, ei_ea_reg, v_ea_reg,
+                        vf_2dmat, rho_2dmat, ei_2dmat, pres_2dmat, vel_2dcell);
+
+         for (j = 0; j < ncell_ext[1]; j++) {
+             for (i = 0; i < ncell_ext[0]; i++) {
+                 rho_2dcell[j][i]  = 0.0;
+                 ei_2dcell[j][i]   = 0.0;
+                 pres_2dcell[j][i] = 0.0;
+
+                 for (m = 0; m < nmat; m++) {
+                     rho_2dcell[j][i]  += (vf_2dmat[j][i][m] * rho_2dmat[j][i][m]);
+                     ei_2dcell[j][i]   += (vf_2dmat[j][i][m] * ei_2dmat[j][i][m]);
+                     pres_2dcell[j][i] += (vf_2dmat[j][i][m] * pres_2dmat[j][i][m]);
+                 }
+             }
+         }
+         bdry_cell_2d(nmat, ncell, nbdry, btype_lower, btype_upper,
+                     vf_2dmat,  rho_2dmat, ei_2dmat, pres_2dmat,
+                     rho_2dcell, ei_2dcell, pres_2dcell);
+
+         bdry_cell_vel_2d(ncell, nbdry, btype_lower, btype_upper, vel_2dcell);
+
+     }
+     else if (dim == 3) {
+         set_3dmesh_mat(ncell, xl_prob, dx, nbdry,
+                        nmat, solid_num_ea_mat, gamma_ea_mat,
+                        nreg, reg2matids, reg_shape, 
+                        rho_ea_reg, pres_ea_reg, ei_ea_reg, v_ea_reg,
+                        vf_3dmat, rho_3dmat, ei_3dmat, pres_3dmat, vel_3dcell);
+   
+         for (k = 0; k < ncell_ext[2]; k++) {
+             for (j = 0; j < ncell_ext[1]; j++) {
+                 for (i = 0; i < ncell_ext[0]; i++) {
+                     rho_3dcell[k][j][i]  = 0.0;
+                     ei_3dcell[k][j][i]   = 0.0;
+                     pres_3dcell[k][j][i] = 0.0;
+                     for (m = 0; m < nmat; m++) {
+                         rho_3dcell[k][j][i]  += (vf_3dmat[k][j][i][m] * rho_3dmat[k][j][i][m]);
+                         ei_3dcell[k][j][i]   += (vf_3dmat[k][j][i][m] * ei_3dmat[k][j][i][m]);
+                         pres_3dcell[k][j][i] += (vf_3dmat[k][j][i][m] * pres_3dmat[k][j][i][m]);
+                     }
+                 }
+             }
+         }
+         bdry_cell_3d(nmat, ncell, nbdry, btype_lower, btype_upper,
+                     vf_3dmat, rho_3dmat, ei_3dmat, pres_3dmat,
+                     rho_3dcell, ei_3dcell, pres_3dcell);
+
+         bdry_cell_vel_3d(ncell, nbdry, btype_lower, btype_upper, vel_3dcell);
+     }           
+
+     return;
+}
+
+void set_3dmesh_mat(int *ncell, double *xl_prob, double *dx, int nbdry,
+                    int nmat, int *solid_num_ea_mat, double *gamma_ea_mat,
+                    int nreg, int *matids_ea_reg, Region_Shape *reg_shape,
+                    double *rho_ea_reg, double *pres_ea_reg, double *ei_ea_reg, double **v_ea_reg,
+                    double ****vf_3dmat, double ****rho_3dmat, 
+                    double ****ei_3dmat, double ****pres_3dmat,
+                    double ****vel_3dcell)
+{
+     int i, j, k, idx, nm, m, nmat_cell;
+     int ncell_ext[3];
+     int *matids_cell;
+     double vfsum, vfsuminv, xl[3];
+     double *vf_ea_mat, *rho_ea_mat, *pres_ea_mat, *ei_ea_mat;
+     double rho, pres, ei, vel[3];
+
+     int dim = 3;
+
+     for (i = 0; i < dim; i++) {
+         ncell_ext[i] = ncell[i] + nbdry + nbdry;
+     }
+     vf_ea_mat   = (double *) malloc(nreg * sizeof(double));
+     rho_ea_mat  = (double *) malloc(nreg * sizeof(double));
+     pres_ea_mat = (double *) malloc(nreg * sizeof(double));
+     ei_ea_mat   = (double *) malloc(nreg * sizeof(double));
+     matids_cell = (int   *) malloc(nreg * sizeof(int));
+
+     xl[2] = xl_prob[2] - dx[2] * (double)nbdry;
+     for (k = 0; k < ncell_ext[2]; k++) {
+         xl[1] = xl_prob[1] - dx[1] * (double)nbdry;
+         for (j = 0; j < ncell_ext[1]; j++) {
+             xl[0] = xl_prob[0] - dx[0] * (double)nbdry;
+             for (i = 0; i < ncell_ext[0]; i++) {
+                 for (m = 0; m < nmat; m++) {
+                     vf_3dmat[k][j][i][m]   = 0.0;
+                     rho_3dmat[k][j][i][m]  = 0.0;
+                     ei_3dmat[k][j][i][m]   = 0.0;
+                     pres_3dmat[k][j][i][m] = 0.0;
+                 }
+                 set_cell_mat(dim, xl, dx,
+                             nmat, solid_num_ea_mat, gamma_ea_mat,
+                             nreg, matids_ea_reg, reg_shape,
+                             rho_ea_reg, pres_ea_reg, ei_ea_reg, v_ea_reg,
+                             &nmat_cell, matids_cell,
+                             vf_ea_mat, rho_ea_mat, pres_ea_mat, ei_ea_mat,
+                             &rho, &pres, &ei, vel);
+                 nm = 0;
+                 vfsum = 0.0;
+                 for (m = 0; m < nmat_cell; m++) {
+                     if (vf_ea_mat[m] < vfmin) {
+                         vf_ea_mat[m] = 0.0;
+                     }
+                     else {
+                         vfsum += vf_ea_mat[m];
+                         nm++;
+                     }
+                 }
+                 vfsuminv = 1.0/vfsum;
+                 for (m = 0; m < nmat_cell; m++) {
+                     vf_ea_mat[m] *= vfsuminv;
+                 }
+                 for (idx = 0; idx < nmat_cell; idx++) { 
+                     m = matids_cell[idx];
+                     vf_3dmat[k][j][i][m]   = vf_ea_mat[idx];
+                     rho_3dmat[k][j][i][m]  = rho_ea_mat[idx];
+                     ei_3dmat[k][j][i][m]   = ei_ea_mat[idx];
+                     pres_3dmat[k][j][i][m] = pres_ea_mat[idx]; 
+                 } 
+                 for (idx = 0; idx < dim; idx++) {
+                     vel_3dcell[k][j][i][idx] = vel[idx];
+                 }
+                 xl[0] += dx[0];
+             }   // i
+             xl[1] += dx[1];
+         }        // j
+         xl[2] += dx[2];
+     }   // k
+
+     free(vf_ea_mat);
+     free(rho_ea_mat);
+     free(pres_ea_mat);
+     free(ei_ea_mat);
+     free(matids_cell);
+
+     return;
+ }
+
+void set_2dmesh_mat(int *ncell, double *xl_prob, double *dx, int nbdry,
+            int nmat, int *solid_num_ea_mat, double *gamma_ea_mat,
+                    int nreg, int *matids_ea_reg, Region_Shape *reg_shape,
+                    double *rho_ea_reg, double *pres_ea_reg, double *ei_ea_reg, double **v_ea_reg,
+                    double ***vf_2dmat, double ***rho_2dmat, 
+                    double ***ei_2dmat, double ***pres_2dmat,
+                    double ***vel_2dcell)
+{
+     int i, j, idx, nm, m, offset, nmat_cell;
+     int ncell_ext[2];
+     int *matids_cell;
+     double vfsum, vfsuminv, xl[2];
+     double rho, pres, ei, vel[2];
+     double *vf_ea_mat, *rho_ea_mat, *pres_ea_mat, *ei_ea_mat;
+
+     int dim = 2;
+
+
+     for (i = 0; i < dim; i++) {
+         ncell_ext[i] = ncell[i] + nbdry + nbdry;
+     }
+     vf_ea_mat   = (double *) malloc(nreg * sizeof(double));
+     rho_ea_mat  = (double *) malloc(nreg * sizeof(double));
+     pres_ea_mat = (double *) malloc(nreg * sizeof(double));
+     ei_ea_mat   = (double *) malloc(nreg * sizeof(double));
+     matids_cell = (int *) malloc(nreg * sizeof(int));
+
+     xl[1] = xl_prob[1] - dx[1] * (double)nbdry;
+     for (j = 0; j < ncell_ext[1]; j++) {
+         xl[0] = xl_prob[0] - dx[0] * (double)nbdry;
+         for (i = 0; i < ncell_ext[0]; i++) {
+             for (m = 0; m < nmat; m++) { 
+                 vf_2dmat[j][i][m]   = 0.0; 
+                 rho_2dmat[j][i][m]  = 0.0;
+                 ei_2dmat[j][i][m]   = 0.0; 
+                 pres_2dmat[j][i][m] = 0.0;
+             } 
+             set_cell_mat(dim, xl, dx,
+                          nmat, solid_num_ea_mat, gamma_ea_mat,
+                          nreg, matids_ea_reg, reg_shape,
+                          rho_ea_reg, pres_ea_reg, ei_ea_reg, v_ea_reg,
+                          &nmat_cell, matids_cell,
+                          vf_ea_mat, rho_ea_mat, pres_ea_mat, ei_ea_mat,
+                          &rho, &pres, &ei, vel);
+             nm = 0;
+             vfsum = 0.0;
+             for (m = 0; m < nmat_cell; m++) {
+                 if (vf_ea_mat[m] < vfmin) {
+                     vf_ea_mat[m] = 0.0;
+                 }
+                 else {
+                     vfsum += vf_ea_mat[m];
+                     nm++;
+                 }
+             }
+             vfsuminv = 1.0/vfsum;
+             for (m = 0; m < nmat_cell; m++) {
+                 vf_ea_mat[m] *= vfsuminv;
+             }
+             for (idx = 0; idx < nmat_cell; idx++) { 
+                 m = matids_cell[idx];
+                 vf_2dmat[j][i][m]   = vf_ea_mat[idx];
+                 rho_2dmat[j][i][m]  = rho_ea_mat[idx];
+                 ei_2dmat[j][i][m]   = ei_ea_mat[idx];
+                 pres_2dmat[j][i][m] = pres_ea_mat[idx];
+             }  
+             for (idx = 0; idx < dim; idx++) {
+                 vel_2dcell[j][i][idx] = vel[idx];
+             }
+             xl[0] += dx[0];
+         }   // i
+         xl[1] += dx[1];
+     }        // j
+
+     free(vf_ea_mat);
+     free(rho_ea_mat);
+     free(pres_ea_mat);
+     free(ei_ea_mat);
+     free(matids_cell);
+
+     return;
+ }
+
+
+void set_cell_mat(int dim, double *xl, double *dx,
+                  int nmat, int *solid_num_ea_mat, double *gamma_ea_mat,
+                  int nreg, int *matids_ea_reg, Region_Shape *reg_shape,
+                  double *rho_ea_reg, double *pres_ea_reg, double *ei_ea_reg, double **v_ea_reg,
+                  int *nmat_cell, int *matids_cell,
+                  double *vf_ea_mat, double *rho_ea_mat, double *pres_ea_mat, double *ei_ea_mat,
+                  double *rho_cell, double *pres_cell, double *ei_cell, double *v_cell)
+{
+//  ei_ea_reg: internal energy density
+
+    int i, r, nn, matid, mixed, ifcyl, previous_reg;
+    double cell_vol, vol, vf, vf_left, mass, ener, massinv;
+    double xmin[3], xmax[3], rad1, rad2;
+    double *xl_reg, *xr_reg, *ctr1, *ctr2;
+
+    int geop = 1;  // Cartesian coordinate
+    int ifinquiry = 0;  // to get vol fraction, not just mixed or clean
+
+    assert(reg_shape[0].type == shape_universe);
+
+    cell_vol = 1.0;
+    for (i = 0; i < dim; i++) {
+        cell_vol *= dx[i];
+    }
+    vf_ea_mat[0] = 1.0;
+    for (r = 1; r < nreg; r++) {
+        vf_ea_mat[r]   = 0.0;
+    rho_ea_mat[r]  = 0.0;
+    ei_ea_mat[r]   = 0.0;
+    }
+    for (r = 1; r < nreg; r++) {
+        vf_ea_mat[r] = 0.0;
+
+        if (reg_shape[r].type == shape_sphere) {
+            rad1 = (reg_shape[r].parameters)[0];
+            ctr1 = reg_shape[r].parameters + 1;
+            gsph_rec(ifinquiry, &mixed, geop, dim, ctr1, rad1, xl, dx, &vol);
+        }
+        else if (reg_shape[r].type == shape_quad) {
+            nn = 4;
+            find_min_max(dim, nn, reg_shape[r].parameters, xmin, xmax);
+            poly2d_rec(0, &mixed, 1, cell_vol, dim, nn, reg_shape[r].parameters,
+                       xmin, xmax, xl, dx, &vol);
+        }
+        else if (reg_shape[r].type == shape_rectangular) {
+            xl_reg = reg_shape[r].parameters;
+            xr_reg = reg_shape[r].parameters + dim;
+            rec_rec(0, &mixed, 1, cell_vol, dim, xl_reg, xr_reg, xl, dx, &vol);
+        }
+        else if (reg_shape[r].type == shape_cylinder) {
+            rad1 = (reg_shape[r].parameters)[0];
+            ctr1 = reg_shape[r].parameters + 1;
+            rad2 = (reg_shape[r].parameters)[4];
+            ctr2 = reg_shape[r].parameters + 5;
+            ifcyl = 0;
+            for (i = 0; i < dim; i++) {
+            if (fabs(ctr1[i] - ctr2[i]) > 0.0001 * rad1) {
+                    ifcyl = i + 1;
+                    break;
+                }
+            }
+            gconic_rec(0, &mixed, ifcyl, dim, rad1, rad2, ctr1, ctr2, xl, dx, &vol);
+        }
+        else {
+            printf("ERROR: reg type not yet\n");
+            exit(1);
+        }
+        vf = vol/cell_vol;
+        vf = MAX(MIN(1.0,vf), 0.0);
+        vf_left = vf;
+        vf_ea_mat[r]  = vf;
+        previous_reg = r-1;
+        while ((vf_left > 0.0) && (previous_reg >= 0)) {
+            if (vf_left <= vf_ea_mat[previous_reg]) {
+                vf_ea_mat[previous_reg] -= vf_left;
+                vf_left = 0.0;
+            }
+            else {
+                vf_left -= vf_ea_mat[previous_reg];
+                vf_ea_mat[previous_reg] = 0.0;
+            }
+            previous_reg--;
+        }
+    }
+//  set rho, pres, ei, and v here if there is need
+
+    *rho_cell = 0.0;
+    *ei_cell  = 0.0;
+    *pres_cell = 0.0;
+    mass  = 0.0;
+    for (i = 0; i < dim; i++) {
+        v_cell[i] = 0.0;
+    }
+    for (r = 0; r < nreg; r++) {
+        *rho_cell += (vf_ea_mat[r] * rho_ea_reg[r]);
+        *ei_cell  += (vf_ea_mat[r] * ei_ea_reg[r]);
+        *pres_cell += (vf_ea_mat[r] * pres_ea_reg[r]);
+        mass  += (vf_ea_mat[r] * rho_ea_reg[r]);
+        for (i = 0; i < dim; i++) {
+            v_cell[i] += (vf_ea_mat[r] * rho_ea_reg[r] * v_ea_reg[r][i]);  // momentum
+        }
+    }
+    massinv = 1.0/(mass + tiny);
+    for (i = 0; i < dim; i++) {
+        v_cell[i] *= massinv;
+    }
+//  consolidate the same material
+
+    *nmat_cell = 0;
+    for (r = 0; r < nreg; r++) {
+        mass = 0.0;
+        ener = 0.0;
+        if (vf_ea_mat[r] > 0.0) {
+            matid = matids_ea_reg[r];
+            vf    = vf_ea_mat[r];
+        mass += (vf_ea_mat[r] * rho_ea_reg[r]);
+        ener += (vf_ea_mat[r] * ei_ea_reg[r]);
+
+            for (i = r+1; i < nreg; i++) {
+                if (matids_ea_reg[i] == matid) {
+                    vf   +=  vf_ea_mat[i];
+                    mass += (vf_ea_mat[i] * rho_ea_reg[i]);
+                    ener += (vf_ea_mat[i] *  ei_ea_reg[i]);
+                    vf_ea_mat[i] = 0.0;
+                }
+            }
+            rho_ea_mat[*nmat_cell] = mass/vf;
+            ei_ea_mat[*nmat_cell]  = ener/vf;
+            if (!solid_num_ea_mat[matid]) {
+                pres_ea_mat[*nmat_cell] = (gamma_ea_mat[matid] - 1.0) * ei_ea_mat[*nmat_cell];
+            }
+            else {
+                p_solid(solid_num_ea_mat[matid], rho_ea_mat[*nmat_cell], ei_ea_mat[*nmat_cell], &(pres_ea_mat[*nmat_cell]));
+            }
+            matids_cell[*nmat_cell] = matid;
+            vf_ea_mat[*nmat_cell]   = vf;
+
+            (*nmat_cell)++;
+        }
+    }
+
+    return;
+}
+
+
+void advect2d(int nmat, int *ncell, int nbdry, 
+              double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat,
+              int *ijk, double *xl_cell, double *dx_cell, 
+              int nnode, double *coords, int nm_this_cell, int *matids, 
+              int *nnode_for_mpoly, int **nodes_for_mpoly, 
+              double *xl_slab, double *xr_slab, double *inward_norm, int plane_of_slab,
+              int *nmat_advected, int *matid_advected, double *vol_advected,
+              double *mass_advected, double *ener_advected)
+{
+//     plane_of_slab: input. 0 for the xl-plane of the slab
+//                           1 for the xr-plane of the slab
+//                           2 for the yl-plane of the slab
+//                           3 for the yr-plane of the slab
+
+     int dim, i, j, ic, jc, nn, n, m, s, idx;
+     int nnode_new, nnode_interface, nnode_lower, nnode_upper;
+     int nodes_interface[2];
+     int *node_loc, *nodes, *nodelist_lower, *nodelist_upper;
+     int *nodelist_default;
+     double accuracy, distance, factor_vol, vol;
+     double xl_slab_scaled[2], xr_slab_scaled[2];
+
+     double c0[2], c1[2], *c;
+     double coords_new[4];     // for the newly generated coordinate at the interface
+     double *coords_scaled;    // scaled coordinated of material polygons
+     double *coords_mpoly;     // coordinates of the material polygon to be intersected.
+     double *coords_intersect; // the coordinates of material polygons in the cell + coords_new
+     double *ds_ea_node; // working array
+
+     dim = 2;
+     accuracy = 1.0e-06; // used to below or above the interface
+
+     factor_vol = 1.0;
+     for (i = 0; i < dim; i++) {
+         xl_slab_scaled[i] = (xl_slab[i] - xl_cell[i])/dx_cell[i];
+         xr_slab_scaled[i] = (xr_slab[i] - xl_cell[i])/dx_cell[i];
+         factor_vol *= dx_cell[i];
+     }
+     if (plane_of_slab == 0) {      // xl-plane of the slab
+         c0[0] = xl_slab_scaled[0];
+         c0[1] = xr_slab_scaled[1];
+         c1[0] = xl_slab_scaled[0];
+         c1[1] = xl_slab_scaled[1];
+     }
+     else if (plane_of_slab == 1) { // xr-plane of the slab
+         c0[0] = xr_slab_scaled[0];
+         c0[1] = xl_slab_scaled[1];
+         c1[0] = xr_slab_scaled[0];
+         c1[1] = xr_slab_scaled[1];
+     }
+     else if (plane_of_slab == 2) { // yl-plane of the slab
+         c0[0] = xl_slab_scaled[0];
+         c0[1] = xl_slab_scaled[1];
+         c1[0] = xr_slab_scaled[0];
+         c1[1] = xl_slab_scaled[1];
+     }
+     else if (plane_of_slab == 3) {  // yr-plane of the slab
+         c0[0] = xr_slab_scaled[0];
+         c0[1] = xr_slab_scaled[1];
+         c1[0] = xl_slab_scaled[0];
+         c1[1] = xr_slab_scaled[1];
+     }
+     distance = 0.5 *(inward_norm[0] *(c0[0] + c1[0]) + inward_norm[1] * (c0[1] + c1[1]));
+
+     nodelist_default = (int *) malloc((1+nnode) * sizeof(int));
+     for (i = 0; i <= nnode; i++) {
+         nodelist_default[i] = i;
+     }
+     node_loc = (int *) malloc(nnode * sizeof(int));
+
+     ds_ea_node       = (double *) malloc(nnode * sizeof(double));
+     coords_scaled    = (double *) malloc((nnode + nnode + nnode + 2) * dim * sizeof(double));
+     coords_mpoly     = (coords_scaled + nnode * dim);
+     coords_intersect = coords_mpoly + (nnode * dim);
+     memcpy(coords_intersect, coords, (size_t)(nnode * dim * sizeof(double)));
+     memcpy(coords_scaled, coords_intersect, (size_t)(nnode * dim * sizeof(double)));
+
+//   scale coords_scaled
+     for (n = 0; n < nnode; n++) {
+         c  = coords_scaled + (n * dim);
+         for (i = 0; i < dim; i++) {
+             c[i] = (c[i] - xl_cell[i])/dx_cell[i];
+         }
+     }
+     ic  = ijk[0];
+     jc  = ijk[1]; 
+
+     *nmat_advected = 0;
+     for (s = 0; s < nm_this_cell; s++) { 
+         m = matids[s];
+
+         nn    = nnode_for_mpoly[s];
+         nodes = nodes_for_mpoly[s];
+
+//       copy the coordinats of the material polygon to coords_mpoly
+
+         for (idx = 0; idx < nn; idx++) {
+             n = nodes[idx];
+             memcpy(coords_mpoly + (idx * dim), coords_scaled + (n * dim), (size_t)(dim * sizeof(double)));
+             //coords_mpoly[idx*dim] = coords_scaled[n*dim];
+             //coords_mpoly[idx*dim+1] = coords_scaled[n*dim+1];
+         }
+         for (n = 0; n < nn; n++) {
+             ds_ea_node[n] = 0.0;
+             c = coords_mpoly + (n * dim);
+             for (i = 0; i < dim; i++) {
+                 ds_ea_node[n] += (inward_norm[i] * c[i]);
+             }
+         }
+         for (n = 0; n < nn; n++) {
+             if (fabs(ds_ea_node[n] - distance) <= accuracy) {
+                 node_loc[n] = 0;  // on the plane
+             }
+             else if (ds_ea_node[n] > distance)  {   // above the plane
+                 node_loc[n] = 1;
+             }
+             else {
+                 node_loc[n] = -1;
+             }
+         }
+         nodelist_lower = NULL;
+         nodelist_upper = NULL;
+         find_interface2d(nn, coords_mpoly, nodelist_default, inward_norm,
+                         distance, node_loc,
+                         &nnode_new, coords_new,
+                         &nnode_interface, nodes_interface,
+                         &nnode_lower, &nodelist_lower,
+                         &nnode_upper, &nodelist_upper);
+
+         if (nnode_upper > 2) {
+             assert(nodelist_upper);
+             for (idx = 0; idx < nnode_upper; idx++) {
+                 n = nodelist_upper[idx];
+                 if (n < nn) {
+                     memcpy(coords_intersect + (idx * dim), coords_mpoly + (n * dim), (size_t)(dim * sizeof(double)));
+                 }
+                 else {
+                     memcpy(coords_intersect + (idx * dim), coords_new + (n - nn)*dim, (size_t)(dim * sizeof(double)));
+                 }
+             }
+             cal_poly_area(nnode_upper, coords_intersect, nnode_upper, nodelist_default, &vol);
+             vol *= factor_vol;
+             vol_advected[*nmat_advected]   = vol;
+             matid_advected[*nmat_advected] = m;
+             mass_advected[ *nmat_advected] = rho_2dmat[jc][ic][m] * vol;
+             ener_advected[ *nmat_advected] =  ei_2dmat[jc][ic][m] * vol;
+
+             (*nmat_advected)++;
+             free(nodelist_upper);
+         }
+         if (nodelist_lower) free(nodelist_lower);
+     }
+     free(nodelist_default);
+     free(node_loc);
+     free(ds_ea_node);
+     free(coords_scaled);
+
+     return;
+ }
+
+
+void intersect2d(int nmat, int *ncell, int nbdry,
+              double ***rho_2dmat, double ***ei_2dmat,
+              int *ijk, int nm_this_cell, int *matids_this_cell,  // cell info 
+              double *xl_target, double *dx_target,  
+              int nnode, double *coords,  
+              int *nnode_for_mpoly, int **nodes_for_mpoly,
+              int *nmat_int, int *matid_int, double *vol_int,
+              double *mass_int, double *ener_int)
+{
+//   interasection of rectangular (xl_cell, dx) with material polygons in the
+//   mixed cell ijk 
+//
+     int dim, jc, ic, nnode_rec, nn_mpoly, idx, k, n, nnode_int, m;
+     int *nodes;
+     double vol;
+     double coords_rec[8], coords_mpoly[16], *coords_int;
+     double *c;
+     double inward_norm_ea_face_default[4][2]= {{0.0,1.0}, {-1.0,0.0}, {0.0, -1.0}, {1.0,0.0}};
+
+     dim = 2;
+     nnode_rec = 4;
+
+     c = coords_rec;
+     c[0] = xl_target[0];
+     c[1] = xl_target[1];
+     c   += dim;
+     c[0] = xl_target[0] + dx_target[0];
+     c[1] = xl_target[1];
+     c   += dim;
+     c[0] = xl_target[0] + dx_target[0];
+     c[1] = xl_target[1] + dx_target[1];
+     c   += dim;
+     c[0] = xl_target[0];
+     c[1] = xl_target[1] + dx_target[1];
+
+     ic = ijk[0];
+     jc = ijk[1];
+
+     *nmat_int = 0;
+     for (idx = 0; idx < nm_this_cell; idx++) {
+         m = matids_this_cell[idx]; 
+         nn_mpoly = nnode_for_mpoly[idx];
+         nodes = nodes_for_mpoly[idx];
+         for (k = 0; k < nn_mpoly; k++) {
+             n = nodes[k];
+             c = coords + (n * dim);
+             memcpy(coords_mpoly + (k * dim), c, (size_t)(dim * sizeof(double)));
+         }
+         coords_int = NULL;
+         remap2d_scaled(0, nnode_rec, coords_rec, inward_norm_ea_face_default[0],
+                        nn_mpoly, coords_mpoly,
+                        &nnode_int, &coords_int);
+
+         if (nnode_int > 2) {
+             cal_poly_area(nnode_int, coords_int, nnode_int, NULL, &vol);
+             if (vol > 0.0) {
+                 matid_int[*nmat_int] = m;
+                 vol_int[  *nmat_int] = vol;
+                 mass_int[ *nmat_int] = vol * rho_2dmat[jc][ic][m];
+                 ener_int[ *nmat_int] = vol * ei_2dmat[jc][ic][m];  
+                  
+                 (*nmat_int)++;
+             }
+         }
+         if (coords_int) free(coords_int);
+     }
+
+     return;
+ }
+
+
+void advect3d(int nmat, int *ncell, int nbdry, 
+              double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, 
+              int *ijk, double *xl_cell, double *dx_cell, int nm_this_cell, int *matids,
+              double *xl_slab, double *xr_slab, double *inward_norm, int plane_of_slab,
+              int nnode_tot, double *coords_tot,
+              int *nface_for_mpoly, int **nnode_for_face_ea_mpoly,
+              int **nodelist_for_face_ea_mpoly, 
+              int *nmat_advected, int *matid_advected, double *vol_advected,
+              double *mass_advected, double *ener_advected)
+{
+//     plane_of_slab: input. 0 for the xl-plane of the slab
+//                           1 for the xr-plane of the slab
+//                           2 for the yl-plane of the slab
+//                           3 for the yr-plane of the slab
+//                           4 for the zl-plane of the slab
+//                           5 for the zr-plane of the slab
+
+     int dim, dir, i, j, k, ic, jc, kc, idx, f, n, nn, m;
+     int nnode_plane, nnode, nface, lsize;
+     int nface_lower, nnode_lower, nface_upper, nnode_upper;
+     int nodelist[4];
+
+     int *included, *nodeold2new;
+     int *nnode_for_face, *nodelist_for_face_old, *nodelist_for_face;
+     int *nodes, *nodes_t;
+     int *nnode_for_face_lower, *nodelist_for_face_lower;
+     int *nnode_for_face_upper, *nodelist_for_face_upper;
+
+     double accuracy, d, factor_vol, vol;
+     double xl_slab_scaled[3], xr_slab_scaled[3], coords_plane[12];
+     double *coords_mpoly, *coords_scaled, *coords;
+     double *coords_lower, *coords_upper;
+
+     double *c;
+
+     dim = 3;
+     accuracy = 1.0e-06; // used to below or above the interface
+
+     factor_vol = 1.0;
+     for (i = 0; i < dim; i++) {
+         xl_slab_scaled[i] = (xl_slab[i] - xl_cell[i])/dx_cell[i];
+         xr_slab_scaled[i] = (xr_slab[i] - xl_cell[i])/dx_cell[i];
+         factor_vol *= dx_cell[i];
+     }
+//   scale the cooredinate between 0 and 1
+
+     coords_scaled = (double *) malloc((nnode_tot + nnode_tot) * dim * sizeof(double));
+     memcpy(coords_scaled, coords_tot, (size_t)(nnode_tot * dim * sizeof(double)));
+
+     coords = coords_scaled + (nnode_tot * dim);
+
+     for (n = 0; n < nnode_tot; n++) {
+         c  = coords_scaled + (n * dim);
+         for (i = 0; i < dim; i++) {
+             c[i] = (c[i] - xl_cell[i])/dx_cell[i];
+         }
+     }
+     nnode_plane = 4;
+     c = coords_plane;
+
+//              --------------
+//             /.           / |
+//            / .          /  |
+//           /  .         /   |
+//          -------------/    |
+//          |   .........|....|
+//          |  .         |   /
+//          | .          |  /
+//          |.           | /
+//          --------------/
+
+     if (plane_of_slab == 0) { // xl face of the slab
+         c[0] = xl_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+
+         c += dim;
+         c[0] = xl_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+
+         c += dim;
+         c[0] = xl_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+
+         c += dim;
+         c[0] = xl_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+     }
+     else if (plane_of_slab == 1) {  // xr face of the slab
+         c[0] = xr_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+
+         c += dim;
+         c[0] = xr_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+
+         c += dim;
+         c[0] = xr_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+
+         c += dim;
+         c[0] = xr_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+     }
+     else if (plane_of_slab == 2) { // yl face of the slab
+         c[0] = xl_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+
+         c += dim;
+         c[0] = xl_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+
+         c += dim;
+         c[0] = xr_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+
+         c += dim;
+         c[0] = xr_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+     }
+     else if (plane_of_slab == 3) {  // yr face of the slab
+         c[0] = xl_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+
+         c += dim;
+         c[0] = xr_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+
+         c += dim;
+         c[0] = xr_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+
+         c += dim;
+         c[0] = xl_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+     }
+     else if (plane_of_slab == 4) {  // zl face of the slab
+         c[0] = xl_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+
+         c += dim;
+         c[0] = xr_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+
+         c += dim;
+         c[0] = xr_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+
+         c += dim;
+         c[0] = xl_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xl_slab_scaled[2];
+     }
+     else if (plane_of_slab == 5) { // zr face of the slab
+         c[0] = xl_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+
+         c += dim;
+         c[0] = xl_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+
+         c += dim;
+         c[0] = xr_slab_scaled[0];
+         c[1] = xr_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+
+         c += dim;
+         c[0] = xr_slab_scaled[0];
+         c[1] = xl_slab_scaled[1];
+         c[2] = xr_slab_scaled[2];
+     }
+     for (i = 0; i < nnode_plane; i++) {
+         nodelist[i] = i;
+     }
+     d = 0.0;
+     for (i = 0; i < nnode_plane; i++) {
+         n = nodelist[i];
+         c = coords_plane + (dim * n);
+         for (k = 0; k < dim; k++) {
+             d += (c[k] * inward_norm[k]);
+         }
+     }
+     d /= ((double)(nnode_plane));
+
+     ic  = ijk[0];
+     jc  = ijk[1];
+     kc  = ijk[2];
+
+     included = (int *) malloc((nnode_tot + nnode_tot) * sizeof(int));
+     nodeold2new = included + nnode_tot;
+
+     lsize = 0;
+     for (idx = 0; idx < nm_this_cell; idx++) { 
+         nface                 = nface_for_mpoly[idx];
+         nnode_for_face        = nnode_for_face_ea_mpoly[idx];
+         nn = 0;
+         for (f = 0; f < nface; f++) {
+             nn += nnode_for_face[f];
+         }
+         if (nn > lsize) lsize = nn;
+     }
+     nodelist_for_face = (int *) malloc(lsize * sizeof(int));
+
+     *nmat_advected = 0;
+     for (idx = 0; idx < nm_this_cell; idx++) {
+         m = matids[idx];
+
+         nface                 = nface_for_mpoly[idx];
+         nnode_for_face        = nnode_for_face_ea_mpoly[idx];
+         nodelist_for_face_old = nodelist_for_face_ea_mpoly[idx];
+
+         for (n = 0; n < nnode_tot; n++) {
+             included[n] = 0;
+         }
+         nodes = nodelist_for_face_old;
+         for (f = 0; f < nface; f++) {
+             nn = nnode_for_face[f];
+             for (i = 0; i < nn; i++) {
+                 n = nodes[i];
+                 included[n] = 1;
+             }
+             nodes += nn;
+         }
+         nnode = 0;
+         for (n = 0; n < nnode_tot; n++) {
+             if (included[n]) {
+                 memcpy(coords + (nnode * dim), coords_scaled + (n * dim), (size_t)(dim * sizeof(double)));
+                 nodeold2new[n] = nnode;
+                 nnode++;
+             }
+         }
+         nodes   = nodelist_for_face_old;
+         nodes_t = nodelist_for_face;
+
+         for (f = 0; f < nface; f++) {
+             nn = nnode_for_face[f];
+             for (i = 0; i < nn; i++) {
+                 n = nodes[i];
+                 nodes_t[i] = nodeold2new[n];
+             }
+             nodes   += nn;
+             nodes_t += nn;
+         }
+         coords_lower = NULL;
+         coords_upper = NULL;
+         nnode_for_face_lower = NULL;
+         nnode_for_face_upper = NULL;
+         nodelist_for_face_lower = NULL;
+         nodelist_for_face_upper = NULL;
+
+         polyhedron_plane(nface, nnode, coords,
+                          nnode_for_face, nodelist_for_face,
+                          inward_norm, d,
+                          &nface_lower, &nnode_lower, &coords_lower,
+                          &nnode_for_face_lower, &nodelist_for_face_lower,
+                          &nface_upper, &nnode_upper, &coords_upper,
+                          &nnode_for_face_upper, &nodelist_for_face_upper);
+
+         if (nface_upper > 3) {
+
+//           scale back
+//             for (n = 0; n < nnode_upper; n++) {
+//                 c = coords_upper + (n * dim);
+//                 for (i = 0; i < dim; i++) {
+//                     c[i] = c[i] * dx_cell[i] + xl_cell[i];
+//                 }
+//             }
+
+             cal_vol(nface_upper,nnode_upper,coords_upper,nnode_for_face_upper,nodelist_for_face_upper,&vol);
+             vol *= factor_vol;
+             vol_advected[*nmat_advected]   = vol;
+             matid_advected[*nmat_advected] = m;
+             mass_advected[ *nmat_advected] = rho_3dmat[kc][jc][ic][m] * vol;
+             ener_advected[ *nmat_advected] =  ei_3dmat[kc][jc][ic][m] * vol;
+             (*nmat_advected)++;
+         }
+         if (coords_lower)            free(coords_lower);
+         if (nnode_for_face_lower)    free(nnode_for_face_lower);
+         if (nodelist_for_face_lower) free(nodelist_for_face_lower);
+
+         if (coords_upper)            free(coords_upper);
+         if (nnode_for_face_upper)    free(nnode_for_face_upper);
+         if (nodelist_for_face_upper) free(nodelist_for_face_upper);
+     }
+     free(coords_scaled);
+     free(included);
+     free(nodelist_for_face);
+
+     return;
+ }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void mat_write_mat(int fileid, int dim, int pass)
+{
+
+    if (fileid < 0) return;
+
+/****
+        write_mpoly(fileid, dim, pass,
+                 nmat_prob, 
+                 nmixcell_mpoly, nmat_in_mixcell, matids_in_mixcell,
+                 nnode_in_mixcell, coords_in_mixcell,
+                 nnode_for_minterface_in_mixcell, nodes_for_minterface_in_mixcell,
+                 nnode_for_mpoly_in_mixcell, nodes_for_mpoly_in_mixcell,            // for 2D
+                 nface_for_mpoly_in_mixcell, nnode_for_face_ea_mpoly_in_mixcell,    // for 3D
+                 nodelist_for_face_ea_mpoly_in_mixcell);                              // for 3D
+***/
+    
+     return;
+ }

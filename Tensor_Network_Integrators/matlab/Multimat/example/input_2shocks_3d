@@ -1,0 +1,13 @@
+prob = 2shocks
+velocity = 1.0 
+dim  = 3
+nx   = 40
+ny   = 4
+nz   = 4
+nmat = 2 
+tmax = 1.0
+ncycle = 5
+dt_viz = 0.1
+ncycle_viz = 1
+courant = 0.25
+dt   = 0.01 

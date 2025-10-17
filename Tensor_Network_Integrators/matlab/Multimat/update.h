@@ -1,0 +1,58 @@
+#ifndef _UPDATE_
+#define _UPDATE_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "globals.h"
+#include "minip.h" 
+
+void compute_divu(int dim, const int *ncell, const int nbdry, double *dx,
+                   double ***vel_2dnode, double ****vel_3dnode,
+                   double **divu_2dcell, double ***divu_3dcell);
+
+void compute_qvis(int dim, const int *ncell, const int nbdry, double dx,
+                  double **rho_2dcell,  double **cs_2dcell,  double **div_2dcell, double ***vel_2dnode,
+                  double ***rho_3dcell, double ***cs_3dcell, double ***div_3dcell, double ****vel_3dnode,
+                  double **qvis_2dcell, double ***qvis_3dcell); 
+
+void compute_force(int dim, const int *ncell, const int nbdry, double *dx, int direction,
+                    double **pres_2dcell,  double ***pres_3dcell,
+                    double **rho_2dcell,   double ***rho_3dcell,
+                    double **qvis_2dcell,   double ***qvis_3dcell,
+                    double **force_2dnode,  double ***force_3dnode);
+
+void update_vel_comp(int dim, int *ncell, int nbdry, double dt, int dir, 
+                     double **face_2dnode, double ***force_3dnode, 
+                     double ***vel_2dnode, double ***vav_2dnode, 
+                     double ****vel_3dnode, double ****vav_3dnode);
+
+void update_density(int nmat, int dim,  int *ncell, int nbdry, double dt, 
+                    int *if_fixed_state_ea_mat, double *rho_fixed_state_ea_mat,
+                    double *ei_fixed_state_ea_mat, double *pres_fixed_state_ea_mat,
+                    double **rho_2dcell, double **divu_2dcell, double ***vf_2dmat, double ***rho_2dmat,
+                    double ***rho_3dcell, double ***divu_3dcell, double ****vf_3dmat, double ****rho_3dmat,
+                    double *cournt);
+
+void update_energy(int nmat, int dim, int *ncell, int nbdry, double dt,
+                   double **rho_2dcell, double **divu_2dcell,
+                   double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat, double ***pres_2dmat,
+                   double ***rho_3dcell, double ***divu_3dcell, 
+                   double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, double ****pres_3dmat,
+		   double *courant);
+
+void update_pressure(int nmat, int *solid_num_ea_mat, double *gamma_ea_mat,
+                     int dim, int *ncell, int nbdry,  
+                     int *if_fixed_state_ea_mat, double *rho_fixed_state_ea_mat,
+                     double *ei_fixed_state_ea_mat, double *pres_fixed_state_ea_mat, 
+                     double **ei_2dcell, double **pres_2dcell,
+                     double ***vf_2dmat, double ***rho_2dmat, double ***ei_2dmat, double ***pres_2dmat,
+                     double ***ei_3dcell, double ***pres_3dcell,
+                     double ****vf_3dmat, double ****rho_3dmat, double ****ei_3dmat, double ****pres_3dmat);
+
+
+#ifdef __cplusplus
+}
+#endif
+#endif

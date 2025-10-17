@@ -1,0 +1,19 @@
+               Tpod: 0.6778
+                 j1: 5
+                 j2: 501
+                 xp: [13120x1 double]
+              xphat: [751x33 double]
+              t_ode: [751x1 double]
+                 Xh: [501x33 double]
+                  n: 33
+                  V: [13120x33 double]
+                  A: [33x33 double]
+                  F: [33x561 double]
+                  B: []
+                  D: [1091x594 double]
+                  R: [1091x33 double]
+    retained_energy: 1.0000
+             Tlearn: 0.1669
+           Tpredict: 0.0613
+           Telapsed: 0.9068
+
