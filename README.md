@@ -36,7 +36,7 @@ If you used THOR for scientific publications, please include the following citat
 ```
 @software{adak2026thor,
   title     = {Tensors for High-dimensional Object Representation (THOR)},
-  author    = {Adak, Debabrata and Alexandrov, Boian and Boureima, Ismael and Chinomona, Rujeko and Dai, Wei and Danis, Engin and Eren, Maksim and Korobkin, Oleg and Rasmussen, Kim and Somasundaram, Rahul and Tran, Quang T. and Truong, Duc},
+  author    = {Adak, Dibyendu and Alexandrov, Boian and Boureima, Ismael and Chinomona, Rujeko and Dai, William and Danis, Engin and Eren, Maksim and Korobkin, Oleg and Rasmussen, Kim and Somasundaram, Rahul and Tran, Quoc Thai and Truong, Duc},
   version   = {v1.0.0},
   publisher = {Zenodo},
   year      = {2026},
