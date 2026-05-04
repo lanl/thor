@@ -34,21 +34,17 @@ For the collection of published examples, navigate to the [Tensor Network Integr
 
 If you used THOR for scientific publications, please include the following citation:
 ```
-@techreport{alexandrov2024thor,
-  title        = {Tensors Optimized for High-level Research (THOR): an efficient and easy-to-use library for tensor networks},
-  author       = {Alexandrov, Boian and Boureima, Ismael Djibrilla and Korobkin, Oleg and Danis, Mustafa Engin},
-  institution  = {Los Alamos National Laboratory},
-  number       = {LA-UR-24-24375},
-  year         = {2024},
-  month        = {may},
-  day          = {6},
-  note         = {Approved for public release; distribution is unlimited},
-  type         = {Report}
+@software{adak2026thor,
+  title     = {Tensors for High-dimensional Object Representation (THOR)},
+  author    = {Adak, Debabrata and Alexandrov, Boian and Boureima, Ismael and Chinomona, Rujeko and Dai, Wei and Danis, Engin and Eren, Maksim and Korobkin, Oleg and Rasmussen, Kim and Somasundaram, Rahul and Tran, Quang T. and Truong, Duc},
+  version   = {v1.0.0},
+  publisher = {Zenodo},
+  year      = {2026},
+  doi       = {10.5281/zenodo.20030216},
+  url       = {https://doi.org/10.5281/zenodo.20030216},
+  type      = {Software}
 }
 ```
-Upcoming publications:
- * Boureima et al. (in prep)
- * Truong et al. (in prep)
 
 ## Authors
 - [Dibyendu Adak](mailto:dadak@lanl.gov): Theoretical Division, Los Alamos National Laboratory
